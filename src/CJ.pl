@@ -36,6 +36,11 @@
 # Copyright  Hatef Monajemi (monajemi@stanford.edu)
 
 
+use lib '/Users/hatef/github_projects/clusterjob/src';  #for now
+use CJ::CJVars;
+
+
+our $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
 #====================================
 #         DATE OF CALL INFO
 #====================================
@@ -47,24 +52,8 @@ my $date = sprintf ("%04d%03s%02d_%02d%02d%02d", $year, $abbr[$mon], $mday, $hou
 #====================================
 #         READ INPUT
 #====================================
-use File::Basename;
-my $install_dir = dirname(__FILE__);
-
-my $BASE 	     = `pwd`;chomp($BASE);
 
 # remote directory
-my $HOME = $ENV{"HOME"};
-my $remotePrefix = "~/RunRepo_remote/";
-my $localPrefix = "$HOME/RunRepo_local/";
-my $savePrefix = "$HOME/Dropbox/clusterjob_saveRepo/";
-
-
-$last_instance_file = "$install_dir/last_instance.info";
-$last_instance_result_dir = "$install_dir/last_instance_results";
-$history_file = "$install_dir/history.info";
-$run_history_file = "$install_dir/run_history.info";
-$save_info_file   = "$install_dir/save.info";
-
 my $argin = $#ARGV+1 ;
 
 if($argin < 1){
