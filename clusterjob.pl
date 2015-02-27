@@ -33,7 +33,7 @@
 # To combine the results of two runs if the result has the same structure:
 #   clusterjob combine PACKAGE_1 PACKAGE_2 PACKAGE_3 ...
 #
-#
+# Copyright  Hatef Monajemi (monajemi@stanford.edu)
 
 
 #====================================
