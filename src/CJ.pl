@@ -40,7 +40,7 @@ use lib '/Users/hatef/github_projects/clusterjob/src';  #for now
 use CJ::CJVars;
 
 
-our $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
+my $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
 #====================================
 #         DATE OF CALL INFO
 #====================================
