@@ -1,7 +1,15 @@
 #!/usr/bin/perl
-# run the specified code on a cluster
 #
-# perl clusterjob.pl (DEPLOY|RUN|CLEAN) MACHINE PROGRAM DEP_FOLDER  -mem MEMORY_REQUESTED -m "message"
+# run the specified code on a cluster
+# Usage:
+# perl clusterjob.pl (DEPLOY|RUN) MACHINE PROGRAM
+# perl clusterjob.pl (DEPLOY|RUN) MACHINE PROGRAM DEP_FOLDER
+#
+# Options:
+#   -mem <MEMORY_REQUESTED>
+#   -m   <MESSAGE>
+#
+# ex: perl CJ.pl (DEPLOY|RUN) MACHINE PROGRAM DEP_FOLDER -mem "10G" -m "REMINDER"
 #
 # In practice, one can leave 'perl clusterjob.pl'
 # as an alias, say 'clusterjob'.
@@ -30,15 +38,13 @@
 # To clean the last instance
 #   clusterjob clean
 #
-# To combine the results of two runs if the result has the same structure:
-#   clusterjob combine PACKAGE_1 PACKAGE_2 PACKAGE_3 ...
-#
 # Copyright  Hatef Monajemi (monajemi@stanford.edu)
 
 
-use lib '/Users/hatef/github_projects/clusterjob/src';  #for now
-use CJ::CJVars;
+use lib '/Users/hatef/github_projects/clusterjob/src';  #for testing
 
+use CJ;          # contains essential functions
+use CJ::CJVars;  # contains global variables of CJ;
 
 my $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
 #====================================
@@ -53,19 +59,22 @@ my $date = sprintf ("%04d%03s%02d_%02d%02d%02d", $year, $abbr[$mon], $mday, $hou
 #         READ INPUT
 #====================================
 
-# remote directory
+
 my $argin = $#ARGV+1 ;
 
 if($argin < 1){
-die "Incorrect usage: use 'perl clusterjob.pl run MACHINE PROGRAM DEP_FOLDER -m \"reminder message\" ' or 'perl clusterjon.pl clean' \n"
+die "Incorrect usage: use 'perl clusterjob.pl run MACHINE PROGRAM' or 'perl clusterjon.pl clean' \n"
 }
 
-# create history file if it does not exit
+
+print "$install_dir\n" ;
+
+# create history file if it does not exist
 if( ! -f $history_file ){
 my $cmd = "touch $history_file";
 my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%30s", "count", "date", "package", "action", "machine", "job_id", "message");
-&add_to_history($header);
-my_system($cmd);
+&CJ::add_to_history($header);
+CJ::my_system($cmd);
 }
 
 # Find the last number
@@ -80,11 +89,8 @@ my $history = sprintf("%-15u%-15s",$lastnum+1, $hist_date );
 
 if( ! -f $run_history_file ){
     my $cmd = "touch $run_history_file";
-    my_system($cmd);
+    CJ::my_system($cmd);
 }
-
-
-
 
 
 
@@ -99,12 +105,8 @@ my $runflag= shift;
 #       ex.  clusterjob clean 2015JAN07_213759
 #==========================================================
 
-
-
 if($runflag eq "clean"){
-
     
-
 my $package = shift;
 my $account;
 my $local_dir;
@@ -124,7 +126,7 @@ $save_dir   =   `sed -n '7{p;q;}' $last_instance_file`;chomp($save_dir);
 
 }else{
 
-    if(&is_valid_package_name($package)){
+    if(&CJ::is_valid_package_name($package)){
     # read info from $run_history_file
             
         my $cmd= "grep -q '$package' '$run_history_file'";
@@ -137,7 +139,7 @@ $save_dir   =   `sed -n '7{p;q;}' $last_instance_file`;chomp($save_dir);
             $job_id     = `grep -A 7 $package $run_history_file| sed -n '5{p;q;}'`;chomp($job_id);
             $save_dir   = `grep -A 7 $package $run_history_file| sed -n '7{p;q;}'`;chomp($save_dir);
         }else{
-            die "No such job found in the database\n";
+            die "No such job found in CJ database.\n";
         }
             
     }else{
@@ -150,22 +152,23 @@ $save_dir   =   `sed -n '7{p;q;}' $last_instance_file`;chomp($save_dir);
 }
 
     
-    
 print "CLEANing $package:\n";
 my $local_clean     = "$local_dir\*";
 my $remote_clean    = "$remote_dir\*";
 my $save_clean      = "$save_dir\*";
-  
+
+    
+    
 
 if (defined($job_id) && $job_id ne "") {
 print "deleting jobs associated with job $package\n";
 my @job_ids = split(',',$job_id);
 $job_id = join(' ',@job_ids);
 my $cmd = "rm -rf $local_clean; rm -rf $save_clean; ssh ${account} 'qdel $job_id; rm -rf $remote_clean' " ;
-&my_system($cmd);
+&CJ::my_system($cmd);
 }else {
 my $cmd = "rm -rf $local_clean;rm -rf $save_clean; ssh ${account} 'rm -rf $remote_clean' " ;
-&my_system($cmd);
+&CJ::my_system($cmd);
 }
     
 
@@ -175,7 +178,7 @@ my $cmd = "rm -rf $local_clean;rm -rf $save_clean; ssh ${account} 'rm -rf $remot
     
 # ADD THIS CLEAN TO HISTRY
 $history .= sprintf("%-21s%-10s",$package, $runflag);
-&add_to_history($history);
+&CJ::add_to_history($history);
     
     
     
@@ -267,7 +270,7 @@ if($runflag =~ m/^par*/){
             $state =~ s/[^A-Za-z]//g;
             print "$counter     " . "$job_ids[$i]      "  . "$state" . "\n";
         }
-    }elsif(isnumeric($num) && $num < $#job_ids+1){
+    }elsif(&CJ::isnumeric($num) && $num < $#job_ids+1){
         print '-' x 50;print "\n";
         print "PACKAGE " . "$package" . "\n";
         print "CLUSTER " . "$account" . "\n";
@@ -448,7 +451,7 @@ if($runflag eq "get" ){
         
     
     my $cmd = "rm -rf  $last_instance_result_dir/";
-    &my_system($cmd);
+    &CJ::my_system($cmd);
 
     
     
@@ -468,7 +471,7 @@ my @job_ids = split(',', $job_id);
 my $num_res = 1+$#job_ids;
 
 # header for bqs's
-$HEADER = &header($bqs);
+$HEADER = &CJ::bash_header($bqs);
 # check which jobs are done.
 my $bash_remote_dir  = $remote_dir;
 $bash_remote_dir =~ s/~/\$HOME/;
@@ -502,7 +505,7 @@ my $check_name = "check_complete.sh";
 my $check_path = "/tmp/$check_name";
 &writeFile($check_path,$check_runs);
 my $cmd = "scp $check_path $account:$remote_dir/ ;ssh $account 'source ~/.bashrc;cd $remote_dir; bash $check_name'";
-&my_system($cmd);
+&CJ::my_system($cmd);
         
 # Run a script to gather all *.mat files of the same name.
 $collect_bash_script = &make_collect_script_MATLAB($res_filename, $bqs);
@@ -514,16 +517,16 @@ my $collect_name = "cj_collect.sh";
 my $collect_bash_path = "/tmp/$collect_name";
 &writeFile($collect_bash_path,$collect_bash_script);
 my $cmd = "scp $collect_bash_path $account:$remote_dir/";
-&my_system($cmd);
+&CJ::my_system($cmd);
 
 
 my $cmd = "ssh $account 'cd $remote_dir; bash -l $collect_name'";
-&my_system($cmd);
+&CJ::my_system($cmd);
         
 }
         
 my $cmd = "rsync -arvz  $account:${remote_dir}/* $last_instance_result_dir/";
-&my_system($cmd);
+&CJ::my_system($cmd);
     
     
 # In case save is run after, we must have the info of the package
@@ -562,9 +565,9 @@ if($runflag eq "save" ){
 
         # Create directories
         my $cmd = "mkdir $savePrefix";
-        &my_system($cmd) unless (-d $savePrefix);
+        &CJ::my_system($cmd) unless (-d $savePrefix);
         my $cmd = "mkdir $saveDir";
-        &my_system($cmd) unless (-d $saveDir);
+        &CJ::my_system($cmd) unless (-d $saveDir);
         
     }
     
@@ -580,20 +583,20 @@ if($runflag eq "save" ){
             
             
         my $cmd = "rm -rf $save_path/*";
-        &my_system($cmd);
+        &CJ::my_system($cmd);
             
         my $cmd = "rsync -arz  $last_instance_result_dir/ $save_path/";
-        &my_system($cmd);
+        &CJ::my_system($cmd);
         
         my $cmd = "cp  $save_info_file $save_path/job.info";
-        &my_system($cmd);
+        &CJ::my_system($cmd);
             
       
         $history .= sprintf("%-21s%-10s",$package, $runflag);
       
         
         # ADD THIS SAVE TO HISTRY
-        &add_to_history($history);
+        &CJ::add_to_history($history);
             
             
         }else{
@@ -605,17 +608,17 @@ if($runflag eq "save" ){
         
     }else{
     my $cmd = "mkdir $save_path";
-    &my_system($cmd);
+    &CJ::my_system($cmd);
     my $cmd = "rsync -arz  $last_instance_result_dir/ $save_path/";
-    &my_system($cmd);
+    &CJ::my_system($cmd);
         
     my $cmd = "cp  $save_info_file $save_path/job.info";
-    &my_system($cmd);
+    &CJ::my_system($cmd);
         
     
     $history .= sprintf("%-21s%-10s",$package, $runflag);
     # ADD THIS SAVE TO HISTRY
-    &add_to_history($history);
+    &CJ::add_to_history($history);
         
     }
     
@@ -765,25 +768,25 @@ my $saveDir       = "$savePrefix"."$program_name[0]";
 # create local directories
 if(-d $localPrefix){
     my $cmd = "mkdir $localDir";
-    &my_system($cmd) unless (-d $localDir);
+    &CJ::my_system($cmd) unless (-d $localDir);
     
     my $cmd = "mkdir $local_sep_Dir";
-    &my_system($cmd) unless (-d $local_sep_Dir);
+    &CJ::my_system($cmd) unless (-d $local_sep_Dir);
     
 }else{
     # create local Prefix
     my $cmd = "mkdir $localPrefix";
-    &my_system($cmd);
+    &CJ::my_system($cmd);
     my $cmd = "mkdir $localDir";
-    &my_system($cmd) unless (-d $localDir);
+    &CJ::my_system($cmd) unless (-d $localDir);
     my $cmd = "mkdir $local_sep_Dir";
-    &my_system($cmd) unless (-d $local_sep_Dir);
+    &CJ::my_system($cmd) unless (-d $local_sep_Dir);
 }
 
 
 # cp dependencies
 my $cmd   = "cp -r $dep_folder/* $local_sep_Dir/";
-&my_system($cmd);
+&CJ::my_system($cmd);
 
 #=====================
 #  REMOTE DIRECTORIES
@@ -833,7 +836,7 @@ if ($runflag eq "deploy" || $runflag eq "run"){
 #    EXPERIMENT FOLDER
 #============================================
 my $cmd = "cp $BASE/$program $local_sep_Dir/";
-&my_system($cmd);
+&CJ::my_system($cmd);
 
 
 #===========================================
@@ -847,7 +850,7 @@ $local_sh_path = "$local_sep_Dir/bashMain.sh";
 
 
 my $master_script;
-$HEADER = &header($bqs);
+$HEADER = &CJ::bash_header($bqs);
 $master_script=$HEADER;
 $master_script.="$docstring";
  
@@ -881,30 +884,30 @@ my $local_master_path="$local_sep_Dir/master.sh";
 #==================================
 my $tarfile="$date".".tar.gz";
 my $cmd="cd $localDir; tar -czf $tarfile $date/  ; rm -rf $local_sep_Dir  ; cd $BASE";
-&my_system($cmd);
+&CJ::my_system($cmd);
 
     
 # create remote directory  using outText
 my $cmd = "ssh $account 'echo `$outText` '  ";
-&my_system($cmd);
+&CJ::my_system($cmd);
 
 
 print "$runflag"."ing files:\n";
 # copy tar.gz file to remoteDir
 my $cmd = "rsync -avz  ${localDir}/${tarfile} ${account}:$remoteDir/";
-&my_system($cmd);
+&CJ::my_system($cmd);
 
 
 
 my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; cd ${date}; bash master.sh > $remote_sep_Dir/qsub.info; sleep 2'";
-&my_system($cmd) unless ($runflag eq "deploy");
+&CJ::my_system($cmd) unless ($runflag eq "deploy");
     
 
  
 # bring the log file
 my $qsubfilepath="$remote_sep_Dir/qsub.info";
 my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/";
-&my_system($cmd) unless ($runflag eq "deploy");
+&CJ::my_system($cmd) unless ($runflag eq "deploy");
 
     
     
@@ -925,12 +928,12 @@ print "JOB_ID: $job_id\n";
     
 #delete the local qsub.info after use
 my $cmd = "rm $local_qsub_info_file";
-&my_system($cmd);
+&CJ::my_system($cmd);
     
     
 
 $history .= sprintf("%-21s%-10s%-15s%-20s%30s",$date, $runflag, $machine, $job_id, $short_message);
-&add_to_history($history);
+&CJ::add_to_history($history);
 #=================================
 # store tarfile info for deletion
 # when needed
@@ -940,7 +943,7 @@ $history .= sprintf("%-21s%-10s%-15s%-20s%30s",$date, $runflag, $machine, $job_i
 }else{
 $job_id ="";
 $history .= sprintf("%-21s%-10s%-15s%-20s%30s",$date, $runflag, $machine, " ", $short_message);
-&add_to_history($history);
+&CJ::add_to_history($history);
 }
 
 
@@ -956,7 +959,7 @@ $runflag
 $message
 TEXT
 
-&add_to_run_history($run_history);
+&CJ::add_to_run_history($run_history);
 
     
     
@@ -1072,7 +1075,7 @@ for (split /^/, $FOR) {
 #        MASTER SCRIPT
 #==============================================
 my $master_script;
-$HEADER = &header($bqs);
+$HEADER = &CJ::bash_header($bqs);
 $master_script=$HEADER;
 $master_script.="$docstring";
     
@@ -1108,7 +1111,7 @@ if($nloops eq 1){
                     
                     
                     my $cmd = "mkdir $local_sep_Dir/$counter";
-                    &my_system($cmd);
+                    &CJ::my_system($cmd);
                     
                     my $this_path  = "$local_sep_Dir/$counter/$program";
                     &writeFile($this_path,$new_script);
@@ -1172,7 +1175,7 @@ if($nloops eq 1){
                 
                 
                 my $cmd = "mkdir $local_sep_Dir/$counter";
-                &my_system($cmd);
+                &CJ::my_system($cmd);
                 
                 my $this_path  = "$local_sep_Dir/$counter/$program";
                 &writeFile($this_path,$new_script);
@@ -1236,7 +1239,7 @@ if($nloops eq 1){
                 
                 
                 my $cmd = "mkdir $local_sep_Dir/$counter";
-                &my_system($cmd);
+                &CJ::my_system($cmd);
                 
                 my $this_path  = "$local_sep_Dir/$counter/$program";
                 &writeFile($this_path,$new_script);
@@ -1288,7 +1291,7 @@ if($nloops eq 1){
 #    EXPERIMENT FOLDER
 #============================================
 my $cmd = "cp $BASE/$program $local_sep_Dir/";
-&my_system($cmd);
+&CJ::my_system($cmd);
     
     
 #===================================
@@ -1315,7 +1318,7 @@ system($cmd);
 print "$runflag"."ing files:\n";
 # copy tar.gz file to remoteDir
 my $cmd = "rsync -avz  ${localDir}/${tarfile} ${account}:$remoteDir/";
-&my_system($cmd);
+&CJ::my_system($cmd);
 
 
 
@@ -1327,7 +1330,7 @@ system($cmd) unless ($runflag eq "pardeploy");
 # bring the log file
 my $qsubfilepath="$remote_sep_Dir/qsub.info";
 my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/";
-&my_system($cmd) unless ($runflag eq "pardeploy");
+&CJ::my_system($cmd) unless ($runflag eq "pardeploy");
     
 
     
@@ -1349,7 +1352,7 @@ $job_id = join(',', @job_ids);
 
 #delete the local qsub.info after use
 my $cmd = "rm $local_qsub_info_file";
-&my_system($cmd);
+&CJ::my_system($cmd);
     
     
 # store tarfile info for deletion
@@ -1358,13 +1361,13 @@ my $cmd = "rm $local_qsub_info_file";
 
 
 $history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, "$job_ids[0]-$job_ids[-1]", $short_message);
-&add_to_history($history);
+&CJ::add_to_history($history);
     
     
 }else{
 $job_id = "";
 $history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, " ", $short_message);
-&add_to_history($history);
+&CJ::add_to_history($history);
 }
     
 
@@ -1379,7 +1382,7 @@ ${saveDir}/${date}
 $runflag
 $message
 TEXT
-&add_to_run_history($run_history);
+&CJ::add_to_run_history($run_history);
 
 
     
@@ -1490,7 +1493,7 @@ MATLAB
     
     
     
-$HEADER= &header($bqs);
+$HEADER= &CJ::bash_header($bqs);
     
 my $script;
 if($bqs eq "SGE"){
@@ -1925,75 +1928,15 @@ return $sh_script;
 #====================================
         
 
-sub my_system
-{
-print "system: ",$_[0],"\n";
-system($_[0]);
-}
-
-sub writeFile
- {
-     my ($path, $contents) = @_;
-     open(FILE,">$path") or die "can't create file $path";
-     print FILE $contents;
-     close FILE;
- }
 
 
-
-sub add_to_history
-{
-    my ($text) = @_;
-# ADD THIS SAVE TO HISTRY
-open (my $FILE , '>>', $history_file) or die("could not open file '$historyfile' $!");
-print $FILE "$text\n";
-close $FILE;
-    
-}
-
-
-
-sub add_to_run_history
-{
-    my ($text) = @_;
-    # ADD THIS SAVE TO HISTRY
-    open (my $FILE , '>>', $run_history_file) or die("could not open file '$run_history_file' $!");
-    print $FILE "$text\n";
-    close $FILE;
-    
-}
-
-
-sub is_valid_package_name
-{
-    my ($name) = @_;
-    
-    if( $name =~ m/^\d{4}\D{3}\d{2}_\d{6}$/){
-        return 1;
-    }else{
-        return 0;
-    }
-    
-}
-
-
-sub isnumeric
-{
-    my ($s) = @_;
-    if($s =~ /^[0-9,.E]+$/){
-        return 1;
-    }else{
-        return 0;
-    }
-        
-}
 
 
 sub matlab_var
 {
     my ($s) = @_;
     
-    if(isnumeric($s)){
+    if(&CJ::isnumeric($s)){
         return "[$s]";
     }else{
         return "\'$s\'";
@@ -2030,7 +1973,7 @@ sub read_matlab_index_set
         my @rightarray = split( /\s*:\s*/, $right, 2 );
         
         my $low =$rightarray[0];
-        if(! isnumeric($low) ){
+        if(! &CJ::isnumeric($low) ){
          print "The lower limit of for MUST be numeric for this version of clusterjob\n";
          exit 0;
         }
@@ -2123,27 +2066,6 @@ sub uncomment_matlab_line{
     return $line;
 }
 
-sub header{
-    my ($bqs) = @_;
-
-my $HEADER;
-if($bqs eq "SGE"){
-$HEADER=<<SGE_HEADER;
-#!/bin/bash -l
-#\$ -cwd
-#\$ -S /bin/bash
-SGE_HEADER
-}elsif($bqs eq "SLURM"){
-$HEADER=<<SLURM_HEADER;
-#!/bin/bash -l
-SLURM_HEADER
-}else{
-die "unknown BQS"
-}
-
-    return $HEADER;
-    
-}
 
 
 
