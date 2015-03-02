@@ -63,11 +63,10 @@ my $date = sprintf ("%04d%03s%02d_%02d%02d%02d", $year, $abbr[$mon], $mday, $hou
 my $argin = $#ARGV+1 ;
 
 if($argin < 1){
-die "Incorrect usage: use 'perl clusterjob.pl run MACHINE PROGRAM' or 'perl clusterjon.pl clean' \n"
+&CJ::err("Incorrect usage: use 'perl clusterjob.pl run MACHINE PROGRAM' or 'perl clusterjon.pl clean' ")
 }
 
 
-print "$install_dir\n" ;
 
 # create history file if it does not exist
 if( ! -f $history_file ){
@@ -96,7 +95,6 @@ if( ! -f $run_history_file ){
 
 
 my $runflag= shift;
-
 
 
 #==========================================================
@@ -139,12 +137,11 @@ $save_dir   =   `sed -n '7{p;q;}' $last_instance_file`;chomp($save_dir);
             $job_id     = `grep -A 7 $package $run_history_file| sed -n '5{p;q;}'`;chomp($job_id);
             $save_dir   = `grep -A 7 $package $run_history_file| sed -n '7{p;q;}'`;chomp($save_dir);
         }else{
-            die "No such job found in CJ database.\n";
+            &CJ::err("No such job found in CJ database.");
         }
             
     }else{
-        print('incorrect usage: nothing to show');
-        exit 0;
+        &CJ::err("incorrect usage: nothing to show");
     }
         
         
@@ -179,7 +176,6 @@ my $cmd = "rm -rf $local_clean;rm -rf $save_clean; ssh ${account} 'rm -rf $remot
 # ADD THIS CLEAN TO HISTRY
 $history .= sprintf("%-21s%-10s",$package, $runflag);
 &CJ::add_to_history($history);
-    
     
     
     
@@ -233,8 +229,7 @@ if($runflag eq "state"){
             }
             
         }else{
-            print('incorrect usage: nothing to show');
-            exit 0;
+            &CJ::err("incorrect usage: nothing to show");
         }
         
         
@@ -253,7 +248,7 @@ if($runflag =~ m/^par*/){
         }elsif($bqs eq "SLURM"){
             $states = (`ssh ${account} 'sacct -n --jobs=$job_id' | awk \'{print \$6}\'`) ;chomp($state);
         }else{
-            die "Unknown batch queueing system";
+            &CJ::err("Unknown batch queueing system");
         }
     
     @states = split('\n',$states);
@@ -276,7 +271,7 @@ if($runflag =~ m/^par*/){
         print "CLUSTER " . "$account" . "\n";
         print "$num     " . "$job_ids[$num]      "  . "$states[$num]" . "\n";
     }else{
-    die "***incorrect entry. Input $num >= $#states."
+        &CJ::err("incorrect entry. Input $num >= $#states.")
     }
     
     print '-' x 35;print "\n";
@@ -288,7 +283,7 @@ if($runflag =~ m/^par*/){
     }elsif($bqs eq "SLURM"){
     $state = (`ssh ${account} 'sacct | grep $job_id' | awk \'{print \$6}\'`) ;chomp($state);
     }else{
-            die "Unknown batch queueing system";
+        &CJ::err("Unknown batch queueing system");
     }
 
 print '-' x 35;print "\n";
@@ -354,7 +349,7 @@ if($runflag eq "history" ){
             
         system($cmd);
         }else{
-        die "No such job found in the database\n";
+            &CJ::err("No such job found in CJ database");
         }
         
         
@@ -373,8 +368,7 @@ if($runflag eq "history" ){
         print "$info \n";
         
     }else{
-        print "incorrect usage: nothing to show \n";
-        exit 0;
+        &CJ::err("Incorrect usage: nothing to show");
     }
     
     
@@ -430,7 +424,7 @@ if($runflag eq "get" ){
             $save_info  = `awk '/$package/{f=1}f' $run_history_file| sed -n 1,10p`; chomp($save_info);
             
         }else{
-            die "No such job found in the database\n";
+            &CJ::err("No such job found in CJ database");
         }
 
     }else{
@@ -463,8 +457,7 @@ if($runflag =~ m/^par*/){
 
 
 if ($res_filename eq ""){
-print "The result filename must be provided for GET with parrun packages, eg, 'clusterjob get Results.mat' \n";
-exit 0;
+&CJ::err("The result filename must be provided for GET with parrun packages, eg, 'clusterjob get Results.mat' ");
 }
 #find the number of folders with results in it
 my @job_ids = split(',', $job_id);
@@ -654,7 +647,7 @@ if($runflag eq "save" ){
 #========================================================================
 
 if($argin < 4){
-    die "Incorrect usage: use 'perl clusterjob.pl run MACHINE PROGRAM DEP_FOLDER' or 'perl clusterjon.pl clean' \n"
+    &CJ::err("Incorrect usage: use 'perl clusterjob.pl run MACHINE PROGRAM DEP_FOLDER' or 'perl clusterjon.pl clean' ");
 }
 
 # READ EXTRA ARGUMENTS
@@ -673,7 +666,7 @@ if($argin == 6){
     }elsif($whichtag eq "-mem"){
         $mem = shift;
     }else{
-    die "$whichtag option is unknown."
+    &CJ::err("$whichtag option is unknown.");
     }
 
 }elsif($argin == 8){
@@ -687,7 +680,7 @@ my $whichtag = shift;
         if($whichtag eq "-mem"){
         $mem = shift;
         }else{
-        die "unknown option $whichtag";
+            &CJ::err("unknown option $whichtag");
         }
             
     }elsif($whichtag eq "-mem"){
@@ -699,17 +692,17 @@ my $whichtag = shift;
             $message .= shift;
             $message .= "\"";
         }else{
-            die "unknown option $whichtag";
+            &CJ::err("unknown option $whichtag");
         }
 
         
         
     }else{
-      die "unknown option $whichtag";
+      &CJ::err("unknown option $whichtag");
     }
     
 }else{
-die "incorrect number of command line arguments";
+&CJ::err("incorrect number of command line arguments");
 }
 
 
@@ -729,13 +722,13 @@ if($machine eq "solomon"){
     $account = 'monajemi@sherlock.stanford.edu';
     $bqs = "SLURM";
 }else{
-    die "unknown server"
+    &CJ::err("unknown server");
 }
 
 
 #check to see if the file and dep folder exists
 if(! -e "$BASE/$program" ){
-die "$BASE/$program not found\n";
+ &CJ::err("$BASE/$program not found");
 }
 
 
@@ -815,7 +808,7 @@ fi
 mkdir $remoteDir
 TEXT
 }else{
-die "unknown BQS";
+&CJ::err("unknown BQS");
 }
 
 
@@ -868,7 +861,7 @@ $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem -N $tagstr -o ${remote_s
 $master_script.="sbatch --mem=$mem  --time=40:00:00  -J $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n"
 
 }else{
-die "unknown BQS"
+&CJ::err("unknown BQS")
 }
 
 my $local_master_path="$local_sep_Dir/master.sh";
@@ -1029,12 +1022,12 @@ $line = $lines[$i];
 # ==============================================================
 if($#forlines_idx_set+1 > 3 || $#forlines_idx_set+1 < 1)
 {
-die "***clusterjob does not allow a non-par loop, less than 1 or more than 3 parloops inside the MAIN script.";
+ &CJ::err(" 'parrun' does not allow a non-par loop, less than 1 or more than 3 parloops inside the MAIN script.");
 }
     
 foreach my $i (0..$#forlines_idx_set-1){
 if($forlines_idx_set[$i+1] ne $forlines_idx_set[$i]+1){
-die "***clusterjob does not allow anything between the parallel for's. try rewriting your loops";
+ &CJ::err("CJ does not allow anything between the parallel for's. try rewriting your loops");
 }
 }
 
@@ -1138,7 +1131,7 @@ if($nloops eq 1){
                         $master_script.="sbatch --mem=$mem  --time=40:00:00  -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
                         
                     }else{
-                        die "unknown BQS"
+                        &CJ::err("unknown BQS");
                     }
                     
                 } #v0
@@ -1202,7 +1195,7 @@ if($nloops eq 1){
                     $master_script.="sbatch --mem=$mem  --time=40:00:00  -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
                     
                 }else{
-                    die "unknown BQS"
+                    &CJ::err("unknown BQS");
                 }
                 
             } #v0
@@ -1266,7 +1259,7 @@ if($nloops eq 1){
                     $master_script.="sbatch --mem=$mem  --time=40:00:00  -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
                     
                 }else{
-                    die "unknown BQS"
+                    &CJ::err("unknown BQS");
                 }
                 
             } #v0
@@ -1280,8 +1273,7 @@ if($nloops eq 1){
 
 
 }else{
-    print "Max number of parallel variables exceeded; $nloops > 3 \n";
-    exit 0;
+    &CJ::err("Max number of parallel variables exceeded; $nloops > 3 ");
 }
     
 
@@ -1414,8 +1406,7 @@ $last_instance.=`cat $BASE/$program`;
     
 
 }else{
-print "Runflag $runflag was not recognized\n";
-exit 0
+&CJ::err("Runflag $runflag was not recognized");
 }
 
 
@@ -1573,7 +1564,7 @@ echo WORKDIR $SLURM_SUBMIT_DIR
 DIR=`pwd`
 HEAD
 }else{
-die "unknown BQS! \n";
+&CJ::err("unknown BQS");
 }
  
 $sh_script.= <<'MID';
@@ -1735,7 +1726,7 @@ echo WORKDIR $SLURM_SUBMIT_DIR
 DIR=<REMOTE_DIR>
 HEAD
 }else{
-die "unknown BQS! \n";
+&CJ::err("unknown BQS");
 }
     
 
@@ -1974,29 +1965,38 @@ sub read_matlab_index_set
         
         my $low =$rightarray[0];
         if(! &CJ::isnumeric($low) ){
-         print "The lower limit of for MUST be numeric for this version of clusterjob\n";
-         exit 0;
+         &CJ::err("The lower limit of for MUST be numeric for this version of clusterjob\n");
         }
         
         
         
             # exit on unallowed structure
             if ($rightarray[1] =~ /.*:.*/){
-                print "\n Sorry!...structure 'for i=1:1:3' is not allowed in clusterjob. Try rewriting your script using 'for i = 1:3' structure\n";
-                exit 0;
+                &CJ::err("Sorry!...structure 'for i=1:1:3' is not allowed in clusterjob. Try rewriting your script using 'for i = 1:3' structure\n");
             }
         
         
         
         if($rightarray[1] =~ /\s*length\(\s*(.+?)\s*\)/){
+            
             #CASE i = 1:length(var);
             # find the variable;
             my ($var) = $rightarray[1] =~ /\s*length\(\s*(.+?)\s*\)/;
             my $this_line = &grep_var_line($var,$TOP);
             
+            
             #extract the range
             my @this_array    = split(/\s*=\s*/,$this_line);
-            my ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
+            
+            if($this_array[1] =~ /\[\s*(.+?)\s*\]/){
+                my ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
+            }else{
+                # FUTURE_REV_ADD
+                &CJ::err("MATLAB structure '$this_line ' not currently supported for parrun.");
+            }
+            
+            
+            
             @vals = split(/,|;/,$numbers);
             
             my $high = 1+$#vals;
@@ -2023,7 +2023,7 @@ sub read_matlab_index_set
             $range = join(',',@range);
 
         }else{
-            print "strcuture of for loop not recognized by clusterjob. try rewriting your for loop using 'i = 1:10' structure"
+            &CJ::err("strcuture of for loop not recognized by clusterjob. try rewriting your for loop using 'i = 1:10' structure");
             
         }
         
@@ -2054,8 +2054,7 @@ foreach my $line (@lines) {
     if($this_line){
     return $this_line;
     }else{
-    print "Variable '$pattern' was not declared.\n";
-        exit 0;
+    &CJ::err("Variable '$pattern' was not declared.\n");
     }
 }
 

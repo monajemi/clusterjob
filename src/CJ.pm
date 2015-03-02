@@ -53,6 +53,10 @@ return 0;
 }
 
 
+sub err{
+    my ($message) = @_;
+    die(' ' x 5 . "CJerr::$message\n");
+}
 
 
 sub my_system
