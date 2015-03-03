@@ -45,6 +45,28 @@ use lib '/Users/hatef/github_projects/clusterjob/src';  #for testing
 
 use CJ;          # contains essential functions
 use CJ::CJVars;  # contains global variables of CJ;
+use Getopt::Declare;
+use vars qw/$message $mem/;  # options
+$::VERSION = 0.0.1;
+
+
+
+my $spec = <<'EOSPEC';
+
+   -m    <msg>	        reminder message
+                        {$message=$msg}
+
+   -mem  <memory>	memory requested
+                        {$mem=$memory}
+EOSPEC
+
+my $opts = Getopt::Declare->new($spec);
+
+    print "$opts->{-m}\n";
+    print "$opts->{-mem}\n";
+
+die;
+
 
 my $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
 #====================================
@@ -496,7 +518,7 @@ fi
 TEXT
 my $check_name = "check_complete.sh";
 my $check_path = "/tmp/$check_name";
-&writeFile($check_path,$check_runs);
+&CJ::writeFile($check_path,$check_runs);
 my $cmd = "scp $check_path $account:$remote_dir/ ;ssh $account 'source ~/.bashrc;cd $remote_dir; bash $check_name'";
 &CJ::my_system($cmd);
         
@@ -508,7 +530,7 @@ $collect_bash_script = &make_collect_script_MATLAB($res_filename, $bqs);
         
 my $collect_name = "cj_collect.sh";
 my $collect_bash_path = "/tmp/$collect_name";
-&writeFile($collect_bash_path,$collect_bash_script);
+&CJ::writeFile($collect_bash_path,$collect_bash_script);
 my $cmd = "scp $collect_bash_path $account:$remote_dir/";
 &CJ::my_system($cmd);
 
@@ -523,7 +545,7 @@ my $cmd = "rsync -arvz  $account:${remote_dir}/* $last_instance_result_dir/";
     
     
 # In case save is run after, we must have the info of the package
-&writeFile($save_info_file, $save_info);
+&CJ::writeFile($save_info_file, $save_info);
     
     exit 0;
 }
@@ -650,6 +672,8 @@ if($argin < 4){
     &CJ::err("Incorrect usage: use 'perl clusterjob.pl run MACHINE PROGRAM DEP_FOLDER' or 'perl clusterjon.pl clean' ");
 }
 
+
+print "$argin\n";
 # READ EXTRA ARGUMENTS
 my $machine = shift;
 my $program = shift;
@@ -838,7 +862,7 @@ my $cmd = "cp $BASE/$program $local_sep_Dir/";
 
 my $sh_script = make_shell_script($program,$date);
 $local_sh_path = "$local_sep_Dir/bashMain.sh";
-&writeFile($local_sh_path, $sh_script);
+&CJ::writeFile($local_sh_path, $sh_script);
 
 
 
@@ -865,7 +889,7 @@ $master_script.="sbatch --mem=$mem  --time=40:00:00  -J $tagstr -o ${remote_sep_
 }
 
 my $local_master_path="$local_sep_Dir/master.sh";
-&writeFile($local_master_path, $master_script);
+    &CJ::writeFile($local_master_path, $master_script);
 
 
 
@@ -972,7 +996,7 @@ TEXT
 
 
 $last_instance.=`cat $BASE/$program`;
-&writeFile($last_instance_file, $last_instance);
+    &CJ::writeFile($last_instance_file, $last_instance);
 
     
 
@@ -1107,7 +1131,7 @@ if($nloops eq 1){
                     &CJ::my_system($cmd);
                     
                     my $this_path  = "$local_sep_Dir/$counter/$program";
-                    &writeFile($this_path,$new_script);
+                    &CJ::writeFile($this_path,$new_script);
                     
                     
                     
@@ -1115,7 +1139,7 @@ if($nloops eq 1){
                     my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
                     my $sh_script = make_par_shell_script($program,$date,$counter, $remote_par_sep_dir);
                     $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
-                    &writeFile($local_sh_path, $sh_script);
+                    &CJ::writeFile($local_sh_path, $sh_script);
                     
                     
                     # Add QSUB to MASTER SCRIPT
@@ -1171,7 +1195,7 @@ if($nloops eq 1){
                 &CJ::my_system($cmd);
                 
                 my $this_path  = "$local_sep_Dir/$counter/$program";
-                &writeFile($this_path,$new_script);
+                &CJ::writeFile($this_path,$new_script);
                 
                 
                 
@@ -1179,7 +1203,7 @@ if($nloops eq 1){
                 my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
                 my $sh_script = make_par_shell_script($program,$date,$counter, $remote_par_sep_dir);
                 $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
-                &writeFile($local_sh_path, $sh_script);
+                &CJ::writeFile($local_sh_path, $sh_script);
                 
                 
                 # Add QSUB to MASTER SCRIPT
@@ -1235,7 +1259,7 @@ if($nloops eq 1){
                 &CJ::my_system($cmd);
                 
                 my $this_path  = "$local_sep_Dir/$counter/$program";
-                &writeFile($this_path,$new_script);
+                &CJ::writeFile($this_path,$new_script);
                 
                 
                 
@@ -1243,7 +1267,7 @@ if($nloops eq 1){
                 my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
                 my $sh_script = make_par_shell_script($program,$date,$counter, $remote_par_sep_dir);
                 $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
-                &writeFile($local_sh_path, $sh_script);
+                &CJ::writeFile($local_sh_path, $sh_script);
                 
                 
                 # Add QSUB to MASTER SCRIPT
@@ -1290,7 +1314,7 @@ my $cmd = "cp $BASE/$program $local_sep_Dir/";
 # write out developed master script
 #===================================
 my $local_master_path="$local_sep_Dir/master.sh";
-&writeFile($local_master_path, $master_script);
+    &CJ::writeFile($local_master_path, $master_script);
     
 
 #==================================
@@ -1393,7 +1417,7 @@ $BASE/$program
 TEXT
 
 $last_instance.=`cat $BASE/$program`;
-&writeFile($last_instance_file, $last_instance);
+&CJ::writeFile($last_instance_file, $last_instance);
 
     
     
