@@ -8,7 +8,7 @@
 # Options:
 #   -mem <MEMORY_REQUESTED>
 #   -m   <MESSAGE>
-#
+#   -dep <DEP_FOLDER>
 # ex: perl CJ.pl (DEPLOY|RUN) MACHINE PROGRAM DEP_FOLDER -mem "10G" -m "REMINDER"
 #
 # In practice, one can leave 'perl clusterjob.pl'
@@ -46,60 +46,68 @@ use lib '/Users/hatef/github_projects/clusterjob/src';  #for testing
 use CJ;          # contains essential functions
 use CJ::CJVars;  # contains global variables of CJ;
 use Getopt::Declare;
-use vars qw/$message $mem/;  # options
+use vars qw($message $mem $dep_folder);  # options
 $::VERSION = 0.0.1;
 
 
 
+
+#====================================
+#         READ OPTIONS
+#====================================
+$mem        = "8G";      # default memeory
+$message    = "";        # default message
 my $spec = <<'EOSPEC';
-
-   -m    <msg>	        reminder message
-                        {$message=$msg}
-
-   -mem  <memory>	memory requested
-                        {$mem=$memory}
+   -dep    <dep_path>		 dependency folder path [nocase]
+                                 {$dep_folder=$dep_path}
+   -m      <msg>	         reminder message
+                                 {$message=$msg}
+   -mem    <memory>	         memory requested [nocase]
+                                 {$mem=$memory}
 EOSPEC
 
 my $opts = Getopt::Declare->new($spec);
 
-    print "$opts->{-m}\n";
-    print "$opts->{-mem}\n";
+#    print "$opts->{-m}\n";
+#    print "$opts->{-mem}\n";
+#    print "$opts->{-dep}\n";
 
-die;
 
 
 my $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
+
 #====================================
-#         DATE OF CALL INFO
+#         DATE OF CALL
 #====================================
-my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
-$year 	+= 1900;
-my @abbr = qw( JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC );
-my $date = sprintf ("%04d%03s%02d_%02d%02d%02d", $year, $abbr[$mon], $mday, $hour,$min, $sec);
+$date = &CJ::date();
+
 
 #====================================
 #         READ INPUT
 #====================================
-
-
 my $argin = $#ARGV+1 ;
 
+
+
 if($argin < 1){
-&CJ::err("Incorrect usage: use 'perl clusterjob.pl run MACHINE PROGRAM' or 'perl clusterjon.pl clean' ")
+&CJ::err("Incorrect usage: use 'perl clusterjob.pl run MACHINE PROGRAM [options]' or 'perl clusterjon.pl clean' ")
 }
 
+
+# create .info directory
+mkdir "$install_dir/.info" unless (-d "$install_dir/.info");
 
 
 # create history file if it does not exist
 if( ! -f $history_file ){
 my $cmd = "touch $history_file";
+CJ::my_system($cmd);
 my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%30s", "count", "date", "package", "action", "machine", "job_id", "message");
 &CJ::add_to_history($header);
-CJ::my_system($cmd);
 }
 
 # Find the last number
-my $lastnum=`tail -n -1 $history_file | awk \'{print \$1}\' `;
+my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
 ($hist_date, $time) = split('\_', $date);
 my $history = sprintf("%-15u%-15s",$lastnum+1, $hist_date );
 
@@ -115,8 +123,12 @@ if( ! -f $run_history_file ){
 
 
 
+print "$argin\n"; die;
+
 
 my $runflag= shift;
+
+
 
 
 #==========================================================
@@ -579,10 +591,8 @@ if($runflag eq "save" ){
         print "Saving results in ${save_path}:\n";
 
         # Create directories
-        my $cmd = "mkdir $savePrefix";
-        &CJ::my_system($cmd) unless (-d $savePrefix);
-        my $cmd = "mkdir $saveDir";
-        &CJ::my_system($cmd) unless (-d $saveDir);
+        mkdir "$savePrefix" unless (-d $savePrefix);
+        mkdir "$saveDir" unless (-d $saveDir);
         
     }
     
@@ -622,8 +632,9 @@ if($runflag eq "save" ){
         
         
     }else{
-    my $cmd = "mkdir $save_path";
-    &CJ::my_system($cmd);
+    
+    mkdir "$save_path" unless (-d "$save_path");
+    
     my $cmd = "rsync -arz  $last_instance_result_dir/ $save_path/";
     &CJ::my_system($cmd);
         
@@ -677,57 +688,57 @@ print "$argin\n";
 # READ EXTRA ARGUMENTS
 my $machine = shift;
 my $program = shift;
-my $dep_folder = shift;
-my $mem        = "8G";      # default memeory
-my $message    = "";        # default message
-if($argin == 6){
-    # figure out what tag is given 'mem' or 'message'
-    my $whichtag = shift;
-    if($whichtag eq "-m"){
-        $message .= "\"";
-        $message .= shift;
-        $message .= "\"";
-    }elsif($whichtag eq "-mem"){
-        $mem = shift;
-    }else{
-    &CJ::err("$whichtag option is unknown.");
-    }
+#my $dep_folder = shift;
+#my $mem        = "8G";      # default memeory
+#my $message    = "";        # default message
+#if($argin == 6){
+#    # figure out what tag is given 'mem' or 'message'
+#    my $whichtag = shift;
+#    if($whichtag eq "-m"){
+#        $message .= "\"";
+#        $message .= shift;
+#        $message .= "\"";
+#    }elsif($whichtag eq "-mem"){
+#        $mem = shift;
+#    }else{
+#    &CJ::err("$whichtag option is unknown.");
+#    }
 
-}elsif($argin == 8){
-my $whichtag = shift;
-    if($whichtag eq "-m"){
-        $message .= "\"";
-        $message .= shift;
-        $message .= "\"";
-        
-        $whichtag = shift;
-        if($whichtag eq "-mem"){
-        $mem = shift;
-        }else{
-            &CJ::err("unknown option $whichtag");
-        }
+#}elsif($argin == 8){
+#my $whichtag = shift;
+#    if($whichtag eq "-m"){
+#        $message .= "\"";
+#        $message .= shift;
+#        $message .= "\"";
+#
+#        $whichtag = shift;
+#        if($whichtag eq "-mem"){
+#        $mem = shift;
+#        }else{
+#            &CJ::err("unknown option $whichtag");
+#        }
             
-    }elsif($whichtag eq "-mem"){
-        $mem = shift;
+#    }elsif($whichtag eq "-mem"){
+#        $mem = shift;
         
-        $whichtag = shift;
-        if($whichtag eq "-m"){
-            $message .= "\"";
-            $message .= shift;
-            $message .= "\"";
-        }else{
-            &CJ::err("unknown option $whichtag");
-        }
+#        $whichtag = shift;
+#        if($whichtag eq "-m"){
+#            $message .= "\"";
+#            $message .= shift;
+#            $message .= "\"";
+#        }else{
+#            &CJ::err("unknown option $whichtag");
+#        }
 
         
         
-    }else{
-      &CJ::err("unknown option $whichtag");
-    }
+#   }else{
+#      &CJ::err("unknown option $whichtag");
+#    }
     
-}else{
-&CJ::err("incorrect number of command line arguments");
-}
+#}else{
+#&CJ::err("incorrect number of command line arguments");
+#}
 
 
 $short_message = substr($message, 1, 30);
@@ -784,20 +795,15 @@ my $saveDir       = "$savePrefix"."$program_name[0]";
 #====================================
 # create local directories
 if(-d $localPrefix){
-    my $cmd = "mkdir $localDir";
-    &CJ::my_system($cmd) unless (-d $localDir);
     
-    my $cmd = "mkdir $local_sep_Dir";
-    &CJ::my_system($cmd) unless (-d $local_sep_Dir);
+    mkdir "$localDir" unless (-d $localDir);
+    mkdir "$local_sep_Dir" unless (-d $local_sep_Dir);
     
 }else{
     # create local Prefix
-    my $cmd = "mkdir $localPrefix";
-    &CJ::my_system($cmd);
-    my $cmd = "mkdir $localDir";
-    &CJ::my_system($cmd) unless (-d $localDir);
-    my $cmd = "mkdir $local_sep_Dir";
-    &CJ::my_system($cmd) unless (-d $local_sep_Dir);
+    mkdir "$localPrefix";
+    mkdir "$localDir" unless (-d $localDir);
+    mkdir "$local_sep_Dir" unless (-d $local_sep_Dir);
 }
 
 
@@ -1126,9 +1132,8 @@ if($nloops eq 1){
                     #   EXPERIMENTS FOLDER
                     #============================================
                     
-                    
-                    my $cmd = "mkdir $local_sep_Dir/$counter";
-                    &CJ::my_system($cmd);
+                
+                    mkdir "$local_sep_Dir/$counter";
                     
                     my $this_path  = "$local_sep_Dir/$counter/$program";
                     &CJ::writeFile($this_path,$new_script);
@@ -1191,9 +1196,7 @@ if($nloops eq 1){
                 #============================================
                 
                 
-                my $cmd = "mkdir $local_sep_Dir/$counter";
-                &CJ::my_system($cmd);
-                
+                mkdir "$local_sep_Dir/$counter";
                 my $this_path  = "$local_sep_Dir/$counter/$program";
                 &CJ::writeFile($this_path,$new_script);
                 
@@ -1255,9 +1258,8 @@ if($nloops eq 1){
                 #============================================
                 
                 
-                my $cmd = "mkdir $local_sep_Dir/$counter";
-                &CJ::my_system($cmd);
-                
+                mkdir "$local_sep_Dir/$counter";
+                    
                 my $this_path  = "$local_sep_Dir/$counter/$program";
                 &CJ::writeFile($this_path,$new_script);
                 

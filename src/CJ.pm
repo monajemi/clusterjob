@@ -5,6 +5,14 @@ use strict;
 use warnings;
 use CJ::CJVars;
 
+sub date{
+my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+$year 	+= 1900;
+my @abbr = qw( JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC );
+my $date = sprintf ("%04d%03s%02d_%02d%02d%02d", $year, $abbr[$mon], $mday, $hour,$min, $sec);
+    return $date;
+}
+
 # Check the package name given is valid
 sub is_valid_package_name
 {

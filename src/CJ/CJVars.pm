@@ -9,7 +9,12 @@ use FILE::Basename qw(dirname);
 
 
 
-our $install_dir = File::Basename::dirname(__FILE__);
+my  $CJ_dir = File::Basename::dirname(__FILE__);
+my  @CJ_dir_array = split '/',$CJ_dir;
+my  $lastone = pop @CJ_dir_array;
+our $install_dir  = join '/', @CJ_dir_array;
+
+
 our $HOME            = $ENV{"HOME"};
 our $remotePrefix    = "~/RunRepo_remote/";
 our $localPrefix     = "$HOME/RunRepo_local/";
@@ -17,9 +22,9 @@ our $savePrefix      = "$HOME/Dropbox/clusterjob_saveRepo/";
 
 our $last_instance_file = "$install_dir/last_instance.info";
 our $last_instance_result_dir = "$install_dir/last_instance_results";
-our $history_file       = "$install_dir/history.info";
-our $run_history_file   = "$install_dir/run_history.info";
-our $save_info_file     = "$install_dir/save.info";
+our $history_file       = "$install_dir/.info/history.info";
+our $run_history_file   = "$install_dir/.info/run_history.info";
+our $save_info_file     = "$install_dir/.info/save.info";
 
 
 
