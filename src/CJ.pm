@@ -66,6 +66,11 @@ sub err{
     die(' ' x 5 . "CJerr::$message\n");
 }
 
+sub message{
+    my ($msg) = @_;
+    print(' ' x 5 . "CJmessage::$msg\n");
+}
+
 
 sub my_system
 {

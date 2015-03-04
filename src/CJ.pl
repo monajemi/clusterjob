@@ -406,8 +406,8 @@ if($runflag eq "history" ){
 
 #==========================================================
 #            CLUSTERJOB GET
-#       ex.  clusterjob get
-#       ex.  clusterjob get 2015JAN07_213759
+#       ex.  clusterjob get Results.txt
+#       ex.  clusterjob get 2015JAN07_213759  Results.mat
 #==========================================================
 
 
@@ -448,7 +448,7 @@ if($runflag eq "get" ){
             &CJ::err("No such job found in CJ database");
         }
 
-    }else{
+    }elsif(! $package=="" ){
         $res_filename = $package;  # the input is then filename in this case.
         #read the first lines of last_instance.info;
         $package    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($package);
@@ -461,12 +461,13 @@ if($runflag eq "get" ){
         
         
             
+    }else{
+       &CJ::err("Incorrect use of 'CJ get'. Consider adding filename");
     }
         
         
-    
-    my $cmd = "rm -rf  $last_instance_result_dir/";
-    &CJ::my_system($cmd);
+    my $cmd = "rm -rf  $last_instance_dir/";
+    &CJ::my_system($cmd) unless($last_instance_dir=="");
 
     
     
@@ -538,10 +539,12 @@ my $cmd = "ssh $account 'cd $remote_dir; bash -l $collect_name'";
 &CJ::my_system($cmd);
         
 }
-        
-my $cmd = "rsync -arvz  $account:${remote_dir}/* $last_instance_result_dir/";
-&CJ::my_system($cmd);
+ 
     
+    
+my $cmd = "rsync -arvz  $account:${remote_dir}/* $last_instance_dir/";
+&CJ::my_system($cmd);
+&CJ::message("Please see your last results in $last_instance_dir")
     
 # In case save is run after, we must have the info of the package
 &CJ::writeFile($save_info_file, $save_info);
@@ -597,7 +600,7 @@ if($runflag eq "save" ){
         my $cmd = "rm -rf $save_path/*";
         &CJ::my_system($cmd);
             
-        my $cmd = "rsync -arz  $last_instance_result_dir/ $save_path/";
+        my $cmd = "rsync -arz  $last_instance_dir/ $save_path/";
         &CJ::my_system($cmd);
         
         my $cmd = "cp  $save_info_file $save_path/job.info";
@@ -622,7 +625,7 @@ if($runflag eq "save" ){
     
     mkdir "$save_path" unless (-d "$save_path");
     
-    my $cmd = "rsync -arz  $last_instance_result_dir/ $save_path/";
+    my $cmd = "rsync -arz  $last_instance_dir/ $save_path/";
     &CJ::my_system($cmd);
         
     my $cmd = "cp  $save_info_file $save_path/job.info";

@@ -5,6 +5,8 @@ elif [ "$1" == "help" ];then
 perl /Users/hatef/github_projects/clusterjob/src/CJ.pl -help
 elif [ "$1" == "clean" ];then
 perl /Users/hatef/github_projects/clusterjob/src/CJ.pl clean 
+elif [ "$1" == "get"  ]; then
+perl /Users/hatef/github_projects/clusterjob/src/CJ.pl get Results.txt 
 else 
 echo "unknown action";
 fi   
