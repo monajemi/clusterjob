@@ -688,58 +688,6 @@ print "$argin\n";
 # READ EXTRA ARGUMENTS
 my $machine = shift;
 my $program = shift;
-#my $dep_folder = shift;
-#my $mem        = "8G";      # default memeory
-#my $message    = "";        # default message
-#if($argin == 6){
-#    # figure out what tag is given 'mem' or 'message'
-#    my $whichtag = shift;
-#    if($whichtag eq "-m"){
-#        $message .= "\"";
-#        $message .= shift;
-#        $message .= "\"";
-#    }elsif($whichtag eq "-mem"){
-#        $mem = shift;
-#    }else{
-#    &CJ::err("$whichtag option is unknown.");
-#    }
-
-#}elsif($argin == 8){
-#my $whichtag = shift;
-#    if($whichtag eq "-m"){
-#        $message .= "\"";
-#        $message .= shift;
-#        $message .= "\"";
-#
-#        $whichtag = shift;
-#        if($whichtag eq "-mem"){
-#        $mem = shift;
-#        }else{
-#            &CJ::err("unknown option $whichtag");
-#        }
-            
-#    }elsif($whichtag eq "-mem"){
-#        $mem = shift;
-        
-#        $whichtag = shift;
-#        if($whichtag eq "-m"){
-#            $message .= "\"";
-#            $message .= shift;
-#            $message .= "\"";
-#        }else{
-#            &CJ::err("unknown option $whichtag");
-#        }
-
-        
-        
-#   }else{
-#      &CJ::err("unknown option $whichtag");
-#    }
-    
-#}else{
-#&CJ::err("incorrect number of command line arguments");
-#}
-
 
 $short_message = substr($message, 1, 30);
 
