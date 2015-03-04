@@ -11,6 +11,8 @@ To add the path to install directory to @INC, please
 add the following to your ~/.bashrc pr ~./profile
 	
 	export PERL5LIB=~/CJ_install/src
+or
+	export PERLLIB=~/CJ_install/src
 
 To read more about setting path variable in perl, please 
 visit: 
