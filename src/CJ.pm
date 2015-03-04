@@ -75,6 +75,17 @@ sub my_system
 
 
 
+sub touch
+{
+    &my_system("touch $_[0]");
+}
+
+
+
+
+
+
+
 
 sub writeFile
 {

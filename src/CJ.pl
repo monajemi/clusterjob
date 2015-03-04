@@ -55,6 +55,7 @@ $::VERSION = 0.0.1;
 #====================================
 #         READ OPTIONS
 #====================================
+$dep_folder = ".";
 $mem        = "8G";      # default memeory
 $message    = "";        # default message
 my $spec = <<'EOSPEC';
@@ -100,8 +101,7 @@ mkdir "$install_dir/.info" unless (-d "$install_dir/.info");
 
 # create history file if it does not exist
 if( ! -f $history_file ){
-my $cmd = "touch $history_file";
-CJ::my_system($cmd);
+&CJ::touch($history_file);
 my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%30s", "count", "date", "package", "action", "machine", "job_id", "message");
 &CJ::add_to_history($header);
 }
@@ -116,21 +116,10 @@ my $history = sprintf("%-15u%-15s",$lastnum+1, $hist_date );
 # this file contains more information about a run
 # such as where it is saved, etc.
 
-if( ! -f $run_history_file ){
-    my $cmd = "touch $run_history_file";
-    CJ::my_system($cmd);
-}
-
-
-
-print "$argin\n"; die;
+&CJ::touch($run_history_file) unless (-f $run_history_file);
 
 
 my $runflag= shift;
-
-
-
-
 #==========================================================
 #            CLUSTERJOB CLEAN
 #       ex.  clusterjob clean
@@ -365,9 +354,11 @@ if($runflag eq "history" ){
     # check if it is the name of a package
     # such as 2015JAN07_212840
     
+    if($history_argin eq ""){
+        $history_argin= 1;
+    }
     
-    
-    if(&is_valid_package_name($history_argin)){
+    if(&CJ::is_valid_package_name($history_argin)){
     # read info from $run_history_file
         
         print '-' x 35;print "\n";
@@ -394,10 +385,6 @@ if($runflag eq "history" ){
     }elsif($history_argin =~ m/^\d*$/){
     
         $history_argin =~ s/\D//g;   #remove any non-digit
-    
-        if($history_argin eq ""){
-            $history_argin= 1;
-        }
         my $info=`tail -n  $history_argin $history_file`;chomp($info);
         print "$info \n";
         
@@ -679,18 +666,16 @@ if($runflag eq "save" ){
 #  ex.  clusterjob run sherlock myScript.m DepFolder -m  "my reminder"
 #========================================================================
 
-if($argin < 4){
-    &CJ::err("Incorrect usage: use 'perl clusterjob.pl run MACHINE PROGRAM DEP_FOLDER' or 'perl clusterjon.pl clean' ");
+if($argin < 3){
+    &CJ::err("Incorrect usage: use 'perl clusterjob.pl run MACHINE PROGRAM' or 'perl clusterjon.pl clean' ");
 }
 
 
-print "$argin\n";
 # READ EXTRA ARGUMENTS
 my $machine = shift;
 my $program = shift;
 
 $short_message = substr($message, 1, 30);
-
 
 
 my $account;
@@ -712,6 +697,9 @@ if($machine eq "solomon"){
 #check to see if the file and dep folder exists
 if(! -e "$BASE/$program" ){
  &CJ::err("$BASE/$program not found");
+}
+if(! -d "$BASE/$dep_folder" ){
+    &CJ::err("Dependency folder $BASE/$dep_folder not found");
 }
 
 
