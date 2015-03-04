@@ -20,7 +20,7 @@ our $remotePrefix    = "~/RunRepo_remote/";
 our $localPrefix     = "$HOME/RunRepo_local/";
 our $savePrefix      = "$HOME/Dropbox/clusterjob_saveRepo/";
 
-our $last_instance_file = "$install_dir/last_instance.info";
+our $last_instance_file = "$install_dir/.info/last_instance.info";
 our $last_instance_result_dir = "$install_dir/last_instance_results";
 our $history_file       = "$install_dir/.info/history.info";
 our $run_history_file   = "$install_dir/.info/run_history.info";
