@@ -5,6 +5,41 @@ use strict;
 use warnings;
 use CJ::CJVars;
 
+
+sub host{
+    my ($machine_name) = @_;
+    
+    my $ssh_config = {};
+
+    
+    
+    my $lines;
+    open(my $FILE, $ssh_config_file) or  die "could not open $ssh_config_file: $!";
+    local $/ = undef;
+    $lines = <$FILE>;
+    close ($FILE);
+    
+    my $this_host ;
+    if($lines =~ /\[$machine_name\](.*?)\[$machine_name\]/isg)
+    {
+        $this_host = $1;
+    }else{
+        &CJ::err(".ssh_config:: Machine $machine_name not found. ")
+    }
+    my ($user) = $this_host =~ /User[\t\s]*(.*)/;$user =~ s/^\s+|\s+$//g;
+    my ($host) = $this_host =~ /Host[\t\s]*(.*)/;$host =~ s/^\s+|\s+$//g;
+    my ($bqs)  = $this_host =~ /Bqs[\t\s]*(.*)/ ;$bqs =~ s/^\s+|\s+$//g;
+    
+    my $account  = $user . "@" . $host;
+    
+    
+    $ssh_config->{'account'} = $account;
+    $ssh_config->{'bqs'}     = $bqs;
+    
+    return $ssh_config;
+}
+
+
 sub date{
 my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
 $year 	+= 1900;

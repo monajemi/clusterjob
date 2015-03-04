@@ -18,6 +18,21 @@ To read more about setting path variable in perl, please
 visit: 
 http://perlmaven.com/how-to-change-inc-to-find-perl-modules-in-non-standard-locations
 
+
+(-) Set your cluster information:
+ You will need to update the following file to reflect your own
+ setup.
+
+    /CJ_install/src/.ssh_config
+
+The convention is
+[MACHINE_ALIAS]
+Host [INSERT_TAB] proclus.stanford.edu
+User [INSERT_TAB] monajemi
+Bqs  [INSERT_TAB] SGE|SLURM
+[MACHINE_ALIAS]
+
+
 (-) Add alias to your ~/.profile or ~/.bashrc:
 
 	alias cj='perl ~/CJ_install/src/CJ.pl';

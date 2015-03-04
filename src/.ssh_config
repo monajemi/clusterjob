@@ -1,0 +1,26 @@
+[sherlock]
+Host	sherlock.stanford.edu
+User	monajemi
+Bqs	SLURM
+[sherlock]
+[solomon]
+Host	solomon.stanford.edu
+User	monajemi
+Bqs	SGE
+[solomon]
+
+[proclus]
+Host	proclus.stanford.edu
+User	monajemi
+Bqs	SGE
+[proclus]
+
+[myMac]
+Host	local
+User	hatef
+Bqs	none	
+[myMac]
+
+
+
+ 

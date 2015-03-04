@@ -680,21 +680,10 @@ my $program = shift;
 
 $short_message = substr($message, 1, 30);
 
+my $ssh      = &CJ::host($machine);
+my $account  = $ssh->{account};
+my $bqs      = $ssh->{bqs};
 
-my $account;
-my $bqs;
-if($machine eq "solomon"){
-    $account = 'monajemi@solomon.stanford.edu';
-    $bqs = "SGE";
-}elsif($machine eq "proclus"){
-    $account = 'monajemi@proclus.stanford.edu';
-    $bqs = "SGE";
-}elsif($machine eq "sherlock"){
-    $account = 'monajemi@sherlock.stanford.edu';
-    $bqs = "SLURM";
-}else{
-    &CJ::err("unknown server");
-}
 
 
 #check to see if the file and dep folder exists
