@@ -1,13 +1,24 @@
-This is the installation guide for clusterjob (CJ).
+#This is the installation guide for clusterjob (CJ).
+#Copyright 2015 Hatef Monajemi (monajemi@stanford.edu)
 
-SETTING PATH VARIABLE:
+
+(-) Clone clusterjob to a directory where you would like to install CJ
+	git clone git@github.com:monajemi/clusterjob.git ~/CJ_install 
+	
+(-) Set path variables:
 
 To add the path to install directory to @INC, please
 add the following to your ~/.bashrc pr ~./profile
-	export PERL5LIB=/path/to/install/directory
+	
+	export PERL5LIB=~/CJ_install/src
 
 To read more about setting path variable in perl, please 
-visit http://perlmaven.com/how-to-change-inc-to-find-perl-modules-in-non-standard-locations
+visit: 
+http://perlmaven.com/how-to-change-inc-to-find-perl-modules-in-non-standard-locations
+
+(-) Add alias to your ~/.profile or ~/.bashrc:
+
+	alias cj='perl ~/CJ_install/src/CJ.pl';
 
 
 
