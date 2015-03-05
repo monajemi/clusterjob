@@ -857,7 +857,7 @@ my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; 
  
 # bring the log file
 my $qsubfilepath="$remote_sep_Dir/qsub.info";
-my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/";
+my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/.info";
 &CJ::my_system($cmd) unless ($runflag eq "deploy");
 
     
@@ -1942,8 +1942,9 @@ sub read_matlab_index_set
             #extract the range
             my @this_array    = split(/\s*=\s*/,$this_line);
             
+            my $numbers;
             if($this_array[1] =~ /\[\s*(.+?)\s*\]/){
-                my ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
+                ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
             }else{
                 # FUTURE_REV_ADD
                 &CJ::err("MATLAB structure '$this_line ' not currently supported for parrun.");
