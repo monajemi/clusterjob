@@ -7,8 +7,8 @@
 	
 (-) Set path variables:
 
-To add the path to install directory to @INC, please
-add the following to your ~/.bashrc pr ~./profile
+To add the path of install directory to @INC, 
+add one of the followings to your ~/.bashrc pr ~./profile
 	
 	export PERL5LIB=~/CJ_install/src
 or
@@ -20,8 +20,8 @@ http://perlmaven.com/how-to-change-inc-to-find-perl-modules-in-non-standard-loca
 
 
 (-) Set your cluster information:
- You will need to update the following file to reflect your own
- setup.
+You will need to update the following file to reflect your own
+server setup.
 
     /CJ_install/src/.ssh_config
 
@@ -33,7 +33,7 @@ Bqs  [INSERT_TAB] SGE|SLURM
 [MACHINE_ALIAS]
 
 
-(-) Add alias to your ~/.profile or ~/.bashrc:
+(-) For easy use, add an alias for calling CJ.pl to your ~/.profile or ~/.bashrc:
 
 	alias cj='perl ~/CJ_install/src/CJ.pl';
 
