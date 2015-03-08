@@ -7,6 +7,8 @@ Current implementation allows submission of MATLAB jobs. In the future
 versions, we hope to include other heavily used programming languages 
 such as Python, and R. 
 
+You can find CJ book project at https://github.com/monajemi/CJ-book  
+
 Copyright 2015 Hatef Monajemi (monajemi@stanford.edu)
 
 
