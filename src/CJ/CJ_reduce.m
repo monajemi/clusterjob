@@ -37,7 +37,7 @@ function c = reduce_cell(a,b);
 
 if( ~check(a,b) ) ; error('   CJerr::a, and b are of different size or class'); end;
 
-if(  isequal(a,b) )
+if(  isequaln(a,b) )
 c = a;
 return;
 end
@@ -55,7 +55,7 @@ end  %reduce_cell
 
 function c = reduce_double(a,b)
 
-if(  isequal(a,b) )
+if(  isequaln(a,b) )
 c = a;
 return;
 end
@@ -65,14 +65,26 @@ if(~ strcmp( class(a) , 'double') ); error('   CJerr::Beyond the scope of CJ at 
 if(~ strcmp( class(b) , 'double') ); error('   CJerr::Beyond the scope of CJ at the moment. Cells must contain double or char class variables'); end
 
 
-if ( isempty(a) || sum(any(isnan(a)))==prod(size(a))      )
-c = b;
-elseif( isempty( b )  || sum(any(isnan(b)))==prod(size(b))  )
-c = a;
+A = num2cell(a);
+B = num2cell(b);
+
+
+
+
+
+function z = myAdd(x,y)
+if ( isempty(x) || isnan(x)     )
+z = y;
+elseif ( isempty(y) || isnan(y)     )
+z = x;
 else
-c = a+b;
+z = x+y;
+end
 end
 
+C = cellfun( @myAdd , A, B, 'UniformOutput', false );
+
+c = cell2mat(C);
 
 end %reduce_double
 
@@ -84,7 +96,7 @@ end %reduce_double
 
 function c = reduce_char(a,b)
 
-if(  isequal(a,b) )
+if(  isequaln(a,b) )
 c = a;
 return;
 end
