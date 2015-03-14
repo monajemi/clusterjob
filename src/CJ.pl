@@ -45,6 +45,8 @@ use lib '/Users/hatef/github_projects/clusterjob/src';  #for testing
 
 use CJ;          # contains essential functions
 use CJ::CJVars;  # contains global variables of CJ;
+use CJ::Matlab;
+
 use Getopt::Declare;
 use vars qw($message $mem $dep_folder);  # options
 $::VERSION = 0.0.1;
@@ -523,15 +525,16 @@ my $cmd = "scp $check_path $account:$remote_dir/ ;ssh $account 'source ~/.bashrc
 &CJ::my_system($cmd);
         
 # Run a script to gather all *.mat files of the same name.
-$collect_bash_script = &make_collect_script_MATLAB($res_filename, $bqs);
+my $done_filename = "done_list.txt";
+$collect_bash_script = &CJ::Matlab::make_collect_script($res_filename, $done_filename,$bqs);
 #print "$collect_bash_script";
 
         
-        
+my $CJ_reduce = "CJ/CJ_reduce.m";
 my $collect_name = "cj_collect.sh";
 my $collect_bash_path = "/tmp/$collect_name";
 &CJ::writeFile($collect_bash_path,$collect_bash_script);
-my $cmd = "scp $collect_bash_path $account:$remote_dir/";
+my $cmd = "scp $collect_bash_path $CJ_reduce $account:$remote_dir/";
 &CJ::my_system($cmd);
 
 
@@ -1363,125 +1366,6 @@ $last_instance.=`cat $BASE/$program`;
 &CJ::err("Runflag $runflag was not recognized");
 }
 
-
-
-
-
-
-
-
-
-
-sub make_collect_script_MATLAB
-{
-my ($res_filename, $bqs) = @_;
-
-    
-my $done_name = "done_list.txt";
-    
-my $matlab_collect_script=<<MATLAB;
-\% READ done_list.txt and FIND The counters that need
-\% to be read
-done_list = load('$done_name');
-
-if(~isempty(done_list))
-       
-    
-\%determine the structre of the output
-if(exist('$res_filename', 'file'))
-res = load('$res_filename');
-    start = 1;
-else
-res = load([num2str(done_list(1)),'/$res_filename']);
-    start = 2;
-end
-    
-flds = fields(res);
-    
-
-for idx = start:length(done_list)
-count = done_list(idx);
-newres = load([num2str(count),'/$res_filename']);
-
-for i = 1:length(flds)
-    if( isstruct(res.(flds{i})) )
-    this_flds = fields(res.(flds{i}));
-
-        for j = 1:length(this_flds)
-            
-            if(~ isequal(  res.(flds{i}).(this_flds{j}) ,  newres.(flds{i}).(this_flds{j}) )  )
-            res.(flds{i}).(this_flds{j}) = res.(flds{i}).(this_flds{j}) + newres.(flds{i}).(this_flds{j});
-            end
-        end
-    else
-        if(~ isequal(  res.(flds{i}) ,  newres.(flds{i})  ) )
-        res.(flds{i}) = res.(flds{i}) + newres.(flds{i});
-        end
-    end
-end
-end
-    
-    
-    
-    
-    
-save('$res_filename','-struct', 'res')
-
-    
-delete('$done_name');
-fclose(fopen('$done_name', 'w'));
- 
-end
-    
-MATLAB
-    
-    
-    
-    
-$HEADER= &CJ::bash_header($bqs);
-    
-my $script;
-if($bqs eq "SGE"){
-$script= <<BASH;
-$HEADER
-echo starting collection
-echo FILE_NAME $res_filename
-
-    
-module load MATLAB-R2014a;
-matlab -nosplash -nodisplay <<HERE
-
-$matlab_collect_script
-    
-quit;
-HERE
-    
-echo ending colection;
-echo "done"
-BASH
-}elsif($bqs eq "SLURM"){
-$script= <<BASH;
-$HEADER
-echo starting collection
-echo FILE_NAME $res_filename
-
-module load matlab;
-matlab -nosplash -nodisplay <<HERE
-
-$matlab_collect_script
-
-quit;
-HERE
-
-echo ending colection;
-echo "done"
-BASH
-
-}
-    
-
-return $script;
-}
 
 
 
