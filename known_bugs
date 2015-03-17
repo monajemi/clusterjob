@@ -1,7 +1,0 @@
-03/02/2015 cj state currently has wiered behavior on solomon. 
-Although all the jobs submitted, the states are 
-not all transfered to my machine.
-
-03/05/2015 give an error and do not leave things in history 
-if qsub.info is not transferred to local machine properly. 
-currently, this is not the case. 
