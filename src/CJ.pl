@@ -132,20 +132,15 @@ if($runflag eq "clean"){
 my $package = shift;
 my $account;
 my $local_path;
-my $remote_dir;
+my $remote_path;
 my $job_id;
-my $save_dir;
+my $save_path;
     
-    
+my $info;
 if($package eq ""){
 #read the first lines of last_instance.info;
-$package    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($package);
-$account    =   `sed -n '2{p;q;}' $last_instance_file`;chomp($account);
-$local_path  =   `sed -n '3{p;q;}' $last_instance_file`;chomp($local_path);
-$remote_dir =   `sed -n '4{p;q;}' $last_instance_file`;chomp($remote_dir);
-$job_id     =   `sed -n '5{p;q;}' $last_instance_file`;chomp($job_id);
-$save_dir   =   `sed -n '7{p;q;}' $last_instance_file`;chomp($save_dir);
-
+$info =  &CJ::retrieve_package_info();
+$package = $info->{'package'};
 }else{
 
     if(&CJ::is_valid_package_name($package)){
@@ -155,11 +150,7 @@ $save_dir   =   `sed -n '7{p;q;}' $last_instance_file`;chomp($save_dir);
         $pattern_exists = system($cmd);chomp($pattern_exists);
             
         if ($pattern_exists==0){
-            $account    = `grep -A 7 $package $run_history_file| sed -n '2{p;q;}'`;chomp($account);
-            $local_path  = `grep -A 7 $package $run_history_file| sed -n '3{p;q;}'`;chomp($local_path);
-            $remote_dir = `grep -A 7 $package $run_history_file| sed -n '4{p;q;}'`;chomp($remote_dir);
-            $job_id     = `grep -A 7 $package $run_history_file| sed -n '5{p;q;}'`;chomp($job_id);
-            $save_dir   = `grep -A 7 $package $run_history_file| sed -n '7{p;q;}'`;chomp($save_dir);
+            $info =  &CJ::retrieve_package_info($package);
         }else{
             &CJ::err("No such job found in CJ database.");
         }
@@ -167,16 +158,21 @@ $save_dir   =   `sed -n '7{p;q;}' $last_instance_file`;chomp($save_dir);
     }else{
         &CJ::err("incorrect usage: nothing to show");
     }
-        
-        
+    
         
 }
 
+$account     =   $info->{'account'};
+$local_path  =  $info->{'local_path'};
+$remote_path =   $info->{'remote_path'};
+$job_id      =   $info->{'job_id'};
+$save_path   =   $info->{'save_path'};
+    
     
 print "CLEANing $package:\n";
 my $local_clean     = "$local_path\*";
-my $remote_clean    = "$remote_dir\*";
-my $save_clean      = "$save_dir\*";
+my $remote_clean    = "$remote_path\*";
+my $save_clean      = "$save_path\*";
 
     
     
@@ -221,24 +217,15 @@ if($runflag eq "state"){
     my $package = shift;
     
     
-    
-    my $account;
-    my $job_id;
-    my $bqs;
-    my $runflag;
-    
+    my $info;
     if($package eq ""){
         #read the first lines of last_instance.info;
-        my $this = &CJ::get_run_info();
-        $package = $this->{'package'};
-        $account = $this->{'account'};
-        $job_id = $this->{'job_id'};
-        $bqs     = $this->{'bqs'};
-        $runflag = $this->{'runflag'};
-        
+         $info = &CJ::retrieve_package_info();
+         $package = $info->{'package'};
+
     }else{
         
-        if($package =~ m/^\d{4}\D{3}\d{2}_\d{6}$/){
+        if( &CJ::is_valid_package_name($package) ){
             # read info from $run_history_file
             
             my $cmd= "grep -q '$package' '$run_history_file'";
@@ -262,6 +249,14 @@ if($runflag eq "state"){
         
     }
 
+    
+my $account = $info->{'account'};
+my $job_id  = $info->{'job_id'};
+my $bqs     = $info->{'bqs'};
+my $runflag = $info->{'runflag'};
+    
+    
+    
 if($runflag =~ m/^par*/){
     my $num = shift;
     
@@ -422,7 +417,7 @@ if($runflag eq "get" ){
     
     my $machine;
     my $account;
-    my $remote_dir;
+    my $remote_path;
     my $local_path;
     my $job_id;
     my $bqs;
@@ -443,7 +438,7 @@ if($runflag eq "get" ){
             my $info  = &CJ::retrieve_package_info($package);
             $machine = $info->{'machine'};
             $account    = $info->{'account'};
-            $remote_dir = $info->{'remote_dir'};
+            $remote_path = $info->{'remote_path'};
             $runflag    = $info->{'runflag'};
             $bqs        = $info->{'bqs'};
             $job_id     = $info->{'job_id'};
@@ -460,10 +455,10 @@ if($runflag eq "get" ){
         #read the first lines of last_instance.info;
         
         my $info  = &CJ::retrieve_package_info();   # retrieves the last instance info;
-        $machine = $info->{'machine'};
+        $machine    = $info->{'machine'};
         $package    = $info->{'package'};
         $account    = $info->{'account'};
-        $remote_dir = $info->{'remote_dir'};
+        $remote_path = $info->{'remote_path'};
         $runflag    = $info->{'runflag'};
         $bqs        = $info->{'bqs'};
         $job_id     = $info->{'job_id'};
@@ -481,19 +476,19 @@ if($runflag eq "get" ){
     # etc. We consider the latest one , and if the
     # save remote is different, we issue a warning
     # for the user.
-    
+    print "$machine\n";
     my $ssh             = &CJ::host($machine);
     my $remotePrefix    = $ssh->{remote_repo};
     
     my @program_name    = split /\./,$program;
     my  $lastone = pop @program_name;
     my $program_name   =   join /\_/,@program_name;
-    my $current_remote_dir = "$remotePrefix/$program_name/$package";
+    my $current_remote_path = "$remotePrefix/$program_name/$package";
   
-    print("$remote_dir");
-    if($current_remote_dir ne $remote_dir){
-        &CJ::warning("the .ssh_config remote directory and the history remote are not the same. CJ is choosing:\n     $account:${current_remote_dir}.");
-        $remote_dir = $current_remote_dir;
+    print("$remote_path");
+    if($current_remote_path ne $remote_path){
+        &CJ::warning("the .ssh_config remote directory and the history remote are not the same. CJ is choosing:\n     $account:${current_remote_path}.");
+        $remote_path = $current_remote_path;
     }
     
     
@@ -525,29 +520,29 @@ my $num_res = 1+$#job_ids;
 # header for bqs's
 $HEADER = &CJ::bash_header($bqs);
 # check which jobs are done.
-my $bash_remote_dir  = $remote_dir;
-$bash_remote_dir =~ s/~/\$HOME/;
+my $bash_remote_path  = $remote_path;
+$bash_remote_path =~ s/~/\$HOME/;
 my $check_runs=<<TEXT;
 $HEADER
 
-if [ ! -f "$bash_remote_dir/run_list.txt" ];then
-touch $bash_remote_dir/done_list.txt
-touch $bash_remote_dir/run_list.txt
+if [ ! -f "$bash_remote_path/run_list.txt" ];then
+touch $bash_remote_path/done_list.txt
+touch $bash_remote_path/run_list.txt
         
         for COUNTER in `seq $num_res`;do
-            if [ -f "$bash_remote_dir/\$COUNTER/$res_filename" ];then
-        echo -e "\$COUNTER\\t" >> "$bash_remote_dir/done_list.txt"
+            if [ -f "$bash_remote_path/\$COUNTER/$res_filename" ];then
+        echo -e "\$COUNTER\\t" >> "$bash_remote_path/done_list.txt"
             else
-                echo -e "\$COUNTER\\t" >> "$bash_remote_dir/run_list.txt"
+                echo -e "\$COUNTER\\t" >> "$bash_remote_path/run_list.txt"
                 fi
         done
 else
     
-    for line in \$(cat $bash_remote_dir/run_list.txt);do
+    for line in \$(cat $bash_remote_path/run_list.txt);do
     COUNTER=`grep -o "[0-9]*" <<< \$line`
-    if [ -f "$bash_remote_dir/\$COUNTER/$res_filename" ];then
-        echo -e "\$COUNTER\\t" >> "$bash_remote_dir/done_list.txt"
-        sed  '/\^\$COUNTER\$/d' "$bash_remote_dir/run_list.txt" > "$bash_remote_dir/run_list.txt"
+    if [ -f "$bash_remote_path/\$COUNTER/$res_filename" ];then
+        echo -e "\$COUNTER\\t" >> "$bash_remote_path/done_list.txt"
+        sed  '/\^\$COUNTER\$/d' "$bash_remote_path/run_list.txt" > "$bash_remote_path/run_list.txt"
     fi
         done
 fi
@@ -556,7 +551,7 @@ TEXT
 my $check_name = "check_complete.sh";
 my $check_path = "/tmp/$check_name";
 &CJ::writeFile($check_path,$check_runs);
-my $cmd = "scp $check_path $account:$remote_dir/ ;ssh $account 'source ~/.bashrc;cd $remote_dir; bash $check_name'";
+my $cmd = "scp $check_path $account:$remote_path/ ;ssh $account 'source ~/.bashrc;cd $remote_path; bash $check_name'";
 &CJ::my_system($cmd);
         
 # Run a script to gather all *.mat files of the same name.
@@ -565,22 +560,22 @@ $collect_bash_script = &CJ::Matlab::make_collect_script($res_filename, $done_fil
 #print "$collect_bash_script";
 
         
-my $CJ_reduce = "CJ/CJ_reduce.m";
+my $CJ_reduce = "$install_dir/CJ/CJ_reduce.m";
 my $collect_name = "cj_collect.sh";
 my $collect_bash_path = "/tmp/$collect_name";
 &CJ::writeFile($collect_bash_path,$collect_bash_script);
-my $cmd = "scp $collect_bash_path $CJ_reduce $account:$remote_dir/";
+my $cmd = "scp $collect_bash_path $CJ_reduce $account:$remote_path/";
 &CJ::my_system($cmd);
 
 
-my $cmd = "ssh $account 'cd $remote_dir; bash -l $collect_name'";
+my $cmd = "ssh $account 'cd $remote_path; bash -l $collect_name'";
 &CJ::my_system($cmd);
         
 }
  
     
     
-my $cmd = "rsync -arvz  $account:${remote_dir}/* $last_instance_dir/";
+my $cmd = "rm -r $last_instance_dir/*; rsync -arvz  $account:${remote_path}/* $last_instance_dir/";
 &CJ::my_system($cmd);
 &CJ::message("Please see your last results in $last_instance_dir")
     
@@ -1348,37 +1343,35 @@ $job_id = "";
 $history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, " ", $short_message);
 &CJ::add_to_history($history);
 }
-    
 
+    
+    
+    
+    
 my $run_history=<<TEXT;
-$date
+${date}
+$machine
 ${account}
+${localPrefix}
 ${localDir}/${date}
+${remotePrefix}
 ${remoteDir}/${date}
 $job_id
 $bqs
+${savePrefix}
 ${saveDir}/${date}
 $runflag
+$program
 $message
 TEXT
+    
+    
 &CJ::add_to_run_history($run_history);
 
 
     
     
-my $last_instance=<<TEXT;
-${date}
-${account}
-${localDir}/${date}
-${remoteDir}/${date}
-$job_id
-$bqs
-${saveDir}/${date}
-$runflag
-
-$BASE/$program
-TEXT
-
+my $last_instance=$run_history;
 $last_instance.=`cat $BASE/$program`;
 &CJ::writeFile($last_instance_file, $last_instance);
 
@@ -1569,7 +1562,7 @@ return $sh_script;
 
 sub make_par_shell_script
 {
-my ($program,$date,$counter,$remote_dir) = @_;
+my ($program,$date,$counter,$remote_path) = @_;
 
 my $sh_script;
 
@@ -1583,7 +1576,7 @@ $sh_script=<<'HEAD'
 
 echo JOB_ID $JOB_ID
 echo WORKDIR $SGE_O_WORKDIR
-DIR=<REMOTE_DIR>
+DIR=<remote_path>
 HEAD
 
 }elsif($bqs eq "SLURM"){
@@ -1591,7 +1584,7 @@ $sh_script=<<'HEAD'
 #!/bin/bash -l
 echo JOB_ID $SLURM_JOBID
 echo WORKDIR $SLURM_SUBMIT_DIR
-DIR=<REMOTE_DIR>
+DIR=<remote_path>
 HEAD
 }else{
 &CJ::err("unknown BQS");
@@ -1752,7 +1745,7 @@ $sh_script =~ s|<PROGRAM>|$program|;
 $sh_script =~ s|<DATE>|$date|;
 $sh_script =~ s|<COUNTER>|$counter|;
 $sh_script =~ s|<MATPATH>|$pathText|;
-$sh_script =~ s|<REMOTE_DIR>|$remote_dir|;
+$sh_script =~ s|<remote_path>|$remote_path|;
     
 
 return $sh_script;

@@ -59,7 +59,7 @@ sub retrieve_package_info{
     my $local_prefix;
     my $local_path ;
     my $remote_prefix;
-    my $remote_dir;
+    my $remote_path;
     my $job_id    ;
     my $bqs       ;
     my $save_prefix;
@@ -74,7 +74,7 @@ sub retrieve_package_info{
     $local_prefix   = `grep -A 14 $package $run_history_file| sed -n '4{p;q;}'` ; chomp($local_prefix);
     $local_path      = `grep -A 14 $package $run_history_file| sed -n '5{p;q;}'` ; chomp($local_path);
     $remote_prefix  = `grep -A 14 $package $run_history_file| sed -n '6{p;q;}'` ; chomp($remote_prefix);
-    $remote_dir     = `grep -A 14 $package $run_history_file| sed -n '7{p;q;}'` ; chomp($remote_dir);
+    $remote_path     = `grep -A 14 $package $run_history_file| sed -n '7{p;q;}'` ; chomp($remote_path);
     $job_id         = `grep -A 14 $package $run_history_file| sed -n '8{p;q;}'` ; chomp($job_id);
     $bqs            = `grep -A 14 $package $run_history_file| sed -n '9{p;q;}'` ; chomp($bqs);
     $save_prefix    = `grep -A 14 $package $run_history_file| sed -n '10{p;q;}'` ; chomp($save_prefix);
@@ -91,7 +91,7 @@ sub retrieve_package_info{
         $local_prefix =  `sed -n '4{p;q;}' $last_instance_file`;chomp($local_prefix);
         $local_path  =   `sed -n '5{p;q;}' $last_instance_file`;chomp($local_path);
         $remote_prefix =`sed -n '6{p;q;}' $last_instance_file`;chomp($remote_prefix);
-        $remote_dir =   `sed -n '7{p;q;}' $last_instance_file`;chomp($remote_dir);
+        $remote_path =   `sed -n '7{p;q;}' $last_instance_file`;chomp($remote_path);
         $job_id     =   `sed -n '8{p;q;}' $last_instance_file`;chomp($job_id);
         $bqs        =   `sed -n '9{p;q;}' $last_instance_file`;chomp($bqs);
         $save_prefix=   `sed -n '10{p;q;}' $last_instance_file`;chomp($save_prefix);
@@ -110,7 +110,7 @@ sub retrieve_package_info{
     $info->{'local_prefix'} = $local_prefix;
     $info->{'local_path'} = $local_path;
     $info->{'remote_prefix'}= $remote_prefix;
-    $info->{'remote_dir'}= $remote_dir;
+    $info->{'remote_path'}= $remote_path;
     $info->{'job_id'}    = $job_id;
     $info->{'bqs'}       = $bqs;
     $info->{'save_prefix'}  = $save_prefix;

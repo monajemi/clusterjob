@@ -7,23 +7,27 @@ if( ~check(A,B) ) ; error('   CJerr::A, and B are of different size or class'); 
 
 
 if(     isa(A,'double') )
-    C = reduce_double(A,B);
+C = reduce_double(A,B);
 
 elseif( isa(A, 'cell'))  % double or char
-    C = reduce_cell(A,B);
+C = reduce_cell(A,B);
 
 elseif( isa(A,'struct') )
-    flds = fields(A)
-        for j = 1:length(flds)
-            if( isa(A.(flds{j}),'double') )
-            C.(flds{j}) = reduce_double( A.(flds{j}) , B.(flds{j}) );
-            elseif( isa(A.(flds{j}),'cell')  )
-            C.(flds{j}) = reduce_cell( A.(flds{j}) , B.(flds{j}) );
-            end
-        end
-   
+flds = fields(A);
+for j = 1:length(flds)
+    if( isa(A.(flds{j}),'double') )
+    C.(flds{j}) = reduce_double( A.(flds{j}) , B.(flds{j}) );
+    elseif(isa(A.(flds{j}),'char') )
+    C.(flds{j}) = reduce_char( A.(flds{j}) , B.(flds{j}) );
+    elseif( isa(A.(flds{j}),'cell')  )
+    C.(flds{j}) = reduce_cell( A.(flds{j}) , B.(flds{j}) );
 else
-    error('   CJerr::Not implemeneted yet');
+    error('   CJerr:: class %s is not recognized', class(A.(flds{j})) );
+end
+end
+
+else
+error('   CJerr::Not implemeneted yet');
 end
 
 
@@ -43,13 +47,17 @@ return;
 end
 
 w = cellfun( @(x) isa(x,'char') , a, 'UniformOutput', false );
-if(sum([w{:}]) > 0)
+if(sum([w{:}]) > 0)   % if we find one character
 c = cellfun( @reduce_char , a, b, 'UniformOutput', false );
 else
 c = cellfun( @reduce_double , a, b, 'UniformOutput', false );
 end
 
 end  %reduce_cell
+
+
+
+
 
 
 
@@ -67,6 +75,12 @@ if(~ strcmp( class(b) , 'double') ); error('   CJerr::Beyond the scope of CJ at 
 
 A = num2cell(a);
 B = num2cell(b);
+
+if(isempty(A))
+A = cell(size(B));
+elseif(isempty(B))
+B = cell(size(A));
+end
 
 
 
