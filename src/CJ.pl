@@ -46,7 +46,6 @@ use lib '/Users/hatef/github_projects/clusterjob/src';  #for testing
 use CJ;          # contains essential functions
 use CJ::CJVars;  # contains global variables of CJ;
 use CJ::Matlab;
-
 use Getopt::Declare;
 use vars qw($message $mem $dep_folder);  # options
 $::VERSION = 0.0.1;
@@ -132,7 +131,7 @@ if($runflag eq "clean"){
     
 my $package = shift;
 my $account;
-my $local_dir;
+my $local_path;
 my $remote_dir;
 my $job_id;
 my $save_dir;
@@ -142,7 +141,7 @@ if($package eq ""){
 #read the first lines of last_instance.info;
 $package    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($package);
 $account    =   `sed -n '2{p;q;}' $last_instance_file`;chomp($account);
-$local_dir  =   `sed -n '3{p;q;}' $last_instance_file`;chomp($local_dir);
+$local_path  =   `sed -n '3{p;q;}' $last_instance_file`;chomp($local_path);
 $remote_dir =   `sed -n '4{p;q;}' $last_instance_file`;chomp($remote_dir);
 $job_id     =   `sed -n '5{p;q;}' $last_instance_file`;chomp($job_id);
 $save_dir   =   `sed -n '7{p;q;}' $last_instance_file`;chomp($save_dir);
@@ -157,7 +156,7 @@ $save_dir   =   `sed -n '7{p;q;}' $last_instance_file`;chomp($save_dir);
             
         if ($pattern_exists==0){
             $account    = `grep -A 7 $package $run_history_file| sed -n '2{p;q;}'`;chomp($account);
-            $local_dir  = `grep -A 7 $package $run_history_file| sed -n '3{p;q;}'`;chomp($local_dir);
+            $local_path  = `grep -A 7 $package $run_history_file| sed -n '3{p;q;}'`;chomp($local_path);
             $remote_dir = `grep -A 7 $package $run_history_file| sed -n '4{p;q;}'`;chomp($remote_dir);
             $job_id     = `grep -A 7 $package $run_history_file| sed -n '5{p;q;}'`;chomp($job_id);
             $save_dir   = `grep -A 7 $package $run_history_file| sed -n '7{p;q;}'`;chomp($save_dir);
@@ -175,7 +174,7 @@ $save_dir   =   `sed -n '7{p;q;}' $last_instance_file`;chomp($save_dir);
 
     
 print "CLEANing $package:\n";
-my $local_clean     = "$local_dir\*";
+my $local_clean     = "$local_path\*";
 my $remote_clean    = "$remote_dir\*";
 my $save_clean      = "$save_dir\*";
 
@@ -230,11 +229,12 @@ if($runflag eq "state"){
     
     if($package eq ""){
         #read the first lines of last_instance.info;
-        $package    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($package);
-        $account    =   `sed -n '2{p;q;}' $last_instance_file`;chomp($account);
-        $job_id     =   `sed -n '5{p;q;}' $last_instance_file`;chomp($job_id);
-        $bqs        =   `sed -n '6{p;q;}' $last_instance_file`;chomp($bqs);
-        $runflag    =   `sed -n '8{p;q;}' $last_instance_file`;chomp($runflag);
+        my $this = &CJ::get_run_info();
+        $package = $this->{'package'};
+        $account = $this->{'account'};
+        $job_id = $this->{'job_id'};
+        $bqs     = $this->{'bqs'};
+        $runflag = $this->{'runflag'};
         
     }else{
         
@@ -245,10 +245,11 @@ if($runflag eq "state"){
             $pattern_exists = system($cmd);chomp($pattern_exists);
             
             if ($pattern_exists==0){
-                $account = `grep -A 9 $package $run_history_file| sed -n '2{p;q;}'`;chomp($account);
-                $job_id  = `grep -A 9 $package $run_history_file| sed -n '5{p;q;}'`;chomp($job_id);
-                $bqs     = `grep -A 9 $package $run_history_file| sed -n '6{p;q;}'`;chomp($bqs);
-                $runflag = `grep -A 9 $package $run_history_file| sed -n '8{p;q;}'`;chomp($runflag);
+                my $this = &CJ::get_run_info($package);
+                $account = $this->{'account'};
+                $job_id = $this->{'job_id'};
+                $bqs     = $this->{'bqs'};
+                $runflag = $this->{'runflag'};
             }else{
                 print "No such job found in the database\n";
             }
@@ -372,7 +373,7 @@ if($runflag eq "history" ){
         
         if ($pattern_exists==0){
     
-        my $cmd = "awk '/$history_argin/{f=1}f' $run_history_file | sed -n 1,10p ";
+        my $cmd = "awk '/$history_argin/{f=1}f' $run_history_file | sed -n 1,14p ";
             
         system($cmd);
         }else{
@@ -419,17 +420,17 @@ if($runflag eq "get" ){
     
     my $package = shift;
     
-    
+    my $machine;
     my $account;
     my $remote_dir;
-    my $local_dir;
-    my $save_info;
+    my $local_path;
     my $job_id;
     my $bqs;
     my $runflag;
+    my $program;
     
     my $res_filename;
-    if($package =~ m/^\d{4}\D{3}\d{2}_\d{6}$/){
+    if(&CJ::is_valid_package_name($package)){
         
         $res_filename = shift;
         # read info from $run_history_file
@@ -438,36 +439,70 @@ if($runflag eq "get" ){
         $pattern_exists = system($cmd);chomp($pattern_exists);
         
         if ($pattern_exists==0){
-            $account    = `grep -A 9 $package $run_history_file| sed -n '2{p;q;}'`;chomp($account);
-            $remote_dir = `grep -A 9 $package $run_history_file| sed -n '4{p;q;}'`; chomp($remote_dir);
-            $runflag    = `grep -A 9 $package $run_history_file| sed -n '8{p;q;}'`; chomp($runflag);
-            $bqs        = `grep -A 9 $package $run_history_file| sed -n '6{p;q;}'`;chomp($bqs);
-            $job_id     = `grep -A 9 $package $run_history_file| sed -n '5{p;q;}'`;chomp($job_id);
             
-            $save_info  = `awk '/$package/{f=1}f' $run_history_file| sed -n 1,10p`; chomp($save_info);
+            my $info  = &CJ::retrieve_package_info($package);
+            $machine = $info->{'machine'};
+            $account    = $info->{'account'};
+            $remote_dir = $info->{'remote_dir'};
+            $runflag    = $info->{'runflag'};
+            $bqs        = $info->{'bqs'};
+            $job_id     = $info->{'job_id'};
+            $program    = $info->{'program'};
+
+           
             
         }else{
             &CJ::err("No such job found in CJ database");
         }
 
-    }elsif(! $package=="" ){
+    }elsif($package ne "" ){
         $res_filename = $package;  # the input is then filename in this case.
         #read the first lines of last_instance.info;
-        $package    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($package);
-        $account    =   `sed -n '2{p;q;}' $last_instance_file`;chomp($account);
-        $remote_dir =   `sed -n '4{p;q;}' $last_instance_file`;chomp($remote_dir);
-        $job_id     =   `sed -n '5{p;q;}' $last_instance_file`;chomp($job_id);
-        $runflag    =   `sed -n '8{p;q;}' $last_instance_file`;chomp($runflag);
-        $bqs        =   `sed -n '6{p;q;}' $last_instance_file`;chomp($bqs);
-        $save_info  =   `awk '/$package/{f=1}f' $last_instance_file| sed -n 1,10p`; chomp($save_info);
+        
+        my $info  = &CJ::retrieve_package_info();   # retrieves the last instance info;
+        $machine = $info->{'machine'};
+        $package    = $info->{'package'};
+        $account    = $info->{'account'};
+        $remote_dir = $info->{'remote_dir'};
+        $runflag    = $info->{'runflag'};
+        $bqs        = $info->{'bqs'};
+        $job_id     = $info->{'job_id'};
+        $program    = $info->{'program'};
         
         
-            
     }else{
        &CJ::err("Incorrect use of 'CJ get'. Consider adding filename");
     }
-        
-        
+    
+    
+    
+    # Get current remote directory from .ssh_config
+    # user might wanna rename, copy to anothet place,
+    # etc. We consider the latest one , and if the
+    # save remote is different, we issue a warning
+    # for the user.
+    
+    my $ssh             = &CJ::host($machine);
+    my $remotePrefix    = $ssh->{remote_repo};
+    
+    my @program_name    = split /\./,$program;
+    my  $lastone = pop @program_name;
+    my $program_name   =   join /\_/,@program_name;
+    my $current_remote_dir = "$remotePrefix/$program_name/$package";
+  
+    print("$remote_dir");
+    if($current_remote_dir ne $remote_dir){
+        &CJ::warning("the .ssh_config remote directory and the history remote are not the same. CJ is choosing:\n     $account:${current_remote_dir}.");
+        $remote_dir = $current_remote_dir;
+    }
+    
+    
+    
+    
+    
+    
+    
+    
     my $cmd = "rm -rf  $last_instance_dir/";
     &CJ::my_system($cmd) unless($last_instance_dir=="");
 
@@ -550,7 +585,7 @@ my $cmd = "rsync -arvz  $account:${remote_dir}/* $last_instance_dir/";
 &CJ::message("Please see your last results in $last_instance_dir")
     
 # In case save is run after, we must have the info of the package
-&CJ::writeFile($save_info_file, $save_info);
+&CJ::writeFile($save_info_file, $package);
     
     exit 0;
 }
@@ -570,23 +605,19 @@ if($runflag eq "save" ){
 
     my $save_path = shift;
     my $package = `sed -n '1{p;q;}' $save_info_file`;chomp($package);
-    my $local   = `sed -n '3{p;q;}' $save_info_file`;chomp($local);
     
-    my @name = split /\//,$local;
-    my $idx_last = $#name;
+    
+    my $info  = &CJ::retrieve_package_info($package);
+    
+    
+    
     
     
     if( $save_path eq ""){
     # Read the deafult save directory
-        my $saveDir       = "$savePrefix". "$name[$idx_last-1]/" ;
-        $save_path        = "${saveDir}"."$package";
+        $save_path= $info->{'save_path'};
 
         print "Saving results in ${save_path}:\n";
-
-        # Create directories
-        mkdir "$savePrefix" unless (-d $savePrefix);
-        mkdir "$saveDir" unless (-d $saveDir);
-        
     }
     
     
@@ -626,7 +657,9 @@ if($runflag eq "save" ){
         
     }else{
     
-    mkdir "$save_path" unless (-d "$save_path");
+    # Create directories
+    my $cmd = "mkdir -p $save_path";
+    &CJ::my_system($cmd) ;
     
     my $cmd = "rsync -arz  $last_instance_dir/ $save_path/";
     &CJ::my_system($cmd);
@@ -681,12 +714,12 @@ if($argin < 3){
 my $machine = shift;
 my $program = shift;
 
-$short_message = substr($message, 1, 30);
+$short_message = substr($message, 0, 30);
 
 my $ssh      = &CJ::host($machine);
 my $account  = $ssh->{account};
 my $bqs      = $ssh->{bqs};
-
+my $remotePrefix    = $ssh->{remote_repo};
 
 
 #check to see if the file and dep folder exists
@@ -716,9 +749,14 @@ DOCSTRING
 
 my @program_name = split /\./,$program;
 
-my $localDir       = "$localPrefix"."$program_name[0]";
+
+my @program_name    = split /\./,$program;
+my  $lastone = pop @program_name;
+my $program_name   =   join /\_/,@program_name;
+
+my $localDir       = "$localPrefix/"."$program_name";
 my $local_sep_Dir = "$localDir/" . "$date"  ;
-my $saveDir       = "$savePrefix"."$program_name[0]";
+my $saveDir       = "$savePrefix"."$program_name";
 
 
 #====================================
@@ -745,7 +783,7 @@ my $cmd   = "cp -r $dep_folder/* $local_sep_Dir/";
 #=====================
 #  REMOTE DIRECTORIES
 #=====================
-my $remoteDir       = "$remotePrefix"."$program_name[0]";
+my $remoteDir       = "$remotePrefix/"."$program_name[0]";
 my $remote_sep_Dir = "$remoteDir/" . "$date"  ;
 
 # for creating remote directory
@@ -871,7 +909,7 @@ my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/.info";
 my $job_id;
 if($runflag eq "run"){
 # read run info
-my $local_qsub_info_file = "$install_dir/"."qsub.info";
+my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
 open my $FILE, '<', $local_qsub_info_file;
 my $job_id_info = <$FILE>;
 close $FILE;
@@ -902,14 +940,19 @@ $history .= sprintf("%-21s%-10s%-15s%-20s%30s",$date, $runflag, $machine, " ", $
 
 
 my $run_history=<<TEXT;
-$date
+${date}
+$machine
 ${account}
+${localPrefix}
 ${localDir}/${date}
+${remotePrefix}
 ${remoteDir}/${date}
 $job_id
 $bqs
+${savePrefix}
 ${saveDir}/${date}
 $runflag
+$program
 $message
 TEXT
 
@@ -918,22 +961,9 @@ TEXT
     
     
     
-my $last_instance=<<TEXT;
-${date}
-${account}
-${localDir}/${date}
-${remoteDir}/${date}
-$job_id
-$bqs
-${saveDir}/${date}
-$runflag
-
-$BASE/$program
-TEXT
-
-
+my $last_instance=$run_history;
 $last_instance.=`cat $BASE/$program`;
-    &CJ::writeFile($last_instance_file, $last_instance);
+&CJ::writeFile($last_instance_file, $last_instance);
 
     
 

@@ -16,7 +16,6 @@ our $install_dir  = join '/', @CJ_dir_array;
 
 
 our $HOME            = $ENV{"HOME"};
-our $remotePrefix    = "~/RunRepo_remote/";
 our $localPrefix     = "$HOME/RunRepo_local/";
 our $savePrefix      = "$HOME/Dropbox/clusterjob_saveRepo/";
 

@@ -2,23 +2,27 @@
 Host	sherlock.stanford.edu
 User	monajemi
 Bqs	SLURM
+Repo	~/CJRepo_Remote
 [sherlock]
 [solomon]
 Host	solomon.stanford.edu
 User	monajemi
 Bqs	SGE
+Repo	~/CJRepo_Remote
 [solomon]
 
 [proclus]
 Host	proclus.stanford.edu
 User	monajemi
 Bqs	SGE
+Repo	~/CJRepo_Remote
 [proclus]
 
 [myMac]
 Host	local
 User	hatef
 Bqs	none	
+Repo	~/CJRepo_local
 [myMac]
 
 

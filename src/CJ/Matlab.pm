@@ -49,8 +49,8 @@ end
 
 save('$res_filename','-struct', 'res')
 
-delete('$done_name');
-fclose(fopen('$done_name', 'w'));
+delete('$done_filename');
+fclose(fopen('$done_filename', 'w'));
 
 end
 
@@ -59,7 +59,7 @@ MATLAB
 
 
 
-$HEADER= &CJ::bash_header($bqs);
+my $HEADER= &CJ::bash_header($bqs);
 
 my $script;
 if($bqs eq "SGE"){
