@@ -2,7 +2,7 @@
 Host	sherlock.stanford.edu
 User	monajemi
 Bqs	SLURM
-Repo	~/CJRepo_Remote
+Repo	/scratch/users/monajemi/CJRepo_Remote
 [sherlock]
 [solomon]
 Host	solomon.stanford.edu

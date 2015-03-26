@@ -1,6 +1,6 @@
 function C = CJ_reduce(A,B)
 % This function reduces the contents of mapped A, and B
-% through CJ
+% through CJ. A and B are different instances of cj parrun
 
 % CHECK A, and B of of the same class and size
 if( ~check(A,B) ) ; error('   CJerr::A, and B are of different size or class'); end;

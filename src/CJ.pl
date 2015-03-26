@@ -214,8 +214,11 @@ exit 0;
 if($runflag eq "state"){
 
 
-    my $package = shift;
+   
+     my $package = shift;
     
+    
+       
     
     my $info;
     if($package eq ""){
@@ -232,11 +235,8 @@ if($runflag eq "state"){
             $pattern_exists = system($cmd);chomp($pattern_exists);
             
             if ($pattern_exists==0){
-                my $this = &CJ::get_run_info($package);
-                $account = $this->{'account'};
-                $job_id = $this->{'job_id'};
-                $bqs     = $this->{'bqs'};
-                $runflag = $this->{'runflag'};
+                $info = &CJ::retrieve_package_info($package);
+               
             }else{
                 print "No such job found in the database\n";
             }
@@ -267,8 +267,10 @@ if($runflag =~ m/^par*/){
         if($bqs eq "SGE"){
             $states = (`ssh ${account} 'qstat -u \\* | grep -E "$jobs" ' | awk \'{print \$5}\'`) ;chomp($state);
         }elsif($bqs eq "SLURM"){
-            $states = (`ssh ${account} 'sacct -n --jobs=$job_id' | awk \'{print \$6}\'`) ;chomp($state);
-        }else{
+            $states = (`ssh ${account} 'sacct -n --jobs=$job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$6}\'`) ;chomp($state);
+            #$states = (`ssh ${account} 'sacct -n --format=state --jobs=$job_id'`) ;chomp($state);
+	
+	}else{
             &CJ::err("Unknown batch queueing system");
         }
     
@@ -282,7 +284,8 @@ if($runflag =~ m/^par*/){
         foreach $i (0..$#job_ids)
         {
             my $counter = $i+1;
-            my $state= $states[$i];
+            my $state= $states[$i]; chomp($state);		
+	    #$state = s/^\s+|\s+$/;
             $state =~ s/[^A-Za-z]//g;
             print "$counter     " . "$job_ids[$i]      "  . "$state" . "\n";
         }

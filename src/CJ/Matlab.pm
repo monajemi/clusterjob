@@ -42,12 +42,12 @@ for idx = start:length(done_list)
     newres = load([num2str(count),'/$res_filename']);
     
     for i = 1:length(flds)  \% for all variables
-      res.(flds{i}) =  CJ_reduce( res.(flds{i}) ,  newres.(flds{i}) )
+        res.(flds{i}) =  CJ_reduce( res.(flds{i}) ,  newres.(flds{i}) );
     end
 
 end
 
-save('$res_filename','-struct', 'res')
+    save('$res_filename','-struct', 'res');
 
 delete('$done_filename');
 fclose(fopen('$done_filename', 'w'));
