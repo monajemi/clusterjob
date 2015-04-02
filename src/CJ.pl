@@ -571,7 +571,7 @@ my $cmd = "scp $collect_bash_path $CJ_reduce $account:$remote_path/";
 &CJ::my_system($cmd);
 
 
-my $cmd = "ssh $account 'cd $remote_path; bash -l $collect_name'";
+my $cmd = "ssh $account 'cd $remote_path; srun bash -l $collect_name'";
 &CJ::my_system($cmd);
         
 }
