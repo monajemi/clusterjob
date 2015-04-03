@@ -45,9 +45,13 @@ for idx = start:length(done_list)
         res.(flds{i}) =  CJ_reduce( res.(flds{i}) ,  newres.(flds{i}) );
     end
 
+\% save after each packgae
+save('$res_filename','-struct', 'res');
+percent_done = idx/length(done_list) * 100;
+fprintf('\\n SubPackage %d Collected (%3.2f%%)', count, percent_done );
 end
 
-    save('$res_filename','-struct', 'res');
+   
 
 delete('$done_filename');
 fclose(fopen('$done_filename', 'w'));
