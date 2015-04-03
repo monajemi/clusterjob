@@ -32,6 +32,26 @@ else
     \% Fisrt time CJ is being called
     res = load([num2str(done_list(1)),'/$res_filename']);
     start = 2;
+    
+    
+    \% delete the line from done_filename and add it to collected.
+    fid = fopen('$done_filename', 'r') ;              \% Open source file.
+    fgetl(fid) ;                                      \% Read/discard line.
+    buffer = fread(fid, Inf) ;                        \% Read rest of the file.
+    fclose(fid);
+    delete('$done_filename');                         \% delete the file
+    fid = fopen('$done_filename', 'w')  ;             \% Open destination file.
+    fwrite(fid, buffer) ;                             \% Save to file.
+    fclose(fid) ;
+    
+    if(~exist('$collect_filename','file'));
+    fid = fopen('$collect_filename', 'a+');
+    fprintf ( fid, '%d\\n', done_list(1) );
+    fclose(fid);
+    end
+
+    
+    
 end
 
 flds = fields(res);
@@ -60,9 +80,7 @@ fwrite(fid, buffer) ;                             \% Save to file.
 fclose(fid) ;
 
 if(~exist('$collect_filename','file'));
-    fid = fopen('$collect_filename', 'a+');
-    fprintf ( fid, '%d\\n', done_list(1) );
-    fclose(fid);
+    error('   CJerr::File $collect_filename is missing. CJ stands in AWE!');
 end
 
 fid = fopen('$collect_filename', 'a+');
