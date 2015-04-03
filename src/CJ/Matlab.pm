@@ -60,7 +60,9 @@ fwrite(fid, buffer) ;                             \% Save to file.
 fclose(fid) ;
 
 if(~exist('$collect_filename','file'));
-    fclose(fopen('$collect_filename', 'w'));
+    fid = fopen('$collect_filename', 'a+');
+    fprintf ( fid, '%d\\n', done_list(1) );
+    fclose(fid);
 end
 
 fid = fopen('$collect_filename', 'a+');
