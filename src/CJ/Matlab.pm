@@ -13,7 +13,7 @@ sub make_collect_script
 {
 my ($res_filename, $done_filename, $bqs) = @_;
     
-
+my $collect_filename = "collect_list.txt";
     
 my $matlab_collect_script=<<MATLAB;
 \% READ done_list.txt and FIND The counters that need
@@ -48,13 +48,29 @@ for idx = start:length(done_list)
 \% save after each packgae
 save('$res_filename','-struct', 'res');
 percent_done = idx/length(done_list) * 100;
+    
+\% delete the line from done_filename and add it to collected.
+fid = fopen('$done_filename', 'r') ;              \% Open source file.
+fgetl(fid) ;                                      \% Read/discard line.
+buffer = fread(fid, Inf) ;                        \% Read rest of the file.
+fclose(fid);
+delete('$done_filename');                         \% delete the file
+fid = fopen('$done_filename', 'w')  ;             \% Open destination file.
+fwrite(fid, buffer) ;                             \% Save to file.
+fclose(fid) ;
+
+if(~exist('$collect_filename','file'));
+    fclose(fopen('$collect_filename', 'w'));
+end
+
+fid = fopen('$collect_filename', 'a+');
+fprintf ( fid, '%d\\n', count );
+fclose(fid);
+    
 fprintf('\\n SubPackage %d Collected (%3.2f%%)', count, percent_done );
 end
 
    
-
-delete('$done_filename');
-fclose(fopen('$done_filename', 'w'));
 
 end
 
