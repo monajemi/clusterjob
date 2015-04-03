@@ -501,8 +501,8 @@ if($runflag eq "get" ){
     
     
     
-    my $cmd = "rm -rf  $last_instance_dir/";
-    &CJ::my_system($cmd) unless($last_instance_dir=="");
+    #my $cmd = "rm -rf  $get_tmp_dir/";
+    #&CJ::my_system($cmd) unless($get_tmp_dir=="");
 
     
     
@@ -576,14 +576,15 @@ my $cmd = "ssh $account 'cd $remote_path; srun bash -l $collect_name'";
         
 }
  
+mkdir "$get_tmp_dir" unless (-d "$get_tmp_dir");    
+mkdir "$get_tmp_dir/$package" unless (-d "$get_tmp_dir/$package");
     
-    
-my $cmd = "rm -r $last_instance_dir/*; rsync -arvz  $account:${remote_path}/* $last_instance_dir/";
+my $cmd = "rsync -arvz  $account:${remote_path}/* $get_tmp_dir/$package";
 &CJ::my_system($cmd);
-&CJ::message("Please see your last results in $last_instance_dir")
+&CJ::message("Please see your last results in $get_tmp_dir/$package");
     
 # In case save is run after, we must have the info of the package
-&CJ::writeFile($save_info_file, $package);
+#&CJ::writeFile($save_info_file, $package);
     
     exit 0;
 }
@@ -594,15 +595,20 @@ my $cmd = "rm -r $last_instance_dir/*; rsync -arvz  $account:${remote_path}/* $l
 
 #=================================================================
 #            CLUSTERJOB SAVE (ONLY SAVES THE OUTPUT OF 'GET')
-#  ex.  clusterjob save
-#  ex.  clusterjob save  ~/Downloads/myDIR
+#  ex.  clusterjob save package
+#  ex.  clusterjob save package ~/Downloads/myDIR
 #=================================================================
 
 
 if($runflag eq "save" ){
-
+    my $package = shift;
+    
+    if(! &CJ::is_valid_package_name($package)){
+        &CJ::err("Please enter a valid package name");
+    }
+    
     my $save_path = shift;
-    my $package = `sed -n '1{p;q;}' $save_info_file`;chomp($package);
+    # my $package = `sed -n '1{p;q;}' $save_info_file`;chomp($package);
     
     
     my $info  = &CJ::retrieve_package_info($package);
@@ -632,7 +638,7 @@ if($runflag eq "save" ){
         my $cmd = "rm -rf $save_path/*";
         &CJ::my_system($cmd);
             
-        my $cmd = "rsync -arz  $last_instance_dir/ $save_path/";
+        my $cmd = "rsync -arz  $get_tmp_dir/ $save_path/";
         &CJ::my_system($cmd);
         
         my $cmd = "cp  $save_info_file $save_path/job.info";
@@ -659,11 +665,11 @@ if($runflag eq "save" ){
     my $cmd = "mkdir -p $save_path";
     &CJ::my_system($cmd) ;
     
-    my $cmd = "rsync -arz  $last_instance_dir/ $save_path/";
+    my $cmd = "rsync -arz  $get_tmp_dir/$package $save_path/";
     &CJ::my_system($cmd);
         
-    my $cmd = "cp  $save_info_file $save_path/job.info";
-    &CJ::my_system($cmd);
+        #my $cmd = "cp  $save_info_file $save_path/job.info";
+        #&CJ::my_system($cmd);
         
     
     $history .= sprintf("%-21s%-10s",$package, $runflag);

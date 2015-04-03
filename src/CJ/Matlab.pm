@@ -49,8 +49,10 @@ else
     fprintf ( fid, '%d\\n', done_list(1) );
     fclose(fid);
     end
-
     
+    percent_done = 1/length(done_list) * 100;
+    fprintf('\\n SubPackage %d Collected (%3.2f%%)', done_list(1), percent_done );
+
     
 end
 
