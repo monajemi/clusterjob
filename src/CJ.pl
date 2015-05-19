@@ -9,6 +9,7 @@
 #   -mem <MEMORY_REQUESTED>
 #   -m   <MESSAGE>
 #   -dep <DEP_FOLDER>
+#   -h   <NUMBER>
 # ex: perl CJ.pl (DEPLOY|RUN) MACHINE PROGRAM -dep DEP_FOLDER -mem "10G" -m "REMINDER"
 #
 # In practice, one can leave 'perl clusterjob.pl'
@@ -29,8 +30,11 @@
 # To show the history of the last n instances on your machine
 #   clusterjob history -n
 #
-# To get info of the last instance
-#   clusterjob info
+# To get info of a package
+#   clusterjob info <PACKAGE>
+#
+# To show the program a package ran
+#   cluetrjob show <PACKAGE>
 #
 # To get state of the last instance
 #   clusterjob state
@@ -63,10 +67,12 @@ $message    = "";        # default message
 my $spec = <<'EOSPEC';
    -dep    <dep_path>		 dependency folder path [nocase]
                                  {$dep_folder=$dep_path}
-   -m      <msg>	         reminder message
+   -m      <msg>	         reminder message 
                                  {$message=$msg}
    -mem    <memory>	         memory requested [nocase]
                                  {$mem=$memory}
+   -h      [<history_argin>]	 history -n|pkg|all [nocase]
+                                 {defer{ &CJ::show_history($history_argin) }}
 EOSPEC
 
 my $opts = Getopt::Declare->new($spec);
@@ -189,11 +195,10 @@ if($runflag eq "info" ){
 #       ex.  clusterjob history 2015JAN07_213759
 #==========================================================
 
-if($runflag eq "history" ){
-    
-    my $history_argin = shift;
-    &CJ::show_history($history_argin)
-}
+#if($runflag eq "history" ){
+#sub history{
+#    my ($history_argin) = @_;
+#}
     
 
 
