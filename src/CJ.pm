@@ -132,6 +132,150 @@ sub clean
 }
 
 
+
+
+
+
+
+sub show_program
+{
+    my ($package) = @_;
+    
+    
+    my $info;
+    if( (!defined $package) || ($package eq "") ){
+        #read the first lines of last_instance.info;
+        $info = &CJ::retrieve_package_info();
+        $package = $info->{'package'};
+        
+    }else{
+        
+        if( &CJ::is_valid_package_name($package) ){
+            # read info from $run_history_file
+            
+            my $cmd= "grep -q '$package' '$run_history_file'";
+            my $pattern_exists = system($cmd);chomp($pattern_exists);
+            
+            if ($pattern_exists==0){
+                $info = &CJ::retrieve_package_info($package);
+                
+            }else{
+                print "No such job found in the database\n";
+            }
+            
+        }else{
+            &CJ::err("incorrect usage: nothing to show");
+        }
+        
+        
+        
+    }
+    
+    
+    
+    my $account     = $info->{'account'};
+    my $remote_path = $info->{'remote_path'};
+    my $program     = $info->{'program'};
+    
+    my $script = (`ssh ${account} 'cat $remote_path/$program'`) ;chomp($script);
+    
+    print "$script \n";
+    exit 0;
+    
+}
+
+
+
+
+
+
+
+
+
+
+
+
+sub show_info
+{
+    my ($package) = @_;
+   
+    
+    my $info;
+    if( (!defined $package) || ($package eq "") ){
+        #read the first lines of last_instance.info;
+        $info = &CJ::retrieve_package_info();
+        $package = $info->{'package'};
+        
+    }else{
+        
+        if( &CJ::is_valid_package_name($package) ){
+            # read info from $run_history_file
+            
+            my $cmd= "grep -q '$package' '$run_history_file'";
+            my $pattern_exists = system($cmd);chomp($pattern_exists);
+            
+            if ($pattern_exists==0){
+                $info = &CJ::retrieve_package_info($package);
+                
+            }else{
+                print "No such job found in the database\n";
+            }
+            
+        }else{
+            &CJ::err("incorrect usage: nothing to show");
+        }
+        
+        
+        
+    }
+
+    
+    
+    
+    
+    my $machine    = $info->{'machine'};
+    my $account    = $info->{'account'};
+    my $remote_path = $info->{'remote_path'};
+    my $runflag    = $info->{'runflag'};
+    my $bqs        = $info->{'bqs'};
+    my $job_id     = $info->{'job_id'};
+    my $program    = $info->{'program'};
+
+    
+    print '-' x 35;print "\n";
+    print "PACKAGE: " . "$package" . "\n";
+    print "PROGRAM: " . "$program" . "\n";
+    print "ACCOUNT: " . "$account" . "\n";
+    print "PATH   : " . "$remote_path" . "\n";
+    print "FLAG   : " . "$runflag"  . "\n";
+    print '-' x 35;print "\n";
+
+    
+    
+    
+    exit 0;
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 sub get_state
 {
     my ($package) = @_;

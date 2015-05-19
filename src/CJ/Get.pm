@@ -8,6 +8,7 @@ use CJ;
 
 
 sub make_parrun_check_script{
+    
 my ($info,$res_filename) = @_;
 my $machine    = $info->{'machine'};
 my $package    = $info->{'package'};

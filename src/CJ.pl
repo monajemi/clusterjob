@@ -167,10 +167,16 @@ my $package = shift;
 #            CLUSTERJOB INFO
 #       ex.  clusterjob info
 #==========================================================
+if($runflag eq "show" ){
+my $package = shift;
+&CJ::show_program($package);
+
+}
+
+
 if($runflag eq "info" ){
-    my $info=(`cat $last_instance_file`);
-    print "$info \n";
-    exit 0;
+    my $package = shift;
+    &CJ::show_info($package);
 }
 
 
