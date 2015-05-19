@@ -7,6 +7,272 @@ use CJ::CJVars;
 
 
 
+sub show_history{
+    my ($history_argin) = @_;
+
+    # check if it is the name of a package
+    # such as 2015JAN07_212840
+    
+    if( (!defined $history_argin) || ($history_argin eq "") ){
+        $history_argin= 1;
+    }
+    
+    if(&CJ::is_valid_package_name($history_argin)){
+        # read info from $run_history_file
+        
+        print '-' x 35;print "\n";
+        print "run info, job $history_argin"; print "\n";
+        print '-' x 35;print "\n";
+        my $cmd= "grep -q '$history_argin' '$run_history_file'";
+        my $pattern_exists = system($cmd);
+        chomp($pattern_exists);
+        
+        if ($pattern_exists==0){
+            
+            my $cmd = "awk '/$history_argin/{f=1}f' $run_history_file | sed -n 1,14p ";
+            
+            system($cmd);
+        }else{
+            &CJ::err("No such job found in CJ database");
+        }
+        
+        
+        
+        
+        
+        
+    }elsif($history_argin =~ m/^\-?\d*$/){
+        
+        $history_argin =~ s/\D//g;   #remove any non-digit
+        my $info=`tail -n  $history_argin $history_file`;chomp($info);
+        print "$info \n";
+       
+    }elsif($history_argin =~ m/^\-?all$/){
+        my $info=`cat $history_file`;chomp($info);
+        print "$info \n";
+    }else{
+        &CJ::err("Incorrect usage: nothing to show");
+    }
+    
+    
+    
+    
+    exit 0;
+
+
+}
+
+
+
+sub clean
+{
+    my ($package) = @_;
+    
+    my $account;
+    my $local_path;
+    my $remote_path;
+    my $job_id;
+    my $save_path;
+    
+    my $info;
+    if((!defined $package)  || ($package eq "") ){
+        #read the first lines of last_instance.info;
+        $info =  &CJ::retrieve_package_info();
+        $package = $info->{'package'};
+    }else{
+        
+        if(&CJ::is_valid_package_name($package)){
+            # read info from $run_history_file
+            
+            my $cmd= "grep -q '$package' '$run_history_file'";
+            my $pattern_exists = system($cmd);chomp($pattern_exists);
+            
+            if ($pattern_exists==0){
+                $info =  &CJ::retrieve_package_info($package);
+            }else{
+                &CJ::err("No such job found in CJ database.");
+            }
+            
+        }else{
+            &CJ::err("incorrect usage: nothing to show");
+        }
+        
+        
+    }
+    
+    $account     =   $info->{'account'};
+    $local_path  =   $info->{'local_path'};
+    $remote_path =   $info->{'remote_path'};
+    $job_id      =   $info->{'job_id'};
+    $save_path   =   $info->{'save_path'};
+    
+    
+    print "CLEANing $package:\n";
+    my $local_clean     = "$local_path\*";
+    my $remote_clean    = "$remote_path\*";
+    my $save_clean      = "$save_path\*";
+    
+    
+    
+    
+    if (defined($job_id) && $job_id ne "") {
+        print "deleting jobs associated with job $package\n";
+        my @job_ids = split(',',$job_id);
+        $job_id = join(' ',@job_ids);
+        my $cmd = "rm -rf $local_clean; rm -rf $save_clean; ssh ${account} 'qdel $job_id; rm -rf $remote_clean' " ;
+        &CJ::my_system($cmd);
+    }else {
+        my $cmd = "rm -rf $local_clean;rm -rf $save_clean; ssh ${account} 'rm -rf $remote_clean' " ;
+        &CJ::my_system($cmd);
+    }
+    
+    
+    exit 0;
+
+}
+
+
+sub get_state
+{
+    my ($package) = @_;
+    
+    
+    my $info;
+    if( (!defined $package) || ($package eq "") ){
+        #read the first lines of last_instance.info;
+        $info = &CJ::retrieve_package_info();
+        $package = $info->{'package'};
+        
+    }else{
+        
+        if( &CJ::is_valid_package_name($package) ){
+            # read info from $run_history_file
+            
+            my $cmd= "grep -q '$package' '$run_history_file'";
+            my $pattern_exists = system($cmd);chomp($pattern_exists);
+            
+            if ($pattern_exists==0){
+                $info = &CJ::retrieve_package_info($package);
+                
+            }else{
+                print "No such job found in the database\n";
+            }
+            
+        }else{
+            &CJ::err("incorrect usage: nothing to show");
+        }
+        
+        
+        
+    }
+    
+    
+    my $account = $info->{'account'};
+    my $job_id  = $info->{'job_id'};
+    my $bqs     = $info->{'bqs'};
+    my $runflag = $info->{'runflag'};
+    
+    
+    
+    if($runflag =~ m/^par*/){
+        my $num = shift;
+        
+        # par case
+        my @job_ids = split(',',$job_id);
+        my $jobs = join('|', @job_ids);
+        my $states;
+        if($bqs eq "SGE"){
+            $states = (`ssh ${account} 'qstat -u \\* | grep -E "$jobs" ' | awk \'{print \$5}\'`) ;chomp($states);
+        }elsif($bqs eq "SLURM"){
+            $states = (`ssh ${account} 'sacct -n --jobs=$job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$6}\'`) ;chomp($states);
+            #$states = (`ssh ${account} 'sacct -n --format=state --jobs=$job_id'`) ;chomp($state);
+            
+        }else{
+            &CJ::err("Unknown batch queueing system");
+        }
+        
+        my @states = split('\n',$states);
+        
+        
+        if($num eq ""){
+            print '-' x 50;print "\n";
+            print "PACKAGE " . "$package" . "\n";
+            print "CLUSTER " . "$account" . "\n";
+            foreach my $i (0..$#job_ids)
+            {
+                my $counter = $i+1;
+                my $state= $states[$i]; chomp($state);
+                #$state = s/^\s+|\s+$/;
+                $state =~ s/[^A-Za-z]//g;
+                print "$counter     " . "$job_ids[$i]      "  . "$state" . "\n";
+            }
+        }elsif(&CJ::isnumeric($num) && $num < $#job_ids+1){
+            print '-' x 50;print "\n";
+            print "PACKAGE " . "$package" . "\n";
+            print "CLUSTER " . "$account" . "\n";
+            print "$num     " . "$job_ids[$num]      "  . "$states[$num]" . "\n";
+        }else{
+            &CJ::err("incorrect entry. Input $num >= $#states.")
+        }
+        
+        print '-' x 35;print "\n";
+        
+    }else{
+        my $state;
+        if($bqs eq "SGE"){
+            $state = (`ssh ${account} 'qstat | grep $job_id' | awk \'{print \$5}\'`) ;chomp($state);
+        }elsif($bqs eq "SLURM"){
+            $state = (`ssh ${account} 'sacct | grep $job_id' | awk \'{print \$6}\'`) ;chomp($state);
+        }else{
+            &CJ::err("Unknown batch queueing system");
+        }
+        
+        print '-' x 35;print "\n";
+        print "PACKAGE " . "$package" . "\n";
+        print "CLUSTER " . "$account" . "\n";
+        print "JOB_ID  " . "$job_id"  . "\n";
+        print "STATE   " . "$state"   . "\n";
+        print '-' x 35;print "\n";
+    }
+    
+    
+    
+    exit 0;
+
+    
+    
+    
+    
+
+}
+
+
+
+
+
+sub grep_var_line
+{
+    my ($pattern, $string) = @_;
+    
+    # go to $TOP and look for the length of the found var;
+    my $this_line;
+    my @lines = split /\n/, $string;
+    foreach my $line (@lines) {
+        if($line =~ /\s*(?<!\%)${pattern}\s*=.*/){
+            $this_line = $line;
+            last;
+        }
+    }
+    if($this_line){
+        return $this_line;
+    }else{
+        &CJ::err("Variable '$pattern' was not declared.\n");
+    }
+}
+
+
+
+
 
 
 

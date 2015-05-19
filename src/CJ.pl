@@ -9,7 +9,7 @@
 #   -mem <MEMORY_REQUESTED>
 #   -m   <MESSAGE>
 #   -dep <DEP_FOLDER>
-# ex: perl CJ.pl (DEPLOY|RUN) MACHINE PROGRAM DEP_FOLDER -mem "10G" -m "REMINDER"
+# ex: perl CJ.pl (DEPLOY|RUN) MACHINE PROGRAM -dep DEP_FOLDER -mem "10G" -m "REMINDER"
 #
 # In practice, one can leave 'perl clusterjob.pl'
 # as an alias, say 'clusterjob'.
@@ -44,8 +44,9 @@
 use lib '/Users/hatef/github_projects/clusterjob/src';  #for testing
 
 use CJ;          # contains essential functions
-use CJ::CJVars;  # contains global variables of CJ;
-use CJ::Matlab;
+use CJ::CJVars;  # contains global variables of CJ
+use CJ::Matlab;  # Contains Matlab related subs
+use CJ::Get;     # Contains Get related subs
 use Getopt::Declare;
 use vars qw($message $mem $dep_folder);  # options
 $::VERSION = 0.0.1;
@@ -130,79 +131,18 @@ my $runflag= shift;
 if($runflag eq "clean"){
     
 my $package = shift;
-my $account;
-my $local_path;
-my $remote_path;
-my $job_id;
-my $save_path;
     
-my $info;
-if($package eq ""){
-#read the first lines of last_instance.info;
-$info =  &CJ::retrieve_package_info();
-$package = $info->{'package'};
-}else{
+    &CJ::clean($package);
+    
+    # ADD THIS CLEAN TO HISTRY
+    my $history .= sprintf("%-21s%-10s",$package, $runflag);
+    &CJ::add_to_history($history);
+    
 
-    if(&CJ::is_valid_package_name($package)){
-    # read info from $run_history_file
-            
-        my $cmd= "grep -q '$package' '$run_history_file'";
-        $pattern_exists = system($cmd);chomp($pattern_exists);
-            
-        if ($pattern_exists==0){
-            $info =  &CJ::retrieve_package_info($package);
-        }else{
-            &CJ::err("No such job found in CJ database.");
-        }
-            
-    }else{
-        &CJ::err("incorrect usage: nothing to show");
-    }
     
-        
 }
 
-$account     =   $info->{'account'};
-$local_path  =  $info->{'local_path'};
-$remote_path =   $info->{'remote_path'};
-$job_id      =   $info->{'job_id'};
-$save_path   =   $info->{'save_path'};
-    
-    
-print "CLEANing $package:\n";
-my $local_clean     = "$local_path\*";
-my $remote_clean    = "$remote_path\*";
-my $save_clean      = "$save_path\*";
-
-    
-    
-
-if (defined($job_id) && $job_id ne "") {
-print "deleting jobs associated with job $package\n";
-my @job_ids = split(',',$job_id);
-$job_id = join(' ',@job_ids);
-my $cmd = "rm -rf $local_clean; rm -rf $save_clean; ssh ${account} 'qdel $job_id; rm -rf $remote_clean' " ;
-&CJ::my_system($cmd);
-}else {
-my $cmd = "rm -rf $local_clean;rm -rf $save_clean; ssh ${account} 'rm -rf $remote_clean' " ;
-&CJ::my_system($cmd);
-}
-    
-
-    
-    
-    
-    
-# ADD THIS CLEAN TO HISTRY
-$history .= sprintf("%-21s%-10s",$package, $runflag);
-&CJ::add_to_history($history);
-    
-    
-    
-exit 0;
-}
-
-
+  
 
 
 #==========================================================
@@ -212,115 +152,10 @@ exit 0;
 #==========================================================
 
 if($runflag eq "state"){
+my $package = shift;
 
-
-   
-     my $package = shift;
+&CJ::get_state($package);
     
-    
-       
-    
-    my $info;
-    if($package eq ""){
-        #read the first lines of last_instance.info;
-         $info = &CJ::retrieve_package_info();
-         $package = $info->{'package'};
-
-    }else{
-        
-        if( &CJ::is_valid_package_name($package) ){
-            # read info from $run_history_file
-            
-            my $cmd= "grep -q '$package' '$run_history_file'";
-            $pattern_exists = system($cmd);chomp($pattern_exists);
-            
-            if ($pattern_exists==0){
-                $info = &CJ::retrieve_package_info($package);
-               
-            }else{
-                print "No such job found in the database\n";
-            }
-            
-        }else{
-            &CJ::err("incorrect usage: nothing to show");
-        }
-        
-        
-        
-    }
-
-    
-my $account = $info->{'account'};
-my $job_id  = $info->{'job_id'};
-my $bqs     = $info->{'bqs'};
-my $runflag = $info->{'runflag'};
-    
-    
-    
-if($runflag =~ m/^par*/){
-    my $num = shift;
-    
-    # par case
-    @job_ids = split(',',$job_id);
-    my $jobs = join('|', @job_ids);
-    my $states;
-        if($bqs eq "SGE"){
-            $states = (`ssh ${account} 'qstat -u \\* | grep -E "$jobs" ' | awk \'{print \$5}\'`) ;chomp($state);
-        }elsif($bqs eq "SLURM"){
-            $states = (`ssh ${account} 'sacct -n --jobs=$job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$6}\'`) ;chomp($state);
-            #$states = (`ssh ${account} 'sacct -n --format=state --jobs=$job_id'`) ;chomp($state);
-	
-	}else{
-            &CJ::err("Unknown batch queueing system");
-        }
-    
-    @states = split('\n',$states);
-    
-    
-    if($num eq ""){
-        print '-' x 50;print "\n";
-        print "PACKAGE " . "$package" . "\n";
-        print "CLUSTER " . "$account" . "\n";
-        foreach $i (0..$#job_ids)
-        {
-            my $counter = $i+1;
-            my $state= $states[$i]; chomp($state);		
-	    #$state = s/^\s+|\s+$/;
-            $state =~ s/[^A-Za-z]//g;
-            print "$counter     " . "$job_ids[$i]      "  . "$state" . "\n";
-        }
-    }elsif(&CJ::isnumeric($num) && $num < $#job_ids+1){
-        print '-' x 50;print "\n";
-        print "PACKAGE " . "$package" . "\n";
-        print "CLUSTER " . "$account" . "\n";
-        print "$num     " . "$job_ids[$num]      "  . "$states[$num]" . "\n";
-    }else{
-        &CJ::err("incorrect entry. Input $num >= $#states.")
-    }
-    
-    print '-' x 35;print "\n";
-    
-}else{
-    my $state;
-    if($bqs eq "SGE"){
-    $state = (`ssh ${account} 'qstat | grep $job_id' | awk \'{print \$5}\'`) ;chomp($state);
-    }elsif($bqs eq "SLURM"){
-    $state = (`ssh ${account} 'sacct | grep $job_id' | awk \'{print \$6}\'`) ;chomp($state);
-    }else{
-        &CJ::err("Unknown batch queueing system");
-    }
-
-print '-' x 35;print "\n";
-print "PACKAGE " . "$package" . "\n";
-print "CLUSTER " . "$account" . "\n";
-print "JOB_ID  " . "$job_id"  . "\n";
-print "STATE   " . "$state"   . "\n";
-print '-' x 35;print "\n";
-}
-
-    
-    
-exit 0;
 }
 
 
@@ -351,55 +186,9 @@ if($runflag eq "info" ){
 if($runflag eq "history" ){
     
     my $history_argin = shift;
-    
-    # check if it is the name of a package
-    # such as 2015JAN07_212840
-    
-    if($history_argin eq ""){
-        $history_argin= 1;
-    }
-    
-    if(&CJ::is_valid_package_name($history_argin)){
-    # read info from $run_history_file
-        
-        print '-' x 35;print "\n";
-        print "run info, job $history_argin"; print "\n";
-        print '-' x 35;print "\n";
-        my $cmd= "grep -q '$history_argin' '$run_history_file'";
-        $pattern_exists = system($cmd);
-        chomp($pattern_exists);
-        
-        if ($pattern_exists==0){
-    
-        my $cmd = "awk '/$history_argin/{f=1}f' $run_history_file | sed -n 1,14p ";
-            
-        system($cmd);
-        }else{
-            &CJ::err("No such job found in CJ database");
-        }
-        
-        
-        
-        
-        
-        
-    }elsif($history_argin =~ m/^\d*$/){
-    
-        $history_argin =~ s/\D//g;   #remove any non-digit
-        my $info=`tail -n  $history_argin $history_file`;chomp($info);
-        print "$info \n";
-        
-    }else{
-        &CJ::err("Incorrect usage: nothing to show");
-    }
-    
-    
-    
-    
-    exit 0;
+    &CJ::show_history($history_argin)
 }
-
-
+    
 
 
 
@@ -516,41 +305,9 @@ if($runflag =~ m/^par*/){
 if ($res_filename eq ""){
 &CJ::err("The result filename must be provided for GET with parrun packages, eg, 'clusterjob get Results.mat' ");
 }
-#find the number of folders with results in it
-my @job_ids = split(',', $job_id);
-my $num_res = 1+$#job_ids;
-
-# header for bqs's
-$HEADER = &CJ::bash_header($bqs);
-# check which jobs are done.
-my $bash_remote_path  = $remote_path;
-$bash_remote_path =~ s/~/\$HOME/;
-my $check_runs=<<TEXT;
-$HEADER
-
-if [ ! -f "$bash_remote_path/run_list.txt" ];then
-touch $bash_remote_path/done_list.txt
-touch $bash_remote_path/run_list.txt
-        
-        for COUNTER in `seq $num_res`;do
-            if [ -f "$bash_remote_path/\$COUNTER/$res_filename" ];then
-        echo -e "\$COUNTER\\t" >> "$bash_remote_path/done_list.txt"
-            else
-                echo -e "\$COUNTER\\t" >> "$bash_remote_path/run_list.txt"
-                fi
-        done
-else
     
-    for line in \$(cat $bash_remote_path/run_list.txt);do
-    COUNTER=`grep -o "[0-9]*" <<< \$line`
-    if [ -f "$bash_remote_path/\$COUNTER/$res_filename" ];then
-        echo -e "\$COUNTER\\t" >> "$bash_remote_path/done_list.txt"
-        sed  '/\^\$COUNTER\$/d' "$bash_remote_path/run_list.txt" > "$bash_remote_path/run_list.txt"
-    fi
-        done
-fi
-        
-TEXT
+    
+my $check_runs = &CJ::Get::make_parrun_check_script($info,$res_filename);
 my $check_name = "check_complete.sh";
 my $check_path = "/tmp/$check_name";
 &CJ::writeFile($check_path,$check_runs);
@@ -583,10 +340,8 @@ my $cmd = "rsync -arvz  $account:${remote_path}/* $get_tmp_dir/$package";
 &CJ::my_system($cmd);
 &CJ::message("Please see your last results in $get_tmp_dir/$package");
     
-# In case save is run after, we must have the info of the package
-#&CJ::writeFile($save_info_file, $package);
     
-    exit 0;
+exit 0;
 }
 
 
@@ -638,10 +393,7 @@ if($runflag eq "save" ){
         my $cmd = "rm -rf $save_path/*";
         &CJ::my_system($cmd);
             
-        my $cmd = "rsync -arz  $get_tmp_dir/ $save_path/";
-        &CJ::my_system($cmd);
-        
-        my $cmd = "cp  $save_info_file $save_path/job.info";
+        my $cmd = "rsync -arz  $get_tmp_dir/$package/ $save_path/";
         &CJ::my_system($cmd);
             
       
@@ -665,13 +417,9 @@ if($runflag eq "save" ){
     my $cmd = "mkdir -p $save_path";
     &CJ::my_system($cmd) ;
     
-    my $cmd = "rsync -arz  $get_tmp_dir/$package $save_path/";
+    my $cmd = "rsync -arz  $get_tmp_dir/$package/ $save_path/";
     &CJ::my_system($cmd);
         
-        #my $cmd = "cp  $save_info_file $save_path/job.info";
-        #&CJ::my_system($cmd);
-        
-    
     $history .= sprintf("%-21s%-10s",$package, $runflag);
     # ADD THIS SAVE TO HISTRY
     &CJ::add_to_history($history);
@@ -994,7 +742,7 @@ my $scriptfile = "$BASE/$program";
 my $script_lines;
 open my $fh, "$scriptfile" or die "Couldn't open file: $!";
 while(<$fh>){
-    $_ = &uncomment_matlab_line($_);
+    $_ = &CJ::Matlab::uncomment_matlab_line($_);
     if (!/^\s*$/){
         $script_lines .= $_;
     }
@@ -1050,7 +798,7 @@ my @idx_tags;
 my @ranges;
 for (split /^/, $FOR) {
 
-    my ($idx_tag, $range) = &read_matlab_index_set($_, $TOP);
+    my ($idx_tag, $range) = &CJ::Matlab::read_matlab_index_set($_, $TOP);
     
     push @idx_tags, $idx_tag;
     push @ranges, $range;
@@ -1793,148 +1541,24 @@ return $sh_script;
 
 
 
-sub matlab_var
-{
-    my ($s) = @_;
-    
-    if(&CJ::isnumeric($s)){
-        return "[$s]";
-    }else{
-        return "\'$s\'";
-    }
-    
-}
-
-
-
-
-sub read_matlab_index_set
-{
-    my ($forline, $TOP) = @_;
-    
-    chomp($forline);
-    $forline = &uncomment_matlab_line($forline);   # uncomment the line so you dont deal with comments. easier parsing;
-    
-    
-    # split at equal sign.
-    my @myarray    = split(/\s*=\s*/,$forline);
-    my @tag     = split(/\s/,$myarray[0]);
-    my $idx_tag = $tag[-1];
-    
-    
-    
-    
-    my $range;
-    # The right of equal sign
-    my $right  = $myarray[1];
-    
-    # see if the forline contains :
-    if($right =~ /.*\:.*/){
-   
-        my @rightarray = split( /\s*:\s*/, $right, 2 );
-        
-        my $low =$rightarray[0];
-        if(! &CJ::isnumeric($low) ){
-         &CJ::err("The lower limit of for MUST be numeric for this version of clusterjob\n");
-        }
-        
-        
-        
-            # exit on unallowed structure
-            if ($rightarray[1] =~ /.*:.*/){
-                &CJ::err("Sorry!...structure 'for i=1:1:3' is not allowed in clusterjob. Try rewriting your script using 'for i = 1:3' structure\n");
-            }
-        
-        
-        
-        if($rightarray[1] =~ /\s*length\(\s*(.+?)\s*\)/){
-            
-            #CASE i = 1:length(var);
-            # find the variable;
-            my ($var) = $rightarray[1] =~ /\s*length\(\s*(.+?)\s*\)/;
-            my $this_line = &grep_var_line($var,$TOP);
-            
-            
-            #extract the range
-            my @this_array    = split(/\s*=\s*/,$this_line);
-            
-            my $numbers;
-            if($this_array[1] =~ /\[\s*(.+?)\s*\]/){
-                ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
-            }else{
-                # FUTURE_REV_ADD
-                &CJ::err("MATLAB structure '$this_line ' not currently supported for parrun.");
-            }
-            
-            
-            
-            @vals = split(/,|;/,$numbers);
-            
-            my $high = 1+$#vals;
-            @range = ($low..$high);
-            $range = join(',',@range);
-            
-        }elsif($rightarray[1] =~ /\s*(\D+).*/) {
-            print "$rightarray[1]"."\n";
-            # CASE i = 1:L
-            # find the variable;
-            my($var) = $rightarray[1] =~ /\s*(\D+).*/;
-            my $this_line = &grep_var_line($var,$TOP);
-            
-            #extract the range
-            my @this_array    = split(/\s*=\s*/,$this_line);
-            my ($high) = $this_array[1] =~ /\[?\s*(\d+)\s*\]?/;
-            @range = ($low..$high);
-            $range = join(',',@range);
-
-        }elsif($rightarray[1] =~ /.*(\d+).*/){
-            # CASE i = 1:10
-            my ($high) = $rightarray[1] =~ /\s*(\d+).*/;
-            @range = ($low..$high);
-            $range = join(',',@range);
-
-        }else{
-            &CJ::err("strcuture of for loop not recognized by clusterjob. try rewriting your for loop using 'i = 1:10' structure");
-            
-        }
-        
-
-    }
-
-    return ($idx_tag, $range);
-}
+#sub matlab_var
+#{
+#    my ($s) = @_;
+#
+#   if(&CJ::isnumeric($s)){
+#        return "[$s]";
+#    }else{
+#        return "\'$s\'";
+#    }
+#
+#}
 
 
 
 
 
 
-sub grep_var_line
-{
-    my ($pattern, $string) = @_;
 
-# go to $TOP and look for the length of the found var;
-my $this_line;
-my @lines = split /\n/, $string;
-foreach my $line (@lines) {
-    if($line =~ /\s*(?<!\%)${pattern}\s*=.*/){
-        $this_line = $line;
-        last;
-    }
-}
-    if($this_line){
-    return $this_line;
-    }else{
-    &CJ::err("Variable '$pattern' was not declared.\n");
-    }
-}
-
-
-sub uncomment_matlab_line{
-    my ($line) = @_;
-    $line =~ s/^(?:(?!\').)*\K\%(.*)//;
-    return $line;
-}
 
 
 

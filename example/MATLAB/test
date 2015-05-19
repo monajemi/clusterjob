@@ -3,6 +3,10 @@ if [ "$1" == "run" ];then
 perl /Users/hatef/github_projects/clusterjob/src/CJ.pl run proclus myMatlabJob.m -dep ./ -m "test of CJ" -mem "10G"
 elif [ "$1" == "help" ];then
 perl /Users/hatef/github_projects/clusterjob/src/CJ.pl -help
+elif [ "$1" == "history" ];then
+perl /Users/hatef/github_projects/clusterjob/src/CJ.pl history
+elif [ "$1" == "state" ];then
+perl /Users/hatef/github_projects/clusterjob/src/CJ.pl state
 elif [ "$1" == "clean" ];then
 perl /Users/hatef/github_projects/clusterjob/src/CJ.pl clean 
 elif [ "$1" == "get"  ]; then

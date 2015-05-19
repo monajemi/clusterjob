@@ -9,6 +9,128 @@ use CJ;
 
 
 
+
+
+
+
+
+sub read_matlab_index_set
+{
+    my ($forline, $TOP) = @_;
+    
+    chomp($forline);
+    $forline = &CJ::Matlab::uncomment_matlab_line($forline);   # uncomment the line so you dont deal with comments. easier parsing;
+    
+    
+    # split at equal sign.
+    my @myarray    = split(/\s*=\s*/,$forline);
+    my @tag     = split(/\s/,$myarray[0]);
+    my $idx_tag = $tag[-1];
+    
+    
+    
+    
+    my $range;
+    # The right of equal sign
+    my $right  = $myarray[1];
+    
+    # see if the forline contains :
+    if($right =~ /.*\:.*/){
+        
+        my @rightarray = split( /\s*:\s*/, $right, 2 );
+        
+        my $low =$rightarray[0];
+        if(! &CJ::isnumeric($low) ){
+            &CJ::err("The lower limit of for MUST be numeric for this version of clusterjob\n");
+        }
+        
+        
+        
+        # exit on unallowed structure
+        if ($rightarray[1] =~ /.*:.*/){
+            &CJ::err("Sorry!...structure 'for i=1:1:3' is not allowed in clusterjob. Try rewriting your script using 'for i = 1:3' structure\n");
+        }
+        
+        
+        
+        if($rightarray[1] =~ /\s*length\(\s*(.+?)\s*\)/){
+            
+            #CASE i = 1:length(var);
+            # find the variable;
+            my ($var) = $rightarray[1] =~ /\s*length\(\s*(.+?)\s*\)/;
+            my $this_line = &CJ::grep_var_line($var,$TOP);
+            
+            
+            #extract the range
+            my @this_array    = split(/\s*=\s*/,$this_line);
+            
+            my $numbers;
+            if($this_array[1] =~ /\[\s*(.+?)\s*\]/){
+                ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
+            }else{
+                # FUTURE_REV_ADD
+                &CJ::err("MATLAB structure '$this_line ' not currently supported for parrun.");
+            }
+            
+            
+            
+            my @vals = split(/,|;/,$numbers);
+            
+            my $high = 1+$#vals;
+            my @range = ($low..$high);
+            $range = join(',',@range);
+            
+        }elsif($rightarray[1] =~ /\s*(\D+).*/) {
+            print "$rightarray[1]"."\n";
+            # CASE i = 1:L
+            # find the variable;
+            my($var) = $rightarray[1] =~ /\s*(\D+).*/;
+            my $this_line = &CJ::grep_var_line($var,$TOP);
+            
+            #extract the range
+            my @this_array    = split(/\s*=\s*/,$this_line);
+            my ($high) = $this_array[1] =~ /\[?\s*(\d+)\s*\]?/;
+            my @range = ($low..$high);
+            $range = join(',',@range);
+            
+        }elsif($rightarray[1] =~ /.*(\d+).*/){
+            # CASE i = 1:10
+            my ($high) = $rightarray[1] =~ /\s*(\d+).*/;
+            my @range = ($low..$high);
+            $range = join(',',@range);
+            
+        }else{
+            &CJ::err("strcuture of for loop not recognized by clusterjob. try rewriting your for loop using 'i = 1:10' structure");
+            
+        }
+        
+        
+    }
+    
+    return ($idx_tag, $range);
+}
+
+
+
+
+
+
+
+
+sub uncomment_matlab_line{
+    my ($line) = @_;
+    $line =~ s/^(?:(?!\').)*\K\%(.*)//;
+    return $line;
+}
+
+
+
+
+
+
+
+
+
 sub make_collect_script
 {
 my ($res_filename, $done_filename, $bqs) = @_;
