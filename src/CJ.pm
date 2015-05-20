@@ -7,6 +7,107 @@ use CJ::CJVars;
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+#=================================================================
+#            CLUSTERJOB SAVE (ONLY SAVES THE OUTPUT OF 'GET')
+#  ex.  clusterjob save package
+#  ex.  clusterjob save package ~/Downloads/myDIR
+#=================================================================
+
+
+
+sub save_results{
+    
+    my ($package,$save_path) = @_;
+    
+    
+    
+    if(! &CJ::is_valid_package_name($package)){
+        &CJ::err("Please enter a valid package name");
+    }
+    
+    my $info  = &CJ::retrieve_package_info($package);
+    
+    
+    
+    
+    
+    if( !defined($save_path)){
+        # Read the deafult save directory
+        $save_path= $info->{'save_path'};
+        print "Saving results in ${save_path}:\n";
+    }
+    
+    
+    
+    
+    if(-d $save_path){
+        # Ask if it needs to be overwritten
+        
+        print "\nDirectory $save_path already exists. Do you want to overwrite? Y/N\n ";
+        my $yesno =  <STDIN>; chomp($yesno);
+        if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
+            
+            
+            my $cmd = "rm -rf $save_path/*";
+            &CJ::my_system($cmd);
+            
+            $cmd = "rsync -arz  $get_tmp_dir/$package/ $save_path/";
+            &CJ::my_system($cmd);
+            
+        }else{
+            
+            &CJ::err("Directory $save_path cannot be overwritten!");
+            
+        }
+        
+        
+    }else{
+        
+        # Create directories
+        my $cmd = "mkdir -p $save_path";
+        &CJ::my_system($cmd) ;
+        
+        $cmd = "rsync -arz  $get_tmp_dir/$package/ $save_path/";
+        &CJ::my_system($cmd);
+        
+        
+    }
+    
+    
+    my $date = &CJ::date();
+    # Find the last number
+    my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
+    my ($hist_date, $time) = split('\_', $date);
+    my $history = sprintf("%-15u%-15s",$lastnum+1, $hist_date );
+    my $flag = "save";
+    $history .= sprintf("%-21s%-10s",$package, $flag);
+    # ADD THIS SAVE TO HISTRY
+    &CJ::add_to_history($history);
+
+    
+    exit 0;
+}
+
+
+
+
+
+
+
+
+
+
 sub show_history{
     my ($history_argin) = @_;
 
@@ -89,6 +190,11 @@ sub clean
             
             if ($pattern_exists==0){
                 $info =  &CJ::retrieve_package_info($package);
+                
+                # TODO :
+                # CHECK TO SEE IF package has already been deleted
+                #
+                
             }else{
                 &CJ::err("No such job found in CJ database.");
             }
@@ -125,6 +231,21 @@ sub clean
         my $cmd = "rm -rf $local_clean;rm -rf $save_clean; ssh ${account} 'rm -rf $remote_clean' " ;
         &CJ::my_system($cmd);
     }
+    
+    
+    
+    
+    
+    my $date = &CJ::date();
+    # Find the last number
+    my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
+    my ($hist_date, $time) = split('\_', $date);
+    my $history = sprintf("%-15u%-15s",$lastnum+1, $hist_date );
+    
+    my $flag = "clean";
+    # ADD THIS CLEAN TO HISTRY
+    $history .= sprintf("%-21s%-10s",$package, $flag);
+    &CJ::add_to_history($history);
     
     
     exit 0;

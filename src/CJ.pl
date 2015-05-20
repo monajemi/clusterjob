@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#/usr/bin/perl
 #
 # run the specified code on a cluster
 # Usage:
@@ -64,15 +64,37 @@ $::VERSION = 0.0.1;
 $dep_folder = ".";
 $mem        = "8G";      # default memeory
 $message    = "";        # default message
+
 my $spec = <<'EOSPEC';
-   -dep    <dep_path>		 dependency folder path [nocase]
-                                 {$dep_folder=$dep_path}
-   -m      <msg>	         reminder message 
-                                 {$message=$msg}
-   -mem    <memory>	         memory requested [nocase]
-                                 {$mem=$memory}
-   -h      [<history_argin>]	 history -n|pkg|all [nocase]
-                                 {defer{ &CJ::show_history($history_argin) }}
+   -dep          <dep_path>		 dependency folder path [nocase]
+                                              {$dep_folder=$dep_path}
+   -m            <msg>	                 reminder message
+                                              {$message=$msg}
+   -mem          <memory>	         memory requested [nocase]
+                                              {$mem=$memory}
+   -h[istory]   [<history_argin>]	 history -n|pkg|all [nocase]
+                                              {defer{ &CJ::show_history($history_argin) }}
+   clean        [<pkg>]	                 clean certain package [nocase]
+                                              {defer{ &CJ::clean($pkg); }}
+   state        [<pkg>]	                 state of package [nocase]
+                                              {defer{ &CJ::get_state($pkg) }}
+   info         [<pkg>]	                 info of certain package [nocase]
+                                              {defer{ &CJ::show_info($pkg); }}
+   show         [<pkg>]	                 show program of certain package [nocase]
+                                              {defer{ &CJ::show_program($pkg) }}
+[par]run        <cluster> <code>	 run or parrun code on the cluster [nocase]
+                                              {my $runflag;
+                                               {if ($_PUNCT_{"par"} ) {$runflag= "parrun";}
+                                               else                  {$runflag= "run";}
+                                               }
+                                                  {defer{run($cluster,$code,$runflag)}}
+                                               }
+   get          [<pkg>] <filename>	  get results back [nocase]
+                                                  {defer{&CJ::Get::get_results($pkg,$filename)}}
+   save         <pkg> [<path>]	          save a package in path [nocase]
+                                                  {defer{&CJ::save_results($pkg,$path)}}
+
+
 EOSPEC
 
 my $opts = Getopt::Declare->new($spec);
@@ -83,29 +105,18 @@ my $opts = Getopt::Declare->new($spec);
 
 
 
-my $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
 
-#====================================
-#         DATE OF CALL
-#====================================
-$date = &CJ::date();
+
+
 
 
 #====================================
 #         READ INPUT
 #====================================
-my $argin = $#ARGV+1 ;
-
-
-
-if($argin < 1){
-&CJ::err("Incorrect usage: use 'perl clusterjob.pl run MACHINE PROGRAM [options]' or 'perl clusterjon.pl clean' ")
-}
 
 
 # create .info directory
 mkdir "$install_dir/.info" unless (-d "$install_dir/.info");
-
 
 # create history file if it does not exist
 if( ! -f $history_file ){
@@ -113,11 +124,6 @@ if( ! -f $history_file ){
 my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%30s", "count", "date", "package", "action", "machine", "job_id", "message");
 &CJ::add_to_history($header);
 }
-
-# Find the last number
-my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
-($hist_date, $time) = split('\_', $date);
-my $history = sprintf("%-15u%-15s",$lastnum+1, $hist_date );
 
 
 # create run_history file if it does not exit
@@ -127,373 +133,57 @@ my $history = sprintf("%-15u%-15s",$lastnum+1, $hist_date );
 &CJ::touch($run_history_file) unless (-f $run_history_file);
 
 
-my $runflag= shift;
-#==========================================================
-#            CLUSTERJOB CLEAN
-#       ex.  clusterjob clean
-#       ex.  clusterjob clean 2015JAN07_213759
-#==========================================================
-
-if($runflag eq "clean"){
-    
-my $package = shift;
-    
-    &CJ::clean($package);
-    
-    # ADD THIS CLEAN TO HISTRY
-    my $history .= sprintf("%-21s%-10s",$package, $runflag);
-    &CJ::add_to_history($history);
-    
-
-    
-}
-
-  
-
-
-#==========================================================
-#            CLUSTERJOB STATE
-#       ex.  clusterjob state
-#       ex.  clusterjob state 2015JAN07_213759
-#==========================================================
-
-if($runflag eq "state"){
-my $package = shift;
-
-&CJ::get_state($package);
-    
-}
-
-
-
-
-
-
-#==========================================================
-#            CLUSTERJOB INFO
-#       ex.  clusterjob info
-#==========================================================
-if($runflag eq "show" ){
-my $package = shift;
-&CJ::show_program($package);
-
-}
-
-
-if($runflag eq "info" ){
-    my $package = shift;
-    &CJ::show_info($package);
-}
-
-
-
-
-#==========================================================
-#            CLUSTERJOB HISTORY
-#       ex.  clusterjob history
-#       ex.  clusterjob history -n
-#       ex.  clusterjob history 2015JAN07_213759
-#==========================================================
-
-#if($runflag eq "history" ){
-#sub history{
-#    my ($history_argin) = @_;
-#}
-    
-
-
-
-
-
-#==========================================================
-#            CLUSTERJOB GET
-#       ex.  clusterjob get Results.txt
-#       ex.  clusterjob get 2015JAN07_213759  Results.mat
-#==========================================================
-
-
-if($runflag eq "get" ){
-    
-    
-    
-    my $package = shift;
-    
-    my $machine;
-    my $account;
-    my $remote_path;
-    my $local_path;
-    my $job_id;
-    my $bqs;
-    my $runflag;
-    my $program;
-    
-    my $res_filename;
-    if(&CJ::is_valid_package_name($package)){
-        
-        $res_filename = shift;
-        # read info from $run_history_file
-        
-        my $cmd= "grep -q '$package' '$run_history_file'";
-        $pattern_exists = system($cmd);chomp($pattern_exists);
-        
-        if ($pattern_exists==0){
-            
-            my $info  = &CJ::retrieve_package_info($package);
-            $machine = $info->{'machine'};
-            $account    = $info->{'account'};
-            $remote_path = $info->{'remote_path'};
-            $runflag    = $info->{'runflag'};
-            $bqs        = $info->{'bqs'};
-            $job_id     = $info->{'job_id'};
-            $program    = $info->{'program'};
-
-           
-            
-        }else{
-            &CJ::err("No such job found in CJ database");
-        }
-
-    }elsif($package ne "" ){
-        $res_filename = $package;  # the input is then filename in this case.
-        #read the first lines of last_instance.info;
-        
-        my $info  = &CJ::retrieve_package_info();   # retrieves the last instance info;
-        $machine    = $info->{'machine'};
-        $package    = $info->{'package'};
-        $account    = $info->{'account'};
-        $remote_path = $info->{'remote_path'};
-        $runflag    = $info->{'runflag'};
-        $bqs        = $info->{'bqs'};
-        $job_id     = $info->{'job_id'};
-        $program    = $info->{'program'};
-        
-        
-    }else{
-       &CJ::err("Incorrect use of 'CJ get'. Consider adding filename");
-    }
-    
-    
-    
-    # Get current remote directory from .ssh_config
-    # user might wanna rename, copy to anothet place,
-    # etc. We consider the latest one , and if the
-    # save remote is different, we issue a warning
-    # for the user.
-    print "$machine\n";
-    my $ssh             = &CJ::host($machine);
-    my $remotePrefix    = $ssh->{remote_repo};
-    
-    my @program_name    = split /\./,$program;
-    my  $lastone = pop @program_name;
-    my $program_name   =   join /\_/,@program_name;
-    my $current_remote_path = "$remotePrefix/$program_name/$package";
-  
-    print("$remote_path");
-    if($current_remote_path ne $remote_path){
-        &CJ::warning("the .ssh_config remote directory and the history remote are not the same. CJ is choosing:\n     $account:${current_remote_path}.");
-        $remote_path = $current_remote_path;
-    }
-    
-    
-    
-    
-    
-    
-    
-    
-    #my $cmd = "rm -rf  $get_tmp_dir/";
-    #&CJ::my_system($cmd) unless($get_tmp_dir=="");
-
-    
-    
-    
-    
-# a bit more work if it is parrun!
-# just collecting all of the runs
-if($runflag =~ m/^par*/){
-
-
-if ($res_filename eq ""){
-&CJ::err("The result filename must be provided for GET with parrun packages, eg, 'clusterjob get Results.mat' ");
-}
-    
-    
-my $check_runs = &CJ::Get::make_parrun_check_script($info,$res_filename);
-my $check_name = "check_complete.sh";
-my $check_path = "/tmp/$check_name";
-&CJ::writeFile($check_path,$check_runs);
-my $cmd = "scp $check_path $account:$remote_path/ ;ssh $account 'source ~/.bashrc;cd $remote_path; bash $check_name'";
-&CJ::my_system($cmd);
-        
-# Run a script to gather all *.mat files of the same name.
-my $done_filename = "done_list.txt";
-$collect_bash_script = &CJ::Matlab::make_collect_script($res_filename, $done_filename,$bqs);
-#print "$collect_bash_script";
-
-        
-my $CJ_reduce = "$install_dir/CJ/CJ_reduce.m";
-my $collect_name = "cj_collect.sh";
-my $collect_bash_path = "/tmp/$collect_name";
-&CJ::writeFile($collect_bash_path,$collect_bash_script);
-my $cmd = "scp $collect_bash_path $CJ_reduce $account:$remote_path/";
-&CJ::my_system($cmd);
-
-
-my $cmd = "ssh $account 'cd $remote_path; srun bash -l $collect_name'";
-&CJ::my_system($cmd);
-        
-}
- 
-mkdir "$get_tmp_dir" unless (-d "$get_tmp_dir");    
-mkdir "$get_tmp_dir/$package" unless (-d "$get_tmp_dir/$package");
-    
-my $cmd = "rsync -arvz  $account:${remote_path}/* $get_tmp_dir/$package";
-&CJ::my_system($cmd);
-&CJ::message("Please see your last results in $get_tmp_dir/$package");
-    
-    
-exit 0;
-}
-
-
-
-
-
-#=================================================================
-#            CLUSTERJOB SAVE (ONLY SAVES THE OUTPUT OF 'GET')
-#  ex.  clusterjob save package
-#  ex.  clusterjob save package ~/Downloads/myDIR
-#=================================================================
-
-
-if($runflag eq "save" ){
-    my $package = shift;
-    
-    if(! &CJ::is_valid_package_name($package)){
-        &CJ::err("Please enter a valid package name");
-    }
-    
-    my $save_path = shift;
-    # my $package = `sed -n '1{p;q;}' $save_info_file`;chomp($package);
-    
-    
-    my $info  = &CJ::retrieve_package_info($package);
-    
-    
-    
-    
-    
-    if( $save_path eq ""){
-    # Read the deafult save directory
-        $save_path= $info->{'save_path'};
-
-        print "Saving results in ${save_path}:\n";
-    }
-    
-    
-    
-    
-    if(-d $save_path){
-        # Ask if it needs to be overwritten
-        
-        print "\nDirectory $save_path already exists. Do you want to overwrite? Y/N\n ";
-        my $yesno =  <STDIN>; chomp($yesno);
-        if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
-            
-            
-        my $cmd = "rm -rf $save_path/*";
-        &CJ::my_system($cmd);
-            
-        my $cmd = "rsync -arz  $get_tmp_dir/$package/ $save_path/";
-        &CJ::my_system($cmd);
-            
-      
-        $history .= sprintf("%-21s%-10s",$package, $runflag);
-      
-        
-        # ADD THIS SAVE TO HISTRY
-        &CJ::add_to_history($history);
-            
-            
-        }else{
-        
-        print "Directory $save_path cannot be overwritten!\n";
-        
-        }
-        
-        
-    }else{
-    
-    # Create directories
-    my $cmd = "mkdir -p $save_path";
-    &CJ::my_system($cmd) ;
-    
-    my $cmd = "rsync -arz  $get_tmp_dir/$package/ $save_path/";
-    &CJ::my_system($cmd);
-        
-    $history .= sprintf("%-21s%-10s",$package, $runflag);
-    # ADD THIS SAVE TO HISTRY
-    &CJ::add_to_history($history);
-        
-    }
-    
-
-
-    exit 0;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
 
 #========================================================================
 #            CLUSTERJOB RUN/DEPLOY/PARRUN
-#  ex.  clusterjob run sherlock myScript.m DepFolder
-#  ex.  clusterjob run sherlock myScript.m DepFolder -m  "my reminder"
+#  ex.  clusterjob run sherlock myScript.m -dep DepFolder
+#  ex.  clusterjob run sherlock myScript.m -dep DepFolder -m  "my reminder"
 #========================================================================
 
-if($argin < 3){
-    &CJ::err("Incorrect usage: use 'perl clusterjob.pl run MACHINE PROGRAM' or 'perl clusterjon.pl clean' ");
-}
-
-
-# READ EXTRA ARGUMENTS
-my $machine = shift;
-my $program = shift;
-
+sub run{
+    
+    my ($machine,$program, $runflag) = @_;
+    
+    print "$runflag"."ing [$program] on [$machine]:\n";
+   
+    
+#====================================
+#         DATE OF CALL
+#====================================
+my $date = &CJ::date();
+# Find the last number
+my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
+my ($hist_date, $time) = split('\_', $date);
+my $history = sprintf("%-15u%-15s",$lastnum+1, $hist_date );
+    
+    
+    
+    
 $short_message = substr($message, 0, 30);
 
+    
+    
 my $ssh      = &CJ::host($machine);
 my $account  = $ssh->{account};
 my $bqs      = $ssh->{bqs};
 my $remotePrefix    = $ssh->{remote_repo};
 
 
+
 #check to see if the file and dep folder exists
+    
+my $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
 if(! -e "$BASE/$program" ){
  &CJ::err("$BASE/$program not found");
 }
 if(! -d "$BASE/$dep_folder" ){
     &CJ::err("Dependency folder $BASE/$dep_folder not found");
 }
-
-
+    
+print "   BASE-DIR::$BASE\n";
 
 
 #=======================================
@@ -538,11 +228,15 @@ if(-d $localPrefix){
     mkdir "$local_sep_Dir" unless (-d $local_sep_Dir);
 }
 
-
+    
 # cp dependencies
 my $cmd   = "cp -r $dep_folder/* $local_sep_Dir/";
 &CJ::my_system($cmd);
 
+ 
+   
+   
+    
 #=====================
 #  REMOTE DIRECTORIES
 #=====================
@@ -573,18 +267,9 @@ TEXT
 &CJ::err("unknown BQS");
 }
 
-
-
-
-
-
-
-
-
-
+    
 
 if ($runflag eq "deploy" || $runflag eq "run"){
-
 
 #============================================
 #   COPY ALL NECESSARY FILES INTO THE
@@ -597,13 +282,14 @@ my $cmd = "cp $BASE/$program $local_sep_Dir/";
 #===========================================
 # BUILD A BASH WRAPPER
 #===========================================
+    
+  
 
-my $sh_script = make_shell_script($program,$date);
+my $sh_script = make_shell_script($program,$date,$bqs);
 $local_sh_path = "$local_sep_Dir/bashMain.sh";
 &CJ::writeFile($local_sh_path, $sh_script);
 
-
-
+ 
 my $master_script;
 $HEADER = &CJ::bash_header($bqs);
 $master_script=$HEADER;
@@ -612,6 +298,7 @@ $master_script.="$docstring";
     
 $master_script .= "mkdir ${remote_sep_Dir}"."/logs" . "\n" ;
 $master_script .= "mkdir ${remote_sep_Dir}"."/scripts" . "\n" ;
+ 
 
 
 my $tagstr="$program_name[0]_$date";
@@ -866,7 +553,7 @@ if($nloops eq 1){
                     
                     # build bashMain.sh for each parallel package
                     my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
-                    my $sh_script = make_par_shell_script($program,$date,$counter, $remote_par_sep_dir);
+                    my $sh_script = make_par_shell_script($program,$date,$bqs,$counter, $remote_par_sep_dir);
                     $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                     &CJ::writeFile($local_sh_path, $sh_script);
                     
@@ -928,7 +615,7 @@ if($nloops eq 1){
                 
                 # build bashMain.sh for each parallel package
                 my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
-                my $sh_script = make_par_shell_script($program,$date,$counter, $remote_par_sep_dir);
+                my $sh_script = make_par_shell_script($program,$date,$bqs,$counter, $remote_par_sep_dir);
                 $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
@@ -991,7 +678,7 @@ if($nloops eq 1){
                 
                 # build bashMain.sh for each parallel package
                 my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
-                my $sh_script = make_par_shell_script($program,$date,$counter, $remote_par_sep_dir);
+                my $sh_script = make_par_shell_script($program,$date,$bqs,$counter, $remote_par_sep_dir);
                 $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
@@ -1160,6 +847,13 @@ $last_instance.=`cat $BASE/$program`;
 
 
 
+    
+    exit 0;
+    
+    
+}
+    
+    
 
 
 
@@ -1169,7 +863,7 @@ $last_instance.=`cat $BASE/$program`;
 
 sub make_shell_script
     {
-my ($program,$date) = @_;
+my ($program,$date,$bqs) = @_;
 
 my $sh_script;
 
@@ -1330,7 +1024,7 @@ return $sh_script;
 
 sub make_par_shell_script
 {
-my ($program,$date,$counter,$remote_path) = @_;
+my ($program,$date,$bqs,$counter,$remote_path) = @_;
 
 my $sh_script;
 
