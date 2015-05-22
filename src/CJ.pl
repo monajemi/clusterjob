@@ -52,8 +52,20 @@ use CJ::CJVars;  # contains global variables of CJ
 use CJ::Matlab;  # Contains Matlab related subs
 use CJ::Get;     # Contains Get related subs
 use Getopt::Declare;
-use vars qw($message $mem $dep_folder);  # options
+use vars qw($message $mem $dep_folder $verbose);  # options
 $::VERSION = 0.0.1;
+
+
+
+
+
+
+
+#=========================================
+# refresh CJlog before declaring options.
+# it keeps updated for each new run
+&CJ::my_system("rm $CJlog");
+#=========================================
 
 
 
@@ -64,8 +76,11 @@ $::VERSION = 0.0.1;
 $dep_folder = ".";
 $mem        = "8G";      # default memeory
 $message    = "";        # default message
+$verbose    = 0;	 # default - redirect to CJlog
 
 my $spec = <<'EOSPEC';
+   --v[erbose]	                         verbose mode [nocase]
+                                              {$verbose=1}
    -dep          <dep_path>		 dependency folder path [nocase]
                                               {$dep_folder=$dep_path}
    -m            <msg>	                 reminder message
@@ -75,24 +90,27 @@ my $spec = <<'EOSPEC';
    -h[istory]   [<history_argin>]	 history -n|pkg|all [nocase]
                                               {defer{ &CJ::show_history($history_argin) }}
    clean        [<pkg>]	                 clean certain package [nocase]
-                                              {defer{ &CJ::clean($pkg); }}
+                                              {defer{ &CJ::clean($pkg,$verbose); }}
    state        [<pkg>]	                 state of package [nocase]
                                               {defer{ &CJ::get_state($pkg) }}
    info         [<pkg>]	                 info of certain package [nocase]
                                               {defer{ &CJ::show_info($pkg); }}
    show         [<pkg>]	                 show program of certain package [nocase]
                                               {defer{ &CJ::show_program($pkg) }}
-[par]run        <cluster> <code>	 run or parrun code on the cluster [nocase]
-                                              {my $runflag;
-                                               {if ($_PUNCT_{"par"} ) {$runflag= "parrun";}
-                                               else                  {$runflag= "run";}
-                                               }
+   run          <cluster> <code>	 run or parrun code on the cluster [nocase]
+                                              {my $runflag = "run";
                                                   {defer{run($cluster,$code,$runflag)}}
                                                }
-   get          [<pkg>] <filename>	  get results back [nocase]
-                                                  {defer{&CJ::Get::get_results($pkg,$filename)}}
-   save         <pkg> [<path>]	          save a package in path [nocase]
-                                                  {defer{&CJ::save_results($pkg,$path)}}
+   parrun       <cluster> <code>	 parrun code on the cluster [nocase]
+                                              {my $runflag = "parrun";
+                                                  {defer{run($cluster,$code,$runflag)}}
+                                               }
+   reduce       <filename> [<pkg>] 	 reduce results of parrun [nocase]
+                                                  {defer{&CJ::Get::reduce_results($pkg,$filename,$verbose)}}
+   get          [<pkg>]	                 bring results back to local machine [nocase]
+                                                  {defer{&CJ::Get::get_results($pkg,$verbose)}}
+   save         <pkg> [<path>]	         save a package in path [nocase]
+                                                  {defer{&CJ::save_results($pkg,$path,$verbose)}}
 
 
 EOSPEC
@@ -113,7 +131,6 @@ my $opts = Getopt::Declare->new($spec);
 #====================================
 #         READ INPUT
 #====================================
-
 
 # create .info directory
 mkdir "$install_dir/.info" unless (-d "$install_dir/.info");
@@ -147,7 +164,7 @@ sub run{
     
     my ($machine,$program, $runflag) = @_;
     
-    print "$runflag"."ing [$program] on [$machine]:\n";
+    CJ::message("$runflag"."ing [$program] on [$machine]");
    
     
 #====================================
@@ -183,7 +200,7 @@ if(! -d "$BASE/$dep_folder" ){
     &CJ::err("Dependency folder $BASE/$dep_folder not found");
 }
     
-print "   BASE-DIR::$BASE\n";
+&CJ::message("Base-dir=$BASE");
 
 
 #=======================================
@@ -231,7 +248,7 @@ if(-d $localPrefix){
     
 # cp dependencies
 my $cmd   = "cp -r $dep_folder/* $local_sep_Dir/";
-&CJ::my_system($cmd);
+&CJ::my_system($cmd,$verbose);
 
  
    
@@ -276,7 +293,7 @@ if ($runflag eq "deploy" || $runflag eq "run"){
 #    EXPERIMENT FOLDER
 #============================================
 my $cmd = "cp $BASE/$program $local_sep_Dir/";
-&CJ::my_system($cmd);
+&CJ::my_system($cmd,$verbose);
 
 
 #===========================================
@@ -326,30 +343,30 @@ my $local_master_path="$local_sep_Dir/master.sh";
 #==================================
 my $tarfile="$date".".tar.gz";
 my $cmd="cd $localDir; tar -czf $tarfile $date/  ; rm -rf $local_sep_Dir  ; cd $BASE";
-&CJ::my_system($cmd);
+&CJ::my_system($cmd,$verbose);
 
     
 # create remote directory  using outText
 my $cmd = "ssh $account 'echo `$outText` '  ";
-&CJ::my_system($cmd);
+&CJ::my_system($cmd, $verbose);
 
 
-print "$runflag"."ing files:\n";
+&CJ::message("Sending package");
 # copy tar.gz file to remoteDir
 my $cmd = "rsync -avz  ${localDir}/${tarfile} ${account}:$remoteDir/";
-&CJ::my_system($cmd);
+&CJ::my_system($cmd,$verbose);
 
 
-
+&CJ::message("Submitting job(s)");
 my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; cd ${date}; bash master.sh > $remote_sep_Dir/qsub.info; sleep 2'";
-&CJ::my_system($cmd) unless ($runflag eq "deploy");
+&CJ::my_system($cmd,$verbose) unless ($runflag eq "deploy");
     
 
  
 # bring the log file
 my $qsubfilepath="$remote_sep_Dir/qsub.info";
 my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/.info";
-&CJ::my_system($cmd) unless ($runflag eq "deploy");
+&CJ::my_system($cmd,$verbose) unless ($runflag eq "deploy");
 
     
     
@@ -366,11 +383,11 @@ close $FILE;
     
 chomp($job_id_info);
 ($job_id) = $job_id_info =~ /(\d+)/; # get the first string of integer, i.e., job_id
-print "JOB_ID: $job_id\n";
+CJ::message("Job-id: $job_id");
     
 #delete the local qsub.info after use
 my $cmd = "rm $local_qsub_info_file";
-&CJ::my_system($cmd);
+&CJ::my_system($cmd,$verbose);
     
     
 
@@ -720,7 +737,7 @@ if($nloops eq 1){
 #    EXPERIMENT FOLDER
 #============================================
 my $cmd = "cp $BASE/$program $local_sep_Dir/";
-&CJ::my_system($cmd);
+&CJ::my_system($cmd,$verbose);
     
     
 #===================================
@@ -744,13 +761,13 @@ my $cmd = "ssh $account 'echo `$outText` '  ";
 system($cmd);
 
 
-print "$runflag"."ing files:\n";
+&CJ::message("Sending package");
 # copy tar.gz file to remoteDir
 my $cmd = "rsync -avz  ${localDir}/${tarfile} ${account}:$remoteDir/";
-&CJ::my_system($cmd);
+&CJ::my_system($cmd,$verbose);
 
 
-
+&CJ::message("Submitting job(s)");
 my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzf ${tarfile} ; cd ${date}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep 2'";
 system($cmd) unless ($runflag eq "pardeploy");
  
@@ -759,7 +776,7 @@ system($cmd) unless ($runflag eq "pardeploy");
 # bring the log file
 my $qsubfilepath="$remote_sep_Dir/qsub.info";
 my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/";
-&CJ::my_system($cmd) unless ($runflag eq "pardeploy");
+&CJ::my_system($cmd,$verbose) unless ($runflag eq "pardeploy");
     
 
     
@@ -781,7 +798,7 @@ $job_id = join(',', @job_ids);
 
 #delete the local qsub.info after use
 my $cmd = "rm $local_qsub_info_file";
-&CJ::my_system($cmd);
+&CJ::my_system($cmd,$verbose);
     
     
 # store tarfile info for deletion

@@ -4,6 +4,7 @@ package CJ;
 use strict;
 use warnings;
 use CJ::CJVars;
+$::VERSION = 0.0.1;
 
 
 
@@ -28,7 +29,7 @@ use CJ::CJVars;
 
 sub save_results{
     
-    my ($package,$save_path) = @_;
+    my ($package,$save_path,$verbose) = @_;
     
     
     
@@ -45,7 +46,7 @@ sub save_results{
     if( !defined($save_path)){
         # Read the deafult save directory
         $save_path= $info->{'save_path'};
-        print "Saving results in ${save_path}:\n";
+        &CJ::message("Saving results in ${save_path}");
     }
     
     
@@ -54,16 +55,16 @@ sub save_results{
     if(-d $save_path){
         # Ask if it needs to be overwritten
         
-        print "\nDirectory $save_path already exists. Do you want to overwrite? Y/N\n ";
+        CJ::message("Directory $save_path already exists. Do you want to overwrite? Y/N");
         my $yesno =  <STDIN>; chomp($yesno);
         if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
             
             
             my $cmd = "rm -rf $save_path/*";
-            &CJ::my_system($cmd);
+            &CJ::my_system($cmd,$verbose);
             
             $cmd = "rsync -arz  $get_tmp_dir/$package/ $save_path/";
-            &CJ::my_system($cmd);
+            &CJ::my_system($cmd,$verbose);
             
         }else{
             
@@ -76,10 +77,10 @@ sub save_results{
         
         # Create directories
         my $cmd = "mkdir -p $save_path";
-        &CJ::my_system($cmd) ;
+        &CJ::my_system($cmd,$verbose) ;
         
         $cmd = "rsync -arz  $get_tmp_dir/$package/ $save_path/";
-        &CJ::my_system($cmd);
+        &CJ::my_system($cmd,$verbose);
         
         
     }
@@ -167,7 +168,7 @@ sub show_history{
 
 sub clean
 {
-    my ($package) = @_;
+    my ($package, $verbose) = @_;
     
     my $account;
     my $local_path;
@@ -213,7 +214,7 @@ sub clean
     $save_path   =   $info->{'save_path'};
     
     
-    print "CLEANing $package:\n";
+    CJ::message("Cleaning $package");
     my $local_clean     = "$local_path\*";
     my $remote_clean    = "$remote_path\*";
     my $save_clean      = "$save_path\*";
@@ -222,14 +223,14 @@ sub clean
     
     
     if (defined($job_id) && $job_id ne "") {
-        print "deleting jobs associated with job $package\n";
+        CJ::message("Deleting jobs associated with job $package");
         my @job_ids = split(',',$job_id);
         $job_id = join(' ',@job_ids);
         my $cmd = "rm -rf $local_clean; rm -rf $save_clean; ssh ${account} 'qdel $job_id; rm -rf $remote_clean' " ;
-        &CJ::my_system($cmd);
+        &CJ::my_system($cmd,$verbose);
     }else {
         my $cmd = "rm -rf $local_clean;rm -rf $save_clean; ssh ${account} 'rm -rf $remote_clean' " ;
-        &CJ::my_system($cmd);
+        &CJ::my_system($cmd,$verbose);
     }
     
     
@@ -281,7 +282,7 @@ sub show_program
                 $info = &CJ::retrieve_package_info($package);
                 
             }else{
-                print "No such job found in the database\n";
+                CJ::err("No such job found in the database");
             }
             
         }else{
@@ -339,7 +340,7 @@ sub show_info
                 $info = &CJ::retrieve_package_info($package);
                 
             }else{
-                print "No such job found in the database\n";
+                CJ::err("No such job found in the database");
             }
             
         }else{
@@ -420,7 +421,7 @@ sub get_state
                 $info = &CJ::retrieve_package_info($package);
                 
             }else{
-                print "No such job found in the database\n";
+                CJ::err("No such job found in the database");
             }
             
         }else{
@@ -747,8 +748,15 @@ sub message{
 
 sub my_system
 {
-    print "system: ",$_[0],"\n";
-    system($_[0]);
+   my($cmd,$verbose) = @_;
+    if($verbose){
+        print("system: ",$cmd,"\n");
+        system("$cmd");
+        
+    }else{
+        system("$cmd >> $CJlog  2>&1") ;
+    }
+
 }
 
 

@@ -131,7 +131,7 @@ sub uncomment_matlab_line{
 
 
 
-sub make_collect_script
+sub make_MAT_collect_script
 {
 my ($res_filename, $done_filename, $bqs) = @_;
     
