@@ -214,7 +214,9 @@ sub get_results{
     # etc. We consider the latest one , and if the
     # save remote is different, we issue a warning
     # for the user.
-    print "$machine\n";
+    &CJ::message("Getting results from '$machine'");
+
+    #print "\n";
     my $ssh             = &CJ::host($machine);
     my $remotePrefix    = $ssh->{remote_repo};
     
@@ -238,7 +240,7 @@ sub get_results{
     # parrallel folder might contain a *.vtu file for a certain
     # time, and you certainly dont want to reduce that
     
-    if($runflag =~ m/^par*/){
+    if($runflag =~ m/^par.*/){
         &CJ::message("Run REDUCE before GET for reducing parrun packages");
     }
     

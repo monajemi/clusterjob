@@ -14,6 +14,80 @@ $::VERSION = 0.0.1;
 
 
 
+# ======
+# Build master script
+sub make_master_script{
+    my($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir,$counter) = @_;
+    
+    
+    
+if( (!defined($master_script)) ||  ($master_script eq "")){
+my $docstring=<<DOCSTRING;
+# EXPERIMENT $program
+# COPYRIGHT 2014:
+# Hatef Monajemi (monajemi AT stanford DOT edu)
+# DATE : $date
+DOCSTRING
+
+my $HEADER = &CJ::bash_header($bqs);
+$master_script=$HEADER;
+$master_script.="$docstring";
+}
+
+
+
+
+    my $programName = &CJ::remove_extention($program);
+
+
+    if(!($runflag =~ /^par.*/) ){
+        
+        
+        $master_script .= "mkdir ${remote_sep_Dir}"."/logs" . "\n" ;
+        $master_script .= "mkdir ${remote_sep_Dir}"."/scripts" . "\n" ;
+    
+        my $tagstr="$programName\_$date";
+        if($bqs eq "SGE"){
+            
+        $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem -N $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n";
+        }elsif($bqs eq "SLURM"){
+            
+            $master_script.="sbatch --mem=$mem  --time=40:00:00  -J $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n"
+            
+        }else{
+            &CJ::err("unknown BQS")
+        }
+
+    
+    
+    }elsif(defined($counter)){
+    
+    
+    
+        # Add QSUB to MASTER SCRIPT
+        $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/logs"    . "\n" ;
+        $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/scripts" . "\n" ;
+        
+        
+        my $tagstr="$programName\_$date\_$counter";
+        if($bqs eq "SGE"){
+            $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem -N $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n";
+        }elsif($bqs eq "SLURM"){
+            
+            $master_script.="sbatch --mem=$mem  --time=40:00:00  -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
+            
+        }else{
+            &CJ::err("unknown BQS");
+        }
+        
+        
+    }else{
+            &CJ::err("counter is not defined");
+    }
+    
+    
+    
+}
 
 
 
@@ -223,7 +297,7 @@ sub clean
     
     
     if (defined($job_id) && $job_id ne "") {
-        CJ::message("Deleting jobs associated with job $package");
+        CJ::message("Deleting jobs associated with package $package");
         my @job_ids = split(',',$job_id);
         $job_id = join(' ',@job_ids);
         my $cmd = "rm -rf $local_clean; rm -rf $save_clean; ssh ${account} 'qdel $job_id; rm -rf $remote_clean' " ;
@@ -488,7 +562,7 @@ sub get_state
         if($bqs eq "SGE"){
             $state = (`ssh ${account} 'qstat | grep $job_id' | awk \'{print \$5}\'`) ;chomp($state);
         }elsif($bqs eq "SLURM"){
-            $state = (`ssh ${account} 'sacct | grep $job_id' | awk \'{print \$6}\'`) ;chomp($state);
+            $state = (`ssh ${account} 'sacct | grep $job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$6}\'`) ;chomp($state);
         }else{
             &CJ::err("Unknown batch queueing system");
         }
@@ -754,7 +828,7 @@ sub my_system
         system("$cmd");
         
     }else{
-        system("$cmd >> $CJlog  2>&1") ;
+        system("$cmd >> $CJlog  2>&1") ;#Error messages get sent to same place as standard output.
     }
 
 }
@@ -806,7 +880,17 @@ sub add_to_run_history
 }
 
 
+sub remove_extention
+{
+    my ($program) = @_;
+    
+    my @program_name    = split /\./,$program;
+    my $lastone = pop @program_name;
+    my $program_name   =   join "\_",@program_name;  # NOTE: Dots in the name are replace by \_
 
+    return $program_name;
+    
+}
 
 
 

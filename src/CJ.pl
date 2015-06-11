@@ -97,11 +97,11 @@ my $spec = <<'EOSPEC';
                                               {defer{ &CJ::show_info($pkg); }}
    show         [<pkg>]	                 show program of certain package [nocase]
                                               {defer{ &CJ::show_program($pkg) }}
-   run          <cluster> <code>	 run or parrun code on the cluster [nocase]
+   run          <code> <cluster>	 run code on the cluster [nocase]
                                               {my $runflag = "run";
                                                   {defer{run($cluster,$code,$runflag)}}
                                                }
-   parrun       <cluster> <code>	 parrun code on the cluster [nocase]
+   parrun       <code> <cluster>	 parrun code on the cluster [nocase]
                                               {my $runflag = "parrun";
                                                   {defer{run($cluster,$code,$runflag)}}
                                                }
@@ -156,8 +156,8 @@ my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%30s", "count", "date", "pac
 
 #========================================================================
 #            CLUSTERJOB RUN/DEPLOY/PARRUN
-#  ex.  clusterjob run sherlock myScript.m -dep DepFolder
-#  ex.  clusterjob run sherlock myScript.m -dep DepFolder -m  "my reminder"
+#  ex.  clusterjob run myScript.m sherlock -dep DepFolder
+#  ex.  clusterjob run myScript.m sherlock -dep DepFolder -m  "my reminder"
 #========================================================================
 
 sub run{
@@ -210,20 +210,9 @@ if(! -d "$BASE/$dep_folder" ){
 #       EXAMPLE : MaxEnt/2014DEC02_1426
 #=======================================
 
-my $docstring=<<DOCSTRING;
-# EXPERIMENT $program
-# COPYRIGHT 2014:
-# Hatef Monajemi (monajemi AT stanford DOT edu)
-# DATE : $year $abbr[$mon] $mday  ($hour:$min)
-DOCSTRING
-
-my @program_name = split /\./,$program;
 
 
-my @program_name    = split /\./,$program;
-my  $lastone = pop @program_name;
-my $program_name   =   join /\_/,@program_name;
-
+my $program_name   = &CJ::remove_extention($program);
 my $localDir       = "$localPrefix/"."$program_name";
 my $local_sep_Dir = "$localDir/" . "$date"  ;
 my $saveDir       = "$savePrefix"."$program_name";
@@ -257,7 +246,8 @@ my $cmd   = "cp -r $dep_folder/* $local_sep_Dir/";
 #=====================
 #  REMOTE DIRECTORIES
 #=====================
-my $remoteDir       = "$remotePrefix/"."$program_name[0]";
+my $program_name    = &CJ::remove_extention($program);
+my $remoteDir       = "$remotePrefix/"."$program_name";
 my $remote_sep_Dir = "$remoteDir/" . "$date"  ;
 
 # for creating remote directory
@@ -306,32 +296,14 @@ my $sh_script = make_shell_script($program,$date,$bqs);
 $local_sh_path = "$local_sep_Dir/bashMain.sh";
 &CJ::writeFile($local_sh_path, $sh_script);
 
- 
+# Build master-script for submission
 my $master_script;
-$HEADER = &CJ::bash_header($bqs);
-$master_script=$HEADER;
-$master_script.="$docstring";
- 
+$master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir);
     
-$master_script .= "mkdir ${remote_sep_Dir}"."/logs" . "\n" ;
-$master_script .= "mkdir ${remote_sep_Dir}"."/scripts" . "\n" ;
- 
-
-
-my $tagstr="$program_name[0]_$date";
-if($bqs eq "SGE"){
     
-$master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem -N $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n";
-}elsif($bqs eq "SLURM"){
-
-$master_script.="sbatch --mem=$mem  --time=40:00:00  -J $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n"
-
-}else{
-&CJ::err("unknown BQS")
-}
 
 my $local_master_path="$local_sep_Dir/master.sh";
-    &CJ::writeFile($local_master_path, $master_script);
+&CJ::writeFile($local_master_path, $master_script);
 
 
 
@@ -357,7 +329,7 @@ my $cmd = "rsync -avz  ${localDir}/${tarfile} ${account}:$remoteDir/";
 &CJ::my_system($cmd,$verbose);
 
 
-&CJ::message("Submitting job(s)");
+&CJ::message("Submitting package ${date}");
 my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; cd ${date}; bash master.sh > $remote_sep_Dir/qsub.info; sleep 2'";
 &CJ::my_system($cmd,$verbose) unless ($runflag eq "deploy");
     
@@ -525,10 +497,7 @@ for (split /^/, $FOR) {
 #==============================================
 #        MASTER SCRIPT
 #==============================================
-my $master_script;
-$HEADER = &CJ::bash_header($bqs);
-$master_script=$HEADER;
-$master_script.="$docstring";
+
     
     
     
@@ -536,6 +505,8 @@ $master_script.="$docstring";
 my $nloops = $#forlines_idx_set+1;
 
 my $counter = 0;   # counter gives the total number of jobs submited: (1..$counter)
+
+my $master_script;
 if($nloops eq 1){
 
     
@@ -573,24 +544,8 @@ if($nloops eq 1){
                     my $sh_script = make_par_shell_script($program,$date,$bqs,$counter, $remote_par_sep_dir);
                     $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                     &CJ::writeFile($local_sh_path, $sh_script);
-                    
-                    
-                    # Add QSUB to MASTER SCRIPT
-                    $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/logs"    . "\n" ;
-                    $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/scripts" . "\n" ;
-                    
-                    
-                    my $tagstr="$program_name[0]_$date_$counter";
-                    if($bqs eq "SGE"){
-                        $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem -N $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n";
-                    }elsif($bqs eq "SLURM"){
-                        
-                        $master_script.="sbatch --mem=$mem  --time=40:00:00  -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
-                        
-                    }else{
-                        &CJ::err("unknown BQS");
-                    }
-                    
+                
+                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir,$counter);
                 } #v0
     
 
@@ -636,23 +591,7 @@ if($nloops eq 1){
                 $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
-                
-                # Add QSUB to MASTER SCRIPT
-                $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/logs"    . "\n" ;
-                $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/scripts" . "\n" ;
-                
-                
-                my $tagstr="$program_name[0]_$date_$counter";
-                if($bqs eq "SGE"){
-                    $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem -N $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n";
-                }elsif($bqs eq "SLURM"){
-                    
-                    $master_script.="sbatch --mem=$mem  --time=40:00:00  -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
-                    
-                }else{
-                    &CJ::err("unknown BQS");
-                }
-                
+                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir,$counter);
             } #v0
         } #v1
     
@@ -700,23 +639,9 @@ if($nloops eq 1){
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
                 
-                # Add QSUB to MASTER SCRIPT
-                $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/logs"    . "\n" ;
-                $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/scripts" . "\n" ;
+                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir,$counter);
                 
-                
-                my $tagstr="$program_name[0]_$date_$counter";
-                if($bqs eq "SGE"){
-                    $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem -N $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n";
-                }elsif($bqs eq "SLURM"){
-                    
-                    $master_script.="sbatch --mem=$mem  --time=40:00:00  -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
-                    
-                }else{
-                    &CJ::err("unknown BQS");
-                }
-                
-            } #v0
+        } #v0
         } #v1
         } #v2
         
@@ -753,12 +678,12 @@ my $local_master_path="$local_sep_Dir/master.sh";
 #==================================
 my $tarfile="$date".".tar.gz";
 my $cmd="cd $localDir; tar -czf $tarfile $date/  ; rm -rf $local_sep_Dir  ; cd $BASE";
-system($cmd);
+&CJ::my_system($cmd,$verbose);
 
 
 # create remote directory  using outText
 my $cmd = "ssh $account 'echo `$outText` '  ";
-system($cmd);
+&CJ::my_system($cmd,$verbose);
 
 
 &CJ::message("Sending package");
@@ -769,7 +694,7 @@ my $cmd = "rsync -avz  ${localDir}/${tarfile} ${account}:$remoteDir/";
 
 &CJ::message("Submitting job(s)");
 my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzf ${tarfile} ; cd ${date}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep 2'";
-system($cmd) unless ($runflag eq "pardeploy");
+&CJ::my_system($cmd,$verbose) unless ($runflag eq "pardeploy");
  
 
     
@@ -781,29 +706,31 @@ my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/";
 
     
 my @job_ids;
+
 if($runflag eq "parrun"){
     # read run info
         my $local_qsub_info_file = "$install_dir/"."qsub.info";
         open my $FILE, '<', $local_qsub_info_file;
+    
+    
         while(<$FILE>){
         my $job_id_info = $_;
         chomp($job_id_info);
         ($this_job_id) = $job_id_info =~/(\d+)/; # get the first string of integer, i.e., job_id
-        #print "JOB_ID: $this_job_id\n";
         push @job_ids, $this_job_id;
         }
         close $FILE;
 
 $job_id = join(',', @job_ids);
 
+    
+&CJ::message("Job-ids: $job_ids[0]-$job_ids[$#job_ids]");
+    
 #delete the local qsub.info after use
 my $cmd = "rm $local_qsub_info_file";
 &CJ::my_system($cmd,$verbose);
     
     
-# store tarfile info for deletion
-# when needed
-
 
 
 $history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, "$job_ids[0]-$job_ids[-1]", $short_message);
