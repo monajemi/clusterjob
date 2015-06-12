@@ -76,7 +76,7 @@ $::VERSION = 0.0.1;
 $dep_folder = ".";
 $mem        = "8G";      # default memeory
 $message    = "";        # default message
-$verbose    = 0;	 # default - redirect to CJlog
+$verbose    = 0;	     # default - redirect to CJlog
 
 my $spec = <<'EOSPEC';
    --v[erbose]	                         verbose mode [nocase]

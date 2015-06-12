@@ -759,6 +759,11 @@ my $date = sprintf ("%04d%03s%02d_%02d%02d%02d", $year, $abbr[$mon], $mday, $hou
 sub is_valid_package_name
 {
 my ($name) = @_;
+    
+if(!defined($name)){
+$name = ""
+}
+    
 if( $name =~ m/^\d{4}\D{3}\d{2}_\d{6}$/){
 return 1;
 }else{

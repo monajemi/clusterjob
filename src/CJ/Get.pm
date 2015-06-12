@@ -78,7 +78,7 @@ sub reduce_results{
     # etc. We consider the latest one , and if the
     # save remote is different, we issue a warning
     # for the user.
-    print "$machine\n";
+    #print "$machine\n";
     my $ssh             = &CJ::host($machine);
     my $remotePrefix    = $ssh->{remote_repo};
     
@@ -96,9 +96,8 @@ sub reduce_results{
     
     
     
-    
     if (!defined($res_filename)){
-        &CJ::err("The result filename must be provided for GET with parrun packages, eg, 'clusterjob get Results.mat' ");
+        &CJ::err("The result filename must be provided for Reduce with parrun packages, eg, 'clusterjobreduce Results.mat' ");
     }
     
     
@@ -106,9 +105,9 @@ sub reduce_results{
     my $check_name = "check_complete.sh";
     my $check_path = "/tmp/$check_name";
     &CJ::writeFile($check_path,$check_runs);
-    my $cmd = "scp $check_path $account:$remote_path/ ;ssh $account 'source ~/.bashrc;cd $remote_path; bash $check_name'";
-    &CJ::my_system($cmd,$verbose);
     
+    my $cmd = "rsync $check_path $account:$remote_path/;ssh $account 'source ~/.bashrc;cd $remote_path; bash $check_name'";
+    &CJ::my_system($cmd,$verbose);
     # Run a script to gather all *.mat files of the same name.
     my $done_filename = "done_list.txt";
     
@@ -116,9 +115,6 @@ sub reduce_results{
     
     
     my $collect_bash_script;
-    
-    
-    
     if( $ext =~ m/mat/){
         $collect_bash_script = &CJ::Matlab::make_MAT_collect_script($res_filename, $done_filename,$bqs);
         
@@ -130,13 +126,15 @@ sub reduce_results{
     
     
     #print "$collect_bash_script";
-    
+   
     
     my $CJ_reduce_matlab = "$install_dir/CJ/CJ_reduce.m";
     my $collect_name = "cj_collect.sh";
     my $collect_bash_path = "/tmp/$collect_name";
     &CJ::writeFile($collect_bash_path,$collect_bash_script);
+   
     $cmd = "scp $collect_bash_path $CJ_reduce_matlab $account:$remote_path/";
+    
     &CJ::my_system($cmd,$verbose);
     
     
@@ -271,7 +269,7 @@ sub get_results{
 
 sub getExtension{
     my ($filename) = @_;
-    print "$filename\n";
+    #print "$filename\n";
     
     my ($ext) = $filename =~ /\.([^.]+)$/;
     return $ext;
@@ -302,7 +300,7 @@ my $bqs        = $info->{'bqs'};
 my $job_id     = $info->{'job_id'};
 my $program    = $info->{'program'};
 
-
+my $collect_filename = "collect_list.txt";
 
 
 
@@ -318,7 +316,7 @@ $bash_remote_path =~ s/~/\$HOME/;
 my $check_runs=<<TEXT;
 $HEADER
 
-if [ ! -f "$bash_remote_path/run_list.txt" ];then
+if [ ! -f "$bash_remote_path/$collect_filename" ];then
 touch $bash_remote_path/done_list.txt
 touch $bash_remote_path/run_list.txt
 
@@ -362,65 +360,81 @@ my $HEADER = &CJ::bash_header($bqs);
     
 my $text_collect_script=<<BASH;
 $HEADER
-
-    
-    
 #READ done_list.txt and FIND The counters that need
 #to be read
 
 if [ ! -s  $done_filename ]; then
-    echo "CJ::Reduce:: no job is done. Please try again later.";
+    # check if collect is complete
+    # if yes, then echo results collect fully
+    echo "CJ::Reduce:: Nothing to collect. Possible reasons are: Invalid filename, No job is done. all Results collected.";
 else
   
-    TOTAL = $(wc -l < "$done_filename");
+    TOTAL=\$(wc -l < "$done_filename");
     
     # determine wether reduce has been run before
     
     if [ ! -f "$res_filename" ];then
       # It is the first time reduce is being called.
-      firstline=$(head -n 1 $done_filename)
       # Read the result of the first package
+    
+      firstline=\$(head -n 1 $done_filename)
+      COUNTER=`grep -o "[0-9]*" <<< \$firstline`
+
       touch $res_filename;
-      cat "$firstline/$res_filename" > "$res_filename";
+      cat "\$COUNTER/$res_filename" > "$res_filename";
     
-      # Pop the first line of done_list and add it to collect_list
-        sed '1d' $done_filename > $done_filename
+        # Pop the first line of done_list and add it to collect_list
+        sed -i '1d' $done_filename
         if [ ! -f $collect_filename ];then
-            touch $collect_filename;
-            echo "$firstline" > $collect_filename;
+            echo \$COUNTER > $collect_filename;
         else
-            # GIVE ERROR!
-            echo "CJ::Reduce:: We stand in AWE. $collect_filename exists but CJ thinks its the first time reduce is called" 1>&2
-            exit 1
+          echo "CJ::Reduce:: CJ in AWE. $collect_filename exists but CJ thinks its the first time reduce is called" 1>&2
+          exit 1
         fi
-            
-        percent_done=$(awk "BEGIN {printf \"%.2f\",100*1/${TOTAL}}")
-        printf('\\n SubPackage %d Collected (%3.2f%%)', $firstline, $percent_done );
-    
-    
-            
-    
+    PROGRESS=1;
+    percent_done=\$(awk "BEGIN {printf \\"%.2f\\",100*\${PROGRESS}/\${TOTAL}}")
+    printf "\\n SubPackage %d Collected (%3.2f%%)" \$COUNTER \$percent_done
+
     else
-      # CJ has been called before
+    PROGRESS=0;
     fi
+
     
-    
-    
-    
-for LINE in \$(cat $done_filename);do
-COUNTER=`grep -o "[0-9]*" <<< \$LINE`
-        
-done
-    
-    
+    for LINE in \$(cat $done_filename);do
+
+
+        PROGRESS=\$((\$PROGRESS+1))
+        # Reduce results
+        COUNTER=`grep -o "[0-9]*" <<< \$LINE`
+        cat "\$COUNTER/$res_filename" >> "$res_filename";  #simply append (no header modification yet)
+
+        # Pop the first line of done_list and append it to collect_list
+        sed -i '1d' $done_filename
+        if [ -f $collect_filename ];then
+        echo \$COUNTER >> $collect_filename
+        else
+        echo "CJ::Reduce:: CJ in AWE. $collect_filename does not exists when CJ expects it." 1>&2
+        exit 1
+        fi
+
+        percent_done=\$(awk "BEGIN {printf \\"%.2f\\",100*\${PROGRESS}/\${TOTAL}}")
+        printf "\\n SubPackage %d Collected (%3.2f%%)" \$COUNTER \$percent_done
+
+    done
+    printf "\\n"
     
 fi
     
     
-    
-    
-    
 BASH
+  
+    
+    
+    
+
+    
+    return $text_collect_script;
+    
     
     
 }
