@@ -116,8 +116,12 @@ sub reduce_results{
     
     
     my $collect_bash_script;
+    
+    
+    
     if( $ext =~ m/mat/){
         $collect_bash_script = &CJ::Matlab::make_MAT_collect_script($res_filename, $done_filename,$bqs);
+        
     }elsif ($ext =~ m/txt|csv/){
         $collect_bash_script = &CJ::Get::make_TEXT_collect_script($res_filename, $done_filename,$bqs);
     }else{
@@ -128,11 +132,11 @@ sub reduce_results{
     #print "$collect_bash_script";
     
     
-    my $CJ_reduce = "$install_dir/CJ/CJ_reduce.m";
+    my $CJ_reduce_matlab = "$install_dir/CJ/CJ_reduce.m";
     my $collect_name = "cj_collect.sh";
     my $collect_bash_path = "/tmp/$collect_name";
     &CJ::writeFile($collect_bash_path,$collect_bash_script);
-    $cmd = "scp $collect_bash_path $CJ_reduce $account:$remote_path/";
+    $cmd = "scp $collect_bash_path $CJ_reduce_matlab $account:$remote_path/";
     &CJ::my_system($cmd,$verbose);
     
     
@@ -318,18 +322,18 @@ if [ ! -f "$bash_remote_path/run_list.txt" ];then
 touch $bash_remote_path/done_list.txt
 touch $bash_remote_path/run_list.txt
 
-for COUNTER in `seq $num_res`;do
+    for COUNTER in `seq $num_res`;do
     if [ -f "$bash_remote_path/\$COUNTER/$res_filename" ];then
-echo -e "\$COUNTER\\t" >> "$bash_remote_path/done_list.txt"
+    echo -e "\$COUNTER\\t" >> "$bash_remote_path/done_list.txt"
     else
-        echo -e "\$COUNTER\\t" >> "$bash_remote_path/run_list.txt"
-        fi
-        done
-        else
+    echo -e "\$COUNTER\\t" >> "$bash_remote_path/run_list.txt"
+    fi
+    done
+else
             
-            for line in \$(cat $bash_remote_path/run_list.txt);do
-                COUNTER=`grep -o "[0-9]*" <<< \$line`
-                if [ -f "$bash_remote_path/\$COUNTER/$res_filename" ];then
+for line in \$(cat $bash_remote_path/run_list.txt);do
+COUNTER=`grep -o "[0-9]*" <<< \$line`
+if [ -f "$bash_remote_path/\$COUNTER/$res_filename" ];then
 echo -e "\$COUNTER\\t" >> "$bash_remote_path/done_list.txt"
 sed  '/\^\$COUNTER\$/d' "$bash_remote_path/run_list.txt" > "$bash_remote_path/run_list.txt"
 fi
@@ -343,6 +347,97 @@ TEXT
     
     
 }
+
+
+
+
+sub make_TEXT_collect_script
+{
+    my ($res_filename, $done_filename, $bqs) = @_;
+    
+    my $collect_filename = "collect_list.txt";
+    
+# header for bqs's
+my $HEADER = &CJ::bash_header($bqs);
+    
+my $text_collect_script=<<BASH;
+$HEADER
+
+    
+    
+#READ done_list.txt and FIND The counters that need
+#to be read
+
+if [ ! -s  $done_filename ]; then
+    echo "CJ::Reduce:: no job is done. Please try again later.";
+else
+  
+    TOTAL = $(wc -l < "$done_filename");
+    
+    # determine wether reduce has been run before
+    
+    if [ ! -f "$res_filename" ];then
+      # It is the first time reduce is being called.
+      firstline=$(head -n 1 $done_filename)
+      # Read the result of the first package
+      touch $res_filename;
+      cat "$firstline/$res_filename" > "$res_filename";
+    
+      # Pop the first line of done_list and add it to collect_list
+        sed '1d' $done_filename > $done_filename
+        if [ ! -f $collect_filename ];then
+            touch $collect_filename;
+            echo "$firstline" > $collect_filename;
+        else
+            # GIVE ERROR!
+            echo "CJ::Reduce:: We stand in AWE. $collect_filename exists but CJ thinks its the first time reduce is called" 1>&2
+            exit 1
+        fi
+            
+        percent_done=$(awk "BEGIN {printf \"%.2f\",100*1/${TOTAL}}")
+        printf('\\n SubPackage %d Collected (%3.2f%%)', $firstline, $percent_done );
+    
+    
+            
+    
+    else
+      # CJ has been called before
+    fi
+    
+    
+    
+    
+for LINE in \$(cat $done_filename);do
+COUNTER=`grep -o "[0-9]*" <<< \$LINE`
+        
+done
+    
+    
+    
+fi
+    
+    
+    
+    
+    
+BASH
+    
+    
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
