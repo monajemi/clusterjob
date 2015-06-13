@@ -13,7 +13,7 @@ use CJ::CJVars;
 
 
 sub reduce_results{
-    my ($package,$res_filename,$verbose) = @_;
+    my ($package,$res_filename,$verbose, $text_header_lines) = @_;
     
     my $machine;
     my $account;
@@ -119,7 +119,7 @@ sub reduce_results{
         $collect_bash_script = &CJ::Matlab::make_MAT_collect_script($res_filename, $done_filename,$bqs);
         
     }elsif ($ext =~ m/txt|csv/){
-        $collect_bash_script = &CJ::Get::make_TEXT_collect_script($res_filename, $done_filename,$bqs);
+        $collect_bash_script = &CJ::Get::make_TEXT_collect_script($res_filename, $done_filename,$bqs, $text_header_lines);
     }else{
         &CJ::err("File extension not recognized");
     }
@@ -351,9 +351,19 @@ TEXT
 
 sub make_TEXT_collect_script
 {
-    my ($res_filename, $done_filename, $bqs) = @_;
+    my ($res_filename, $done_filename, $bqs, $text_header_lines) = @_;
     
     my $collect_filename = "collect_list.txt";
+    
+    
+    my $num_header_lines;
+    if(defined($text_header_lines)){
+        $num_header_lines = $text_header_lines;
+    }else{
+        $num_header_lines = 0;
+    }
+        
+    
     
 # header for bqs's
 my $HEADER = &CJ::bash_header($bqs);
@@ -406,7 +416,11 @@ else
         PROGRESS=\$((\$PROGRESS+1))
         # Reduce results
         COUNTER=`grep -o "[0-9]*" <<< \$LINE`
-        cat "\$COUNTER/$res_filename" >> "$res_filename";  #simply append (no header modification yet)
+
+
+        # Remove header-lines!
+        startline=\$(($num_header_lines+1));
+        sed -n "\$startline,\\\$p" < "\$COUNTER/$res_filename" >> "$res_filename";  #simply append (no header modification yet)
 
         # Pop the first line of done_list and append it to collect_list
         sed -i '1d' $done_filename

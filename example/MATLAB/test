@@ -18,7 +18,7 @@ perl /Users/hatef/github_projects/clusterjob/src/CJ.pl show "$2"
 elif [ "$1" == "info" ];then
 perl /Users/hatef/github_projects/clusterjob/src/CJ.pl info "$2"  
 elif [ "$1" == "reduce" ];then
-perl /Users/hatef/github_projects/clusterjob/src/CJ.pl reduce "$2" --verbose 
+perl /Users/hatef/github_projects/clusterjob/src/CJ.pl "$@" 
 elif [ "$1" == "get"  ]; then
 perl /Users/hatef/github_projects/clusterjob/src/CJ.pl get Results.txt 
 else 

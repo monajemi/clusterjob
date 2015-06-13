@@ -52,7 +52,7 @@ use CJ::CJVars;  # contains global variables of CJ
 use CJ::Matlab;  # Contains Matlab related subs
 use CJ::Get;     # Contains Get related subs
 use Getopt::Declare;
-use vars qw($message $mem $dep_folder $verbose);  # options
+use vars qw($message $mem $dep_folder $verbose $text_header_lines);  # options
 $::VERSION = 0.0.1;
 
 
@@ -76,11 +76,14 @@ $::VERSION = 0.0.1;
 $dep_folder = ".";
 $mem        = "8G";      # default memeory
 $message    = "";        # default message
-$verbose    = 0;	     # default - redirect to CJlog
+$verbose    = 0;	 # default - redirect to CJlog
+$text_header_lines = undef;
 
 my $spec = <<'EOSPEC';
    --v[erbose]	                         verbose mode [nocase]
-                                              {$verbose=1}
+                                             {$verbose=1}
+   --header [=] <num_lines>	         number of header lines for reducing text files
+                                          {$text_header_lines=$num_lines;}
    -dep          <dep_path>		 dependency folder path [nocase]
                                               {$dep_folder=$dep_path}
    -m            <msg>	                 reminder message
@@ -106,7 +109,7 @@ my $spec = <<'EOSPEC';
                                                   {defer{run($cluster,$code,$runflag)}}
                                                }
    reduce       <filename> [<pkg>] 	 reduce results of parrun [nocase]
-                                                  {defer{&CJ::Get::reduce_results($pkg,$filename,$verbose)}}
+                                                  {defer{&CJ::Get::reduce_results($pkg,$filename,$verbose,$text_header_lines)}}
    get          [<pkg>]	                 bring results back to local machine [nocase]
                                                   {defer{&CJ::Get::get_results($pkg,$verbose)}}
    save         <pkg> [<path>]	         save a package in path [nocase]
@@ -117,11 +120,9 @@ EOSPEC
 
 my $opts = Getopt::Declare->new($spec);
 
-#    print "$opts->{-m}\n";
-#    print "$opts->{-mem}\n";
-#    print "$opts->{-dep}\n";
-
-
+#    print "$opts->{'-m'}\n";
+#    print "$opts->{'-mem'}\n";
+#   print "$text_header_lines\n";
 
 
 
@@ -363,7 +364,7 @@ my $cmd = "rm $local_qsub_info_file";
     
     
 
-$history .= sprintf("%-21s%-10s%-15s%-20s%30s",$date, $runflag, $machine, $job_id, $short_message);
+$history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, $job_id, $short_message);
 &CJ::add_to_history($history);
 #=================================
 # store tarfile info for deletion
@@ -373,7 +374,7 @@ $history .= sprintf("%-21s%-10s%-15s%-20s%30s",$date, $runflag, $machine, $job_i
     
 }else{
 $job_id ="";
-$history .= sprintf("%-21s%-10s%-15s%-20s%30s",$date, $runflag, $machine, " ", $short_message);
+$history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, " ", $short_message);
 &CJ::add_to_history($history);
 }
 
