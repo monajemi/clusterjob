@@ -16,7 +16,7 @@ use CJ;
 
 sub read_matlab_index_set
 {
-    my ($forline, $TOP) = @_;
+    my ($forline, $TOP, $verbose) = @_;
     
     chomp($forline);
     $forline = &CJ::Matlab::uncomment_matlab_line($forline);   # uncomment the line so you dont deal with comments. easier parsing;
@@ -69,7 +69,14 @@ sub read_matlab_index_set
                 ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
             }else{
                 # FUTURE_REV_ADD
-                &CJ::err("MATLAB structure '$this_line ' not currently supported for parrun.");
+                #  c     = linspace(1,100,9)
+                #  l     = floor(c)
+                #  for i = 1:length(l)
+                #
+                $numbers = &run_matlab_index_interpreter($var, $TOP, $verbose)
+                
+                
+                #&CJ::err("MATLAB structure '$this_line ' not currently supported for parrun.");
             }
             
             
@@ -109,6 +116,82 @@ sub read_matlab_index_set
     
     return ($idx_tag, $range);
 }
+
+
+
+
+sub run_matlab_index_interpreter{
+    my ($var, $TOP, $verbose) = @_;
+    
+    # Check that the local machine has MATLAB (we currently build package locally!)
+    
+    my $check_matlab_installed = `source ~/.bashrc ; source ~/.profile; command -v matlab`;
+    if($check_matlab_installed eq ""){
+    &CJ::err("I require matlab but it's not installed");
+    }else{
+    &CJ::message("Test passed, Matlab is installed on your machine.");
+    }
+    
+
+    
+    
+my $var_file = "/tmp/$var\.tmp";
+    # build a script from top to output the range of index
+my $matlab_interpreter_script =<<MATLAB;
+$TOP
+% add script to output values of desired variables
+    dlmwrite(\'$var_file\',$var, ',')  % comma sperated values
+MATLAB
+    
+#print $matlab_interpreter_script;
+    my $name = "CJ_matlab_interpreter_script.m";
+    my $path = "/tmp";
+    &CJ::writeFile("$path/$name",$matlab_interpreter_script);
+    &CJ::message("$name is built in $path");
+
+    
+    
+my $matlab_interpreter_bash = <<BASH;
+#!/bin/bash -l
+source ~/.profile
+source ~/.bashrc
+    matlab -nodisplay -nodesktop -nosplash  <'$path/$name' &>/tmp/matlab.output    # dump matlab output
+BASH
+
+    #my $bash_name = "CJ_matlab_interpreter_bash.sh";
+    #my $bash_path = "/tmp";
+    #&CJ::writeFile("$bash_path/$bash_name",$matlab_interpreter_bash);
+    #&CJ::message("$bash_name is built in $bash_path");
+
+&CJ::message("Invoking matlab to find range of indecies. Please be patient...");
+&CJ::my_system("echo $matlab_interpreter_bash", $verbose);
+&CJ::message("Closing Matlab session!");
+    
+    # Read the file, and put it into $numbers
+    
+    my $numbers = &CJ::readFile("$var_file");
+    
+    #print $numbers . "\n";
+    
+    return $numbers;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

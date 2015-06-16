@@ -486,7 +486,7 @@ my @idx_tags;
 my @ranges;
 for (split /^/, $FOR) {
 
-    my ($idx_tag, $range) = &CJ::Matlab::read_matlab_index_set($_, $TOP);
+    my ($idx_tag, $range) = &CJ::Matlab::read_matlab_index_set($_, $TOP,$verbose);
     
     push @idx_tags, $idx_tag;
     push @ranges, $range;
