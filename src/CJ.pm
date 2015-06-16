@@ -860,6 +860,22 @@ sub writeFile
     close FILE;
 }
 
+sub readFile
+{
+    my ($filepath)  = @_;
+
+    my $content;
+    open(my $fh, '<', $filepath) or die "cannot open file $filepath";
+    {
+    local $/;
+    $content = <$fh>;
+    }
+    close($fh);
+    
+    return $content;
+}
+
+
 
 
 sub add_to_history

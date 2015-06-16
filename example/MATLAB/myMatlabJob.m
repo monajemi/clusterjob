@@ -4,7 +4,9 @@
 
 filename = 'Results.txt';
 SUID     = 'monajemi';
-for i = 1:10
+
+l = 1:10;
+for i = 1:length(l)
 fid = fopen(filename, 'at');
 fprintf(fid, '%s, %s\n','SUID','counter');
 fprintf(fid, '%s, %i\n', SUID,i);
