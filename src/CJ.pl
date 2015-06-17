@@ -90,8 +90,9 @@ my $spec = <<'EOSPEC';
                                               {$message=$msg}
    -mem          <memory>	         memory requested [nocase]
                                               {$mem=$memory}
-   -h[istory]   [<history_argin>]	 history -n|pkg|all [nocase]
-                                              {defer{ &CJ::show_history($history_argin) }}
+   log          [<argin>]	         historical info -n|pkg|all [nocase]
+                                              {defer{ &CJ::show_history($argin) }}
+   history      [<argin>]              	         [ditto]  
    clean        [<pkg>]	                 clean certain package [nocase]
                                               {defer{ &CJ::clean($pkg,$verbose); }}
    state        [<pkg>]	                 state of package [nocase]
