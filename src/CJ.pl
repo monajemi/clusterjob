@@ -42,7 +42,7 @@
 # To clean the last instance
 #   clusterjob clean
 #
-# Copyright  Hatef Monajemi (monajemi@stanford.edu)
+# Copyright 2014 Hatef Monajemi (monajemi@stanford.edu)
 
 
 use lib '/Users/hatef/github_projects/clusterjob/src';  #for testing
@@ -53,7 +53,12 @@ use CJ::Matlab;  # Contains Matlab related subs
 use CJ::Get;     # Contains Get related subs
 use Getopt::Declare;
 use vars qw($message $mem $dep_folder $verbose $text_header_lines);  # options
-$::VERSION = 0.0.1;
+$::VERSION  ="\n\n          This is Clusterjob (CJ) verion 1.1.0";
+$::VERSION .=  "\n          Copyright (c) 2015 Hatef Monajemi (monajemi\@stanford.edu)";
+$::VERSION .="\n\n          CJ may be copied only under the terms and conditions of";
+$::VERSION .=  "\n          the GNU General Public License, which may be found in the CJ";
+$::VERSION .=  "\n          source code. For more info please visit";
+$::VERSION .=  "\n          https://github.com/monajemi/clusterjob";
 
 
 
@@ -68,10 +73,31 @@ $::VERSION = 0.0.1;
 #=========================================
 
 
+#=========================================
+# create .info directory
+mkdir "$install_dir/.info" unless (-d "$install_dir/.info");
+
+# create history file if it does not exist
+if( ! -f $history_file ){
+    &CJ::touch($history_file);
+    my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%30s", "count", "date", "package", "action", "machine", "job_id", "message");
+    &CJ::add_to_history($header);
+}
+
+
+# create run_history file if it does not exit
+# this file contains more information about a run
+# such as where it is saved, etc.
+
+&CJ::touch($run_history_file) unless (-f $run_history_file);
+#=========================================
+
+
+
 
 
 #====================================
-#         READ OPTIONS
+#         READ FLAGS
 #====================================
 $dep_folder = ".";
 $mem        = "8G";      # default memeory
@@ -121,36 +147,11 @@ EOSPEC
 
 my $opts = Getopt::Declare->new($spec);
 
+
 #    print "$opts->{'-m'}\n";
 #    print "$opts->{'-mem'}\n";
 #   print "$text_header_lines\n";
-
-
-
-
-
-
-#====================================
-#         READ INPUT
-#====================================
-
-# create .info directory
-mkdir "$install_dir/.info" unless (-d "$install_dir/.info");
-
-# create history file if it does not exist
-if( ! -f $history_file ){
-&CJ::touch($history_file);
-my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%30s", "count", "date", "package", "action", "machine", "job_id", "message");
-&CJ::add_to_history($header);
-}
-
-
-# create run_history file if it does not exit
-# this file contains more information about a run
-# such as where it is saved, etc.
-
-&CJ::touch($run_history_file) unless (-f $run_history_file);
-
+#$opts->usage();
 
 
 
