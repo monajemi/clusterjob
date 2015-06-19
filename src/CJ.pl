@@ -1,48 +1,6 @@
 #/usr/bin/perl
 #
-# run the specified code on a cluster
-# Usage:
-# perl clusterjob.pl (DEPLOY|RUN) MACHINE PROGRAM
-# perl clusterjob.pl (DEPLOY|RUN) MACHINE PROGRAM DEP_FOLDER
-#
-# Options:
-#   -mem <MEMORY_REQUESTED>
-#   -m   <MESSAGE>
-#   -dep <DEP_FOLDER>
-#   -h   <NUMBER>
-# ex: perl CJ.pl (DEPLOY|RUN) MACHINE PROGRAM -dep DEP_FOLDER -mem "10G" -m "REMINDER"
-#
-# In practice, one can leave 'perl clusterjob.pl'
-# as an alias, say 'clusterjob'.
-#
-# in '~.profile' or '~/.bashrc' write:
-# alias clusterjob='perl /path/to/clusterjob.pl';
-#
-# and then run
-# clusterjob  (DEPLOY|RUN) MACHINE PROGRAM DEP_FOLDER -mem MEMORY_REQUESTED -m "message"
-#
-# To get the results of the last instance back to your machine
-#   clusterjob get
-#
-# To save the results of the last instance on your machine
-#   clusterjob save
-#
-# To show the history of the last n instances on your machine
-#   clusterjob history -n
-#
-# To get info of a package
-#   clusterjob info <PACKAGE>
-#
-# To show the program a package ran
-#   cluetrjob show <PACKAGE>
-#
-# To get state of the last instance
-#   clusterjob state
-#
-# To clean the last instance
-#   clusterjob clean
-#
-# Copyright 2014 Hatef Monajemi (monajemi@stanford.edu)
+# Copyright (c) 2015 Hatef Monajemi (monajemi@stanford.edu)
 
 
 use lib '/Users/hatef/github_projects/clusterjob/src';  #for testing
