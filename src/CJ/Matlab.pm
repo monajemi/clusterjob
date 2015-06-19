@@ -216,16 +216,16 @@ sub uncomment_matlab_line{
 
 sub make_MAT_collect_script
 {
-my ($res_filename, $done_filename, $bqs) = @_;
+my ($res_filename, $remaining_filename, $bqs) = @_;
     
 my $collect_filename = "collect_list.txt";
     
 my $matlab_collect_script=<<MATLAB;
-\% READ done_list.txt and FIND The counters that need
+\% READ remaining_list.txt and FIND The counters that need
 \% to be read
-done_list = load('$done_filename');
+remaining_list = load('$remaining_filename');
 
-if(~isempty(done_list))
+if(~isempty(remaining_list))
 
 
 \%determine the structre of the output
@@ -235,28 +235,28 @@ if(exist('$res_filename', 'file'))
     start = 1;
 else
     \% Fisrt time CJ is being called
-    res = load([num2str(done_list(1)),'/$res_filename']);
+    res = load([num2str(remaining_list(1)),'/$res_filename']);
     start = 2;
     
     
-    \% delete the line from done_filename and add it to collected.
-    fid = fopen('$done_filename', 'r') ;              \% Open source file.
-    fgetl(fid) ;                                      \% Read/discard line.
-    buffer = fread(fid, Inf) ;                        \% Read rest of the file.
-    fclose(fid);
-    delete('$done_filename');                         \% delete the file
-    fid = fopen('$done_filename', 'w')  ;             \% Open destination file.
-    fwrite(fid, buffer) ;                             \% Save to file.
-    fclose(fid) ;
+    \% delete the line from remaining_filename and add it to collected.
+    \%fid = fopen('$remaining_filename', 'r') ;               \% Open source file.
+    \%fgetl(fid) ;                                            \% Read/discard line.
+    \%buffer = fread(fid, Inf) ;                              \% Read rest of the file.
+    \%fclose(fid);
+    \%delete('$remaining_filename');                         \% delete the file
+    \%fid = fopen('$remaining_filename', 'w')  ;             \% Open destination file.
+    \%fwrite(fid, buffer) ;                                  \% Save to file.
+    \%fclose(fid) ;
     
     if(~exist('$collect_filename','file'));
     fid = fopen('$collect_filename', 'a+');
-    fprintf ( fid, '%d\\n', done_list(1) );
+    fprintf ( fid, '%d\\n', remaining_list(1) );
     fclose(fid);
     end
     
-    percent_done = 1/length(done_list) * 100;
-    fprintf('\\n SubPackage %d Collected (%3.2f%%)', done_list(1), percent_done );
+    percent_done = 1/length(remaining_list) * 100;
+    fprintf('\\n SubPackage %d Collected (%3.2f%%)', remaining_list(1), percent_done );
 
     
 end
@@ -264,8 +264,8 @@ end
 flds = fields(res);
 
 
-for idx = start:length(done_list)
-    count  = done_list(idx);
+for idx = start:length(remaining_list)
+    count  = remaining_list(idx);
     newres = load([num2str(count),'/$res_filename']);
     
     for i = 1:length(flds)  \% for all variables
@@ -274,17 +274,17 @@ for idx = start:length(done_list)
 
 \% save after each packgae
 save('$res_filename','-struct', 'res');
-percent_done = idx/length(done_list) * 100;
+percent_done = idx/length(remaining_list) * 100;
     
-\% delete the line from done_filename and add it to collected.
-fid = fopen('$done_filename', 'r') ;              \% Open source file.
-fgetl(fid) ;                                      \% Read/discard line.
-buffer = fread(fid, Inf) ;                        \% Read rest of the file.
-fclose(fid);
-delete('$done_filename');                         \% delete the file
-fid = fopen('$done_filename', 'w')  ;             \% Open destination file.
-fwrite(fid, buffer) ;                             \% Save to file.
-fclose(fid) ;
+\% delete the line from remaining_filename and add it to collected.
+\%fid = fopen('$remaining_filename', 'r') ;              \% Open source file.
+\%fgetl(fid) ;                                      \% Read/discard line.
+\%buffer = fread(fid, Inf) ;                        \% Read rest of the file.
+\%fclose(fid);
+\%delete('$remaining_filename');                         \% delete the file
+\%fid = fopen('$remaining_filename', 'w')  ;             \% Open destination file.
+\%fwrite(fid, buffer) ;                             \% Save to file.
+\%fclose(fid) ;
 
 if(~exist('$collect_filename','file'));
     error('   CJerr::File $collect_filename is missing. CJ stands in AWE!');

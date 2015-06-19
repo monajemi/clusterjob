@@ -100,26 +100,26 @@ sub reduce_results{
         &CJ::err("The result filename must be provided for Reduce with parrun packages, eg, 'clusterjobreduce Results.mat' ");
     }
     
-    
     my $check_runs = &CJ::Get::make_parrun_check_script($info,$res_filename);
     my $check_name = "check_complete.sh";
     my $check_path = "/tmp/$check_name";
     &CJ::writeFile($check_path,$check_runs);
     
+    &CJ::message("Checking progress of runs...");
     my $cmd = "rsync $check_path $account:$remote_path/;ssh $account 'source ~/.bashrc;cd $remote_path; bash $check_name'";
     &CJ::my_system($cmd,$verbose);
     # Run a script to gather all *.mat files of the same name.
-    my $done_filename = "done_list.txt";
+    my $remaining_filename = "remaining_list.txt";
     
     my $ext = lc(getExtension($res_filename));
     
     
     my $collect_bash_script;
     if( $ext =~ m/mat/){
-        $collect_bash_script = &CJ::Matlab::make_MAT_collect_script($res_filename, $done_filename,$bqs);
+        $collect_bash_script = &CJ::Matlab::make_MAT_collect_script($res_filename, $remaining_filename,$bqs);
         
     }elsif ($ext =~ m/txt|csv/){
-        $collect_bash_script = &CJ::Get::make_TEXT_collect_script($res_filename, $done_filename,$bqs, $text_header_lines);
+        $collect_bash_script = &CJ::Get::make_TEXT_collect_script($res_filename, $remaining_filename,$bqs, $text_header_lines);
     }else{
         &CJ::err("File extension not recognized");
     }
@@ -136,10 +136,13 @@ sub reduce_results{
     $cmd = "scp $collect_bash_path $CJ_reduce_matlab $account:$remote_path/";
     
     &CJ::my_system($cmd,$verbose);
+   
     
-    
+    &CJ::message("Reducing results...");
     $cmd = "ssh $account 'cd $remote_path; srun bash -l $collect_name'";
     &CJ::my_system($cmd,$verbose);
+    
+    &CJ::message("Reducing results done! Please use \"CJ get \" to get your results.");
 
 }
 
@@ -301,8 +304,8 @@ my $job_id     = $info->{'job_id'};
 my $program    = $info->{'program'};
 
 my $collect_filename = "collect_list.txt";
-
-
+my $alljob_filename  = "job_list.txt";
+my $remaining_filename = "remaining_list.txt";
 
 #find the number of folders with results in it
 my @job_ids = split(',', $job_id);
@@ -315,29 +318,15 @@ my $bash_remote_path  = $remote_path;
 $bash_remote_path =~ s/~/\$HOME/;
 my $check_runs=<<TEXT;
 $HEADER
-
+    
 if [ ! -f "$bash_remote_path/$collect_filename" ];then
-touch $bash_remote_path/done_list.txt
-touch $bash_remote_path/run_list.txt
-
-    for COUNTER in `seq $num_res`;do
-    if [ -f "$bash_remote_path/\$COUNTER/$res_filename" ];then
-    echo -e "\$COUNTER\\t" >> "$bash_remote_path/done_list.txt"
-    else
-    echo -e "\$COUNTER\\t" >> "$bash_remote_path/run_list.txt"
-    fi
-    done
+#build a file of jobs
+seq $num_res > $bash_remote_path/$alljob_filename
+cp   $bash_remote_path/$alljob_filename  $bash_remote_path/$remaining_filename
 else
-            
-for line in \$(cat $bash_remote_path/run_list.txt);do
-COUNTER=`grep -o "[0-9]*" <<< \$line`
-if [ -f "$bash_remote_path/\$COUNTER/$res_filename" ];then
-echo -e "\$COUNTER\\t" >> "$bash_remote_path/done_list.txt"
-sed  '/\^\$COUNTER\$/d' "$bash_remote_path/run_list.txt" > "$bash_remote_path/run_list.txt"
+grep -Fxvf $bash_remote_path/$collect_filename $bash_remote_path/$alljob_filename  >  $bash_remote_path/$remaining_filename;
 fi
-done
-fi
-
+    
 TEXT
 
     
@@ -349,9 +338,13 @@ TEXT
 
 
 
+
+
+
+
 sub make_TEXT_collect_script
 {
-    my ($res_filename, $done_filename, $bqs, $text_header_lines) = @_;
+    my ($res_filename, $remaining_filename, $bqs, $text_header_lines) = @_;
     
     my $collect_filename = "collect_list.txt";
     
@@ -370,16 +363,15 @@ my $HEADER = &CJ::bash_header($bqs);
     
 my $text_collect_script=<<BASH;
 $HEADER
-#READ done_list.txt and FIND The counters that need
+#READ remaining_list.txt and FIND The counters that need
 #to be read
-
-if [ ! -s  $done_filename ]; then
+if [ ! -s  $remaining_filename ]; then
     # check if collect is complete
     # if yes, then echo results collect fully
     echo "CJ::Reduce:: Nothing to collect. Possible reasons are: Invalid filename, No job is done. all Results collected.";
 else
   
-    TOTAL=\$(wc -l < "$done_filename");
+    TOTAL=\$(wc -l < "$remaining_filename");
     
     # determine wether reduce has been run before
     
@@ -387,14 +379,14 @@ else
       # It is the first time reduce is being called.
       # Read the result of the first package
     
-      firstline=\$(head -n 1 $done_filename)
+      firstline=\$(head -n 1 $remaining_filename)
       COUNTER=`grep -o "[0-9]*" <<< \$firstline`
 
       touch $res_filename;
       cat "\$COUNTER/$res_filename" > "$res_filename";
     
-        # Pop the first line of done_list and add it to collect_list
-        sed -i '1d' $done_filename
+        # Pop the first line of remaining_list and add it to collect_list
+    #  sed -i '1d' $remaining_filename
         if [ ! -f $collect_filename ];then
             echo \$COUNTER > $collect_filename;
         else
@@ -410,7 +402,7 @@ else
     fi
 
     
-    for LINE in \$(cat $done_filename);do
+    for LINE in \$(tail -n +\$((\$PROGRESS+1)) $remaining_filename);do
 
 
         PROGRESS=\$((\$PROGRESS+1))
@@ -422,8 +414,8 @@ else
         startline=\$(($num_header_lines+1));
         sed -n "\$startline,\\\$p" < "\$COUNTER/$res_filename" >> "$res_filename";  #simply append (no header modification yet)
 
-        # Pop the first line of done_list and append it to collect_list
-        sed -i '1d' $done_filename
+        # Pop the first line of remaining_list and append it to collect_list
+#sed -i '1d' $remaining_filename
         if [ -f $collect_filename ];then
         echo \$COUNTER >> $collect_filename
         else

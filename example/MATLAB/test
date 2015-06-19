@@ -3,24 +3,6 @@ if [ "$1" == "run" ];then
 perl /Users/hatef/github_projects/clusterjob/src/CJ.pl  run  myMatlabJob.m sherlock -dep ./ -m "test of CJ" -mem "10G"
 elif [ "$1" == "parrun" ];then
 perl /Users/hatef/github_projects/clusterjob/src/CJ.pl  parrun  myMatlabJob.m sherlock -dep ./ -m "test of CJ" -mem "10G"  "$2"
-elif [ "$1" == "help" ];then
-perl /Users/hatef/github_projects/clusterjob/src/CJ.pl -help
-elif [ "$1" == "log" ];then
-perl /Users/hatef/github_projects/clusterjob/src/CJ.pl log "$2"
-elif [ "$1" == "state" ];then
-perl /Users/hatef/github_projects/clusterjob/src/CJ.pl state
-elif [ "$1" == "clean" ];then
-perl /Users/hatef/github_projects/clusterjob/src/CJ.pl clean 
-elif [ "$1" == "save" ];then
-perl /Users/hatef/github_projects/clusterjob/src/CJ.pl save "$2" 
-elif [ "$1" == "show" ];then
-perl /Users/hatef/github_projects/clusterjob/src/CJ.pl show "$2"
-elif [ "$1" == "info" ];then
-perl /Users/hatef/github_projects/clusterjob/src/CJ.pl info "$2"  
-elif [ "$1" == "reduce" ];then
-perl /Users/hatef/github_projects/clusterjob/src/CJ.pl "$@" 
-elif [ "$1" == "get"  ]; then
-perl /Users/hatef/github_projects/clusterjob/src/CJ.pl get Results.txt 
 else 
-echo "unknown action";
+perl /Users/hatef/github_projects/clusterjob/src/CJ.pl "$@" 
 fi   
