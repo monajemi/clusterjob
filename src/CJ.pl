@@ -444,15 +444,36 @@ $BOT .= "$lines[$i]\n";
 # indecies
 my @idx_tags;
 my @ranges;
+my @tags_to_matlab_interpret;
+my @forlines_to_matlab_interpret;
 for (split /^/, $FOR) {
 
     my ($idx_tag, $range) = &CJ::Matlab::read_matlab_index_set($_, $TOP,$verbose);
     
-    push @idx_tags, $idx_tag;
-    push @ranges, $range;
+    # if we can't establish range, we output undef
+    if(defined($range)){
+        push @idx_tags, $idx_tag;
+        push @ranges, $range;
+    }else{
+        push @tags_to_run_interpret, $idx_tag;
+        push @forlines_to_matlab_interpret,$_;
+    }
     
 }
 
+    ##### NEEDS TO BE TESTED!
+    
+my (@idx_tag_run_interpret, @range_run_interpret) = &CJ::Matlab::run_matlab_index_interpreter(@tags_to_matlab_interpret,@forlines_to_matlab_interpret, $TOP,$verbose);
+    
+foreach my $i (0..$#idx_tag_run_interpret){
+        push @idx_tags, $tag[$i];
+        push @ranges, $range_run_interpret[$i];
+}
+    
+    ##### NEEDS TO BE TESTED!
+    
+    
+    
     
     
 #==============================================
@@ -478,7 +499,7 @@ if($nloops eq 1){
                   $counter = $counter+1;
                     
                     #============================================
-                    #     BUILD EXP FOR this (v0,v1)
+                    #     BUILD EXP FOR this (v0)
                     #============================================
                     
                     

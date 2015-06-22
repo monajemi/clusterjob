@@ -67,20 +67,20 @@ sub read_matlab_index_set
             my $numbers;
             if($this_array[1] =~ /\[\s*(.+?)\s*\]/){
                 ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
-            }else{
-                # FUTURE_REV_ADD
-                #  c     = linspace(1,100,9)
-                #  l     = floor(c)
-                #  for i = 1:length(l)
-                #
-                $numbers = &run_matlab_index_interpreter($var, $TOP, $verbose)
-                
-                
-                #&CJ::err("MATLAB structure '$this_line ' not currently supported for parrun.");
             }
             
             
-            
+            #else{
+            #    # FUTURE_REV_ADD
+            #    #  c     = linspace(1,100,9)
+            #    #  l     = floor(c)
+            #    #  for i = 1:length(l)
+            #    #
+            #    $numbers = &run_matlab_index_interpreter($var, $TOP, $verbose)
+            #
+            #
+            #    #&CJ::err("MATLAB structure '$this_line ' not currently supported for parrun.");
+            #}
             my @vals = split(/,|;/,$numbers);
             
             my $high = 1+$#vals;
@@ -107,7 +107,9 @@ sub read_matlab_index_set
             $range = join(',',@range);
             
         }else{
-            &CJ::err("strcuture of for loop not recognized by clusterjob. try rewriting your for loop using 'i = 1:10' structure");
+            
+            $range = undef;
+            #&CJ::err("strcuture of for loop not recognized by clusterjob. try rewriting your for loop using 'i = 1:10' structure");
             
         }
         
@@ -121,7 +123,7 @@ sub read_matlab_index_set
 
 
 sub run_matlab_index_interpreter{
-    my ($var, $TOP, $verbose) = @_;
+    my (@tag_list, @for_lines , $TOP, $verbose) = @_;
     
     # Check that the local machine has MATLAB (we currently build package locally!)
     
@@ -133,15 +135,36 @@ sub run_matlab_index_interpreter{
     }
     
 
+# build a script from top to output the range of index
     
     
-my $var_file = "/tmp/$var\.tmp";
-    # build a script from top to output the range of index
-my $matlab_interpreter_script =<<MATLAB;
-$TOP
+# Add top
+my $matlab_interpreter_script = $TOP;
+
+# Add for lines
+foreach my $line (@for_lines){
+  $matlab_interpreter_script .= $line;
+}
+    
+    
+foreach my $tag (@tag_list){
+my $tag_file = "/tmp/$tag\.tmp";
+$matlab_interpreter_script .=<<MATLAB
 % add script to output values of desired variables
-    dlmwrite(\'$var_file\',$var, ',')  % comma sperated values
+$tag_fid = open($tag_file,'w+');
+fprintf($tag_fid,\'%i\', $tag);
+close($tag_fid);
 MATLAB
+}
+  
+    
+# Add end lines
+foreach my $line (@for_lines){
+   $matlab_interpreter_script .= "end";
+}
+    
+    
+    
     
 #print $matlab_interpreter_script;
     my $name = "CJ_matlab_interpreter_script.m";
@@ -167,12 +190,15 @@ BASH
 &CJ::my_system("echo $matlab_interpreter_bash", $verbose);
 &CJ::message("Closing Matlab session!");
     
-    # Read the file, and put it into $numbers
-    
-    my $numbers = &CJ::readFile("$var_file");
-    
-    #print $numbers . "\n";
-    
+# Read the files, and put it into $numbers
+# open a hashref
+my $numbers={};
+foreach $var (@var_list){
+    my $var_file = "/tmp/$var\.tmp";
+    $numbers->{'$var'} = &CJ::readFile("$var_file");
+    print $numbers->{'$var'} . "\n";
+}
+die;
     return $numbers;
 }
 
