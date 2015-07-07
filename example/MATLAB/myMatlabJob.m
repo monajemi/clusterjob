@@ -6,9 +6,16 @@ filename = 'Results.txt';
 SUID     = 'monajemi';
 
 l = 1:10;
-for i = 1:length(l)
+k = 2:5;
+
+
 fid = fopen(filename, 'at');
-fprintf(fid, '%s, %s\n','SUID','counter');
-fprintf(fid, '%s, %i\n', SUID,i);
-fclose(fid);
+fprintf(fid, '%s, %s, %s\n','SUID','counter1', 'counter2');
+
+for i = 1:length(l)
+ for j = 1:length(k)
+	fprintf(fid, '%s, %i, %i\n', SUID,i,j);
+  end
 end
+
+fclose(fid);

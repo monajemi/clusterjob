@@ -30,12 +30,12 @@ sub read_matlab_index_set
     
     
     
-    my $range;
+    my $range = undef;
     # The right of equal sign
     my $right  = $myarray[1];
     
     # see if the forline contains :
-    if($right =~ /.*\:.*/){
+    if($right =~ /^[^:]+:[^:]+$/){
         
         my @rightarray = split( /\s*:\s*/, $right, 2 );
         
@@ -43,14 +43,6 @@ sub read_matlab_index_set
         if(! &CJ::isnumeric($low) ){
             &CJ::err("The lower limit of for MUST be numeric for this version of clusterjob\n");
         }
-        
-        
-        
-        # exit on unallowed structure
-        if ($rightarray[1] =~ /.*:.*/){
-            &CJ::err("Sorry!...structure 'for i=1:1:3' is not allowed in clusterjob. Try rewriting your script using 'for i = 1:3' structure\n");
-        }
-        
         
         
         if($rightarray[1] =~ /\s*length\(\s*(.+?)\s*\)/){
@@ -66,26 +58,16 @@ sub read_matlab_index_set
             
             my $numbers;
             if($this_array[1] =~ /\[\s*(.+?)\s*\]/){
-                ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
-            }
-            
-            
-            #else{
-            #    # FUTURE_REV_ADD
-            #    #  c     = linspace(1,100,9)
-            #    #  l     = floor(c)
-            #    #  for i = 1:length(l)
-            #    #
-            #    $numbers = &run_matlab_index_interpreter($var, $TOP, $verbose)
-            #
-            #
-            #    #&CJ::err("MATLAB structure '$this_line ' not currently supported for parrun.");
-            #}
-            my @vals = split(/,|;/,$numbers);
-            
+                
+            ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
+            my @vals = $numbers =~ /(\d+)/g;
+                
+                
             my $high = 1+$#vals;
             my @range = ($low..$high);
             $range = join(',',@range);
+                
+            }
             
         }elsif($rightarray[1] =~ /\s*(\D+).*/) {
             print "$rightarray[1]"."\n";
@@ -97,25 +79,34 @@ sub read_matlab_index_set
             #extract the range
             my @this_array    = split(/\s*=\s*/,$this_line);
             my ($high) = $this_array[1] =~ /\[?\s*(\d+)\s*\]?/;
-            my @range = ($low..$high);
-            $range = join(',',@range);
             
+            if(! &CJ::isnumeric($high) ){
+                $range = undef;
+            }else{
+                my @range = ($low..$high);
+                $range = join(',',@range);
+            }
         }elsif($rightarray[1] =~ /.*(\d+).*/){
             # CASE i = 1:10
-            my ($high) = $rightarray[1] =~ /\s*(\d+).*/;
+            my ($high) = $rightarray[1] =~ /^\s*(\d+).*/;
             my @range = ($low..$high);
             $range = join(',',@range);
             
         }else{
+            
             
             $range = undef;
             #&CJ::err("strcuture of for loop not recognized by clusterjob. try rewriting your for loop using 'i = 1:10' structure");
             
         }
         
+   
+        # Other cases of for loop to be considered.
+        
+        
         
     }
-    
+
     return ($idx_tag, $range);
 }
 
@@ -123,7 +114,8 @@ sub read_matlab_index_set
 
 
 sub run_matlab_index_interpreter{
-    my (@tag_list, @for_lines , $TOP, $verbose) = @_;
+    my ($tag_list,$for_lines,$TOP,$verbose) = @_;
+    
     
     # Check that the local machine has MATLAB (we currently build package locally!)
     
@@ -137,36 +129,29 @@ sub run_matlab_index_interpreter{
 
 # build a script from top to output the range of index
     
-    
 # Add top
-my $matlab_interpreter_script = $TOP;
+my $matlab_interpreter_script=$TOP;
+    
 
+    
 # Add for lines
-foreach my $line (@for_lines){
-  $matlab_interpreter_script .= $line;
-}
+    foreach my $i (0..$#{$for_lines}){
+        my $tag = $tag_list->[$i];
+        my $forline = $for_lines->[$i];
     
+        # print  "$tag: $forline\n";
     
-foreach my $tag (@tag_list){
-my $tag_file = "/tmp/$tag\.tmp";
+        my $tag_file = "\'/tmp/$tag\.tmp\'";
 $matlab_interpreter_script .=<<MATLAB
-% add script to output values of desired variables
-$tag_fid = open($tag_file,'w+');
-fprintf($tag_fid,\'%i\', $tag);
-close($tag_fid);
+$tag\_fid = fopen($tag_file,'w+');
+$forline
+fprintf($tag\_fid,\'%i\\n\', $tag);
+end
+fclose($tag\_fid);
 MATLAB
 }
-  
+    #print  "$matlab_interpreter_script\n";
     
-# Add end lines
-foreach my $line (@for_lines){
-   $matlab_interpreter_script .= "end";
-}
-    
-    
-    
-    
-#print $matlab_interpreter_script;
     my $name = "CJ_matlab_interpreter_script.m";
     my $path = "/tmp";
     &CJ::writeFile("$path/$name",$matlab_interpreter_script);
@@ -192,14 +177,15 @@ BASH
     
 # Read the files, and put it into $numbers
 # open a hashref
-my $numbers={};
-foreach $var (@var_list){
-    my $var_file = "/tmp/$var\.tmp";
-    $numbers->{'$var'} = &CJ::readFile("$var_file");
-    print $numbers->{'$var'} . "\n";
+my $range={};
+foreach my $tag (@$tag_list){
+    my $tag_file = "/tmp/$tag\.tmp";
+    my $tmp_array = &CJ::readFile("$tag_file");
+    my @tmp_array  = split /\n/,$tmp_array;
+    $range->{$tag} = join(',', @tmp_array);
+    #print $range->{$tag} . "\n";
 }
-die;
-    return $numbers;
+    return $range;
 }
 
 

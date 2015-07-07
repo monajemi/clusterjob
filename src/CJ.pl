@@ -397,7 +397,7 @@ while(<$fh>){
 }
 close $fh;
     
-    
+    # later include fors on one line
     
 my @lines = split('\n', $script_lines);
 my @forlines_idx_set;
@@ -446,34 +446,36 @@ my @idx_tags;
 my @ranges;
 my @tags_to_matlab_interpret;
 my @forlines_to_matlab_interpret;
-for (split /^/, $FOR) {
-
-    my ($idx_tag, $range) = &CJ::Matlab::read_matlab_index_set($_, $TOP,$verbose);
+    
+    
+    my @forline_list = split /^/, $FOR;
+   
+for my $this_forline (@forline_list) {
+    
+    my ($idx_tag, $range) = &CJ::Matlab::read_matlab_index_set($this_forline, $TOP,$verbose);
     
     # if we can't establish range, we output undef
     if(defined($range)){
         push @idx_tags, $idx_tag;
         push @ranges, $range;
     }else{
-        push @tags_to_run_interpret, $idx_tag;
-        push @forlines_to_matlab_interpret,$_;
+        push @tags_to_matlab_interpret, $idx_tag;
+        push @forlines_to_matlab_interpret, $this_forline;
     }
     
 }
 
-    ##### NEEDS TO BE TESTED!
     
-my (@idx_tag_run_interpret, @range_run_interpret) = &CJ::Matlab::run_matlab_index_interpreter(@tags_to_matlab_interpret,@forlines_to_matlab_interpret, $TOP,$verbose);
     
-foreach my $i (0..$#idx_tag_run_interpret){
-        push @idx_tags, $tag[$i];
-        push @ranges, $range_run_interpret[$i];
+my $range_run_interpret = &CJ::Matlab::run_matlab_index_interpreter(\@tags_to_matlab_interpret,\@forlines_to_matlab_interpret, $TOP, $verbose);
+    
+    
+for (keys %$range_run_interpret)
+{
+    push @idx_tags, $_;
+    push @ranges, $range_run_interpret->{$_};
+    #print"$_:$range_run_interpret->{$_} \n";
 }
-    
-    ##### NEEDS TO BE TESTED!
-    
-    
-    
     
     
 #==============================================
