@@ -109,6 +109,7 @@ sub reduce_results{
     my $cmd = "rsync $check_path $account:$remote_path/;ssh $account 'source ~/.bashrc;cd $remote_path; bash $check_name'";
     &CJ::my_system($cmd,$verbose);
     # Run a script to gather all *.mat files of the same name.
+    my $completed_filename = "completed_list.txt";
     my $remaining_filename = "remaining_list.txt";
     
     my $ext = lc(getExtension($res_filename));
@@ -116,10 +117,10 @@ sub reduce_results{
     
     my $collect_bash_script;
     if( $ext =~ m/mat/){
-        $collect_bash_script = &CJ::Matlab::make_MAT_collect_script($res_filename, $remaining_filename,$bqs);
+        $collect_bash_script = &CJ::Matlab::make_MAT_collect_script($res_filename, $completed_filename,$bqs);
         
     }elsif ($ext =~ m/txt|csv/){
-        $collect_bash_script = &CJ::Get::make_TEXT_collect_script($res_filename, $remaining_filename,$bqs, $text_header_lines);
+        $collect_bash_script = &CJ::Get::make_TEXT_collect_script($res_filename, $remaining_filename,$completed_filename,$bqs, $text_header_lines);
     }else{
         &CJ::err("File extension not recognized");
     }
@@ -306,7 +307,7 @@ my $program    = $info->{'program'};
 my $collect_filename = "collect_list.txt";
 my $alljob_filename  = "job_list.txt";
 my $remaining_filename = "remaining_list.txt";
-
+my $completed_filename = "completed_list.txt";
 #find the number of folders with results in it
 my @job_ids = split(',', $job_id);
 my $num_res = 1+$#job_ids;
@@ -318,7 +319,7 @@ my $bash_remote_path  = $remote_path;
 $bash_remote_path =~ s/~/\$HOME/;
 my $check_runs=<<TEXT;
 $HEADER
-rm $remaining_filename
+
 if [ ! -f "$bash_remote_path/$collect_filename" ];then
 #build a file of jobs
 seq $num_res > $bash_remote_path/$alljob_filename
@@ -328,8 +329,16 @@ grep -Fxvf $bash_remote_path/$collect_filename $bash_remote_path/$alljob_filenam
 fi
 
     
+if [ -f "$bash_remote_path/$completed_filename" ];then
+    rm $bash_remote_path/$completed_filename
+fi
     
-    
+for line in \$(cat $bash_remote_path/$remaining_filename);do
+COUNTER=`grep -o "[0-9]*" <<< \$line`
+if [ -f "$bash_remote_path/\$COUNTER/$res_filename" ];then
+echo -e "\$COUNTER\\t" >> "$bash_remote_path/$completed_filename"
+fi
+done
     
     
 TEXT
@@ -349,7 +358,10 @@ TEXT
 
 sub make_TEXT_collect_script
 {
-    my ($res_filename, $remaining_filename, $bqs, $text_header_lines) = @_;
+    my ($res_filename, $remaining_filename, $completed_filename, $bqs, $text_header_lines) = @_;
+    
+    
+    
     
     my $collect_filename = "collect_list.txt";
     
@@ -370,13 +382,19 @@ my $text_collect_script=<<BASH;
 $HEADER
 #READ remaining_list.txt and FIND The counters that need
 #to be read
-if [ ! -s  $remaining_filename ]; then
+if [ ! -s  $completed_filename ]; then
+    
+    if [ ! -s  $remaining_filename ]; then
+     echo "CJ::Reduce:: All results completed and collected. ";
+    else
     # check if collect is complete
     # if yes, then echo results collect fully
-    echo "CJ::Reduce:: Nothing to collect. Possible reasons are: Invalid filename, No job is done. all Results collected.";
+    echo "CJ::Reduce:: Nothing to collect. Possible reasons are: Invalid filename, No new completed job.";
+    fi
+    
 else
   
-    TOTAL=\$(wc -l < "$remaining_filename");
+    TOTAL=\$(wc -l < "$completed_filename");
     
     # determine wether reduce has been run before
     
@@ -384,14 +402,14 @@ else
       # It is the first time reduce is being called.
       # Read the result of the first package
     
-      firstline=\$(head -n 1 $remaining_filename)
+      firstline=\$(head -n 1 $completed_filename)
       COUNTER=`grep -o "[0-9]*" <<< \$firstline`
 
       touch $res_filename;
       cat "\$COUNTER/$res_filename" > "$res_filename";
     
         # Pop the first line of remaining_list and add it to collect_list
-    #  sed -i '1d' $remaining_filename
+    #  sed -i '1d' $completed_filename
         if [ ! -f $collect_filename ];then
             echo \$COUNTER > $collect_filename;
         else
@@ -407,7 +425,7 @@ else
     fi
 
     
-    for LINE in \$(tail -n +\$((\$PROGRESS+1)) $remaining_filename);do
+    for LINE in \$(tail -n +\$((\$PROGRESS+1)) $completed_filename);do
 
 
         PROGRESS=\$((\$PROGRESS+1))
@@ -420,7 +438,7 @@ else
         sed -n "\$startline,\\\$p" < "\$COUNTER/$res_filename" >> "$res_filename";  #simply append (no header modification yet)
 
         # Pop the first line of remaining_list and append it to collect_list
-#sed -i '1d' $remaining_filename
+#sed -i '1d' $completed_filename
         if [ -f $collect_filename ];then
         echo \$COUNTER >> $collect_filename
         else
