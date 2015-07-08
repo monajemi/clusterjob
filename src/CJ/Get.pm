@@ -318,7 +318,7 @@ my $bash_remote_path  = $remote_path;
 $bash_remote_path =~ s/~/\$HOME/;
 my $check_runs=<<TEXT;
 $HEADER
-    
+rm $remaining_filename
 if [ ! -f "$bash_remote_path/$collect_filename" ];then
 #build a file of jobs
 seq $num_res > $bash_remote_path/$alljob_filename
@@ -326,6 +326,11 @@ cp   $bash_remote_path/$alljob_filename  $bash_remote_path/$remaining_filename
 else
 grep -Fxvf $bash_remote_path/$collect_filename $bash_remote_path/$alljob_filename  >  $bash_remote_path/$remaining_filename;
 fi
+
+    
+    
+    
+    
     
 TEXT
 

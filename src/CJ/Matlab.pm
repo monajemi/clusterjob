@@ -135,9 +135,9 @@ my $matlab_interpreter_script=$TOP;
 
     
 # Add for lines
-    foreach my $i (0..$#{$for_lines}){
-        my $tag = $tag_list->[$i];
-        my $forline = $for_lines->[$i];
+foreach my $i (0..$#{$for_lines}){
+    my $tag = $tag_list->[$i];
+    my $forline = $for_lines->[$i];
     
         # print  "$tag: $forline\n";
     
@@ -161,6 +161,8 @@ MATLAB
     
 my $matlab_interpreter_bash = <<BASH;
 #!/bin/bash -l
+# dump everything user-generated from top in /tmp
+cd /tmp/
 source ~/.profile
 source ~/.bashrc
     matlab -nodisplay -nodesktop -nosplash  <'$path/$name' &>/tmp/matlab.output    # dump matlab output
