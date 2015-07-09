@@ -89,8 +89,16 @@ my $spec = <<'EOSPEC';
                                               {my $runflag = "run";
                                                   {defer{run($cluster,$code,$runflag)}}
                                                }
+   deploy       <code> <cluster>	 deploy code on the cluster [nocase]
+                                              {my $runflag = "deploy";
+                                                  {defer{run($cluster,$code,$runflag)}}
+                                               }
    parrun       <code> <cluster>	 parrun code on the cluster [nocase]
                                               {my $runflag = "parrun";
+                                                  {defer{run($cluster,$code,$runflag)}}
+                                               }
+   pardeploy    <code> <cluster>	 pardeploy code on the cluster [nocase]
+                                              {my $runflag = "pardeploy";
                                                   {defer{run($cluster,$code,$runflag)}}
                                                }
    reduce       <filename> [<pkg>] 	 reduce results of parrun [nocase]
