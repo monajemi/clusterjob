@@ -70,7 +70,7 @@ sub read_matlab_index_set
             }
             
         }elsif($rightarray[1] =~ /\s*(\D+).*/) {
-            print "$rightarray[1]"."\n";
+            #print "$rightarray[1]"."\n";
             # CASE i = 1:L
             # find the variable;
             my($var) = $rightarray[1] =~ /\s*(\D+).*/;
@@ -79,6 +79,7 @@ sub read_matlab_index_set
             #extract the range
             my @this_array    = split(/\s*=\s*/,$this_line);
             my ($high) = $this_array[1] =~ /\[?\s*(\d+)\s*\]?/;
+            
             
             if(! &CJ::isnumeric($high) ){
                 $range = undef;

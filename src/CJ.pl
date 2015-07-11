@@ -208,9 +208,7 @@ if(-d $localPrefix){
 my $cmd   = "cp -r $dep_folder/* $local_sep_Dir/";
 &CJ::my_system($cmd,$verbose);
 
- 
-   
-   
+
     
 #=====================
 #  REMOTE DIRECTORIES
@@ -283,7 +281,7 @@ my $local_master_path="$local_sep_Dir/master.sh";
 #       AND RUN ON CLUSTER
 #==================================
 my $tarfile="$date".".tar.gz";
-my $cmd="cd $localDir; tar -czf $tarfile $date/  ; rm -rf $local_sep_Dir  ; cd $BASE";
+my $cmd="cd $localDir; tar  --exclude '.git' --exclude '*~' --exclude '*.pdf'  -czf $tarfile $date/  ; rm -rf $local_sep_Dir  ; cd $BASE";
 &CJ::my_system($cmd,$verbose);
 
     
@@ -474,17 +472,19 @@ for my $this_forline (@forline_list) {
 }
 
     
+
     
-my $range_run_interpret = &CJ::Matlab::run_matlab_index_interpreter(\@tags_to_matlab_interpret,\@forlines_to_matlab_interpret, $TOP, $verbose);
+if ( @tags_to_matlab_interpret ) { # if we need to run matlab
+    my $range_run_interpret = &CJ::Matlab::run_matlab_index_interpreter(\@tags_to_matlab_interpret,\@forlines_to_matlab_interpret, $TOP, $verbose);
     
     
-for (keys %$range_run_interpret)
-{
+    for (keys %$range_run_interpret)
+    {
     push @idx_tags, $_;
     push @ranges, $range_run_interpret->{$_};
     #print"$_:$range_run_interpret->{$_} \n";
+    }
 }
-    
     
 #==============================================
 #        MASTER SCRIPT
@@ -669,7 +669,7 @@ my $local_master_path="$local_sep_Dir/master.sh";
 #       AND RUN ON CLUSTER
 #==================================
 my $tarfile="$date".".tar.gz";
-my $cmd="cd $localDir; tar -czf $tarfile $date/  ; rm -rf $local_sep_Dir  ; cd $BASE";
+my $cmd="cd $localDir; tar --exclude '.git' --exclude '*~' --exclude '*.pdf' -czf  $tarfile $date/   ; rm -rf $local_sep_Dir  ; cd $BASE";
 &CJ::my_system($cmd,$verbose);
 
 
@@ -677,10 +677,9 @@ my $cmd="cd $localDir; tar -czf $tarfile $date/  ; rm -rf $local_sep_Dir  ; cd $
 my $cmd = "ssh $account 'echo `$outText` '  ";
 &CJ::my_system($cmd,$verbose);
 
-
 &CJ::message("Sending package");
 # copy tar.gz file to remoteDir
-my $cmd = "rsync -avz  ${localDir}/${tarfile} ${account}:$remoteDir/";
+my $cmd = "rsync -arvz  ${localDir}/${tarfile} ${account}:$remoteDir/";
 &CJ::my_system($cmd,$verbose);
 
 
@@ -919,6 +918,10 @@ my $pathText;
 if($bqs eq "SGE"){
 # CVX is already setup on solomon and proclus
 $pathText.=<<MATLAB;
+ 
+% generate recursive path
+addpath(genpath('.'));
+    
 cvx_setup;
 cvx_quiet(true)
 % Find and add Sedumi Path for machines that have CVX installed
@@ -932,6 +935,10 @@ addpath '~/mosek/7/toolbox/r2013a/'
 MATLAB
 }elsif($bqs eq "SLURM"){
 $pathText.=<<MATLAB;
+    
+% generate recursive path
+addpath(genpath('.'));
+    
 addpath '~/BPDN/CVX/cvx' -begin
 cvx_setup;
 cvx_quiet(true);
@@ -1023,8 +1030,7 @@ matlab -nosplash -nodisplay <<HERE
 oldpath = textscan('$DIR', '%s', 'Delimiter', '/');
 newpath = horzcat(oldpath{:});
 bin_path = sprintf('%s/', newpath{1:end-1});
-addpath(bin_path);
-    
+addpath(genpath(bin_path));  % recursive path
     
     
 % make sure each run has different random number stream
@@ -1069,7 +1075,7 @@ matlab -nosplash -nodisplay <<HERE
 oldpath = textscan('$DIR', '%s', 'Delimiter', '/');
 newpath = horzcat(oldpath{:});
 bin_path = sprintf('%s/', newpath{1:end-1});
-addpath(bin_path);
+addpath(genpath(bin_path));
     
     
 % make sure each run has different random number stream
@@ -1119,12 +1125,11 @@ addpath '~/mosek/7/toolbox/r2013a/'
 MATLAB
 }elsif($bqs eq "SLURM"){
 $pathText.=<<MATLAB;
+    
+    
 addpath '~/BPDN/CVX/cvx' -begin
 cvx_setup;
 cvx_quiet(true);
-
-
-    
 
     
 addpath '~/mosek/7/toolbox/r2013a/'
