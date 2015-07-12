@@ -10,7 +10,38 @@ use CJ;
 
 
 
+sub build_reproducible_script{
+    my ($program, $path, $runflag) = @_;
 
+
+my $program_script = CJ::readFile("$path/$program");
+    
+my $rp_program_script =<<RP_PRGRAM;
+
+% CJ has its own randState upon calling
+% to reproduce results one needs to set
+% the internal State of the global stream
+% to the one saved when ruuning the code for
+% the fist time;
+    
+load('CJrandState.mat');
+globalStream = RandStream.getGlobalStream;
+globalStream.State = CJsavedState;
+RP_PRGRAM
+  
+if($runflag =~ /^par.*/){
+$rp_program_script .= "addpath(genpath('../.'));";
+}else{
+$rp_program_script .= "addpath(genpath('.'));";
+}
+
+$rp_program_script .= $program_script ;
+    
+my $rp_program = "reproduce_$program";
+CJ::writeFile("$path/$rp_program", $rp_program_script);
+
+
+}
 
 
 

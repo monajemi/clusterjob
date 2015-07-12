@@ -8,13 +8,13 @@ SUID     = 'monajemi';
 l = 1:10;
 k = 2:5;
 
-
+r = rand(length(k));
 fid = fopen(filename, 'at');
 fprintf(fid, '%s, %s, %s\n','SUID','counter1', 'counter2');
 
 for i = 1:length(l)
  for j = 1:length(k)
-	fprintf(fid, '%s, %i, %i\n', SUID,i,j);
+	fprintf(fid, '%s, %i, %i\n', SUID,i,r(j));
   end
 end
 

@@ -126,7 +126,7 @@ sub save_results{
     
     
     
-    if(-d $save_path){
+    if(-d "$save_path/$package"){
         # Ask if it needs to be overwritten
         
         CJ::message("Directory $save_path already exists. Do you want to overwrite? Y/N");
@@ -134,10 +134,10 @@ sub save_results{
         if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
             
             
-            my $cmd = "rm -rf $save_path/*";
+            my $cmd = "rm -rf $save_path/$package/*";
             &CJ::my_system($cmd,$verbose);
             
-            $cmd = "rsync -arz  $get_tmp_dir/$package/ $save_path/";
+            $cmd = "rsync -arz  $get_tmp_dir/$package/ $save_path/package/";
             &CJ::my_system($cmd,$verbose);
             
         }else{
@@ -150,10 +150,10 @@ sub save_results{
     }else{
         
         # Create directories
-        my $cmd = "mkdir -p $save_path";
+        my $cmd = "mkdir -p $save_path/$package";
         &CJ::my_system($cmd,$verbose) ;
         
-        $cmd = "rsync -arz  $get_tmp_dir/$package/ $save_path/";
+        $cmd = "rsync -arz  $get_tmp_dir/$package/ $save_path/$package/";
         &CJ::my_system($cmd,$verbose);
         
         

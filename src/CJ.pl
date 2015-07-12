@@ -133,8 +133,19 @@ sub run{
     
     my ($machine,$program, $runflag) = @_;
     
+    my $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
+
+    
+    
     CJ::message("$runflag"."ing [$program] on [$machine]");
    
+
+    
+    
+    
+
+    
+    
     
 #====================================
 #         DATE OF CALL
@@ -161,7 +172,6 @@ my $remotePrefix    = $ssh->{remote_repo};
 
 #check to see if the file and dep folder exists
     
-my $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
 if(! -e "$BASE/$program" ){
  &CJ::err("$BASE/$program not found");
 }
@@ -249,9 +259,20 @@ if ($runflag eq "deploy" || $runflag eq "run"){
 #   COPY ALL NECESSARY FILES INTO THE
 #    EXPERIMENT FOLDER
 #============================================
+   
+CJ::message("Creating reproducible script reproducible_$program");
+CJ::Matlab::build_reproducible_script($program, $local_sep_Dir, $runflag);
+
+
 my $cmd = "cp $BASE/$program $local_sep_Dir/";
 &CJ::my_system($cmd,$verbose);
+my $cmd = "mv $BASE/reproducible_$program $local_sep_Dir/";
+&CJ::my_system($cmd,$verbose);
 
+    
+    
+    
+    
 
 #===========================================
 # BUILD A BASH WRAPPER
@@ -528,7 +549,11 @@ if($nloops eq 1){
                     
                     my $this_path  = "$local_sep_Dir/$counter/$program";
                     &CJ::writeFile($this_path,$new_script);
-                    
+                
+                    # build reproducible script for each run
+                    CJ::Matlab::build_reproducible_script($program, "$local_sep_Dir/$counter", $runflag);
+                
+                
                     
                     
                     # build bashMain.sh for each parallel package
@@ -574,7 +599,9 @@ if($nloops eq 1){
                 mkdir "$local_sep_Dir/$counter";
                 my $this_path  = "$local_sep_Dir/$counter/$program";
                 &CJ::writeFile($this_path,$new_script);
-                
+                # build reproducible script for each run
+                CJ::Matlab::build_reproducible_script($program,  "$local_sep_Dir/$counter", $runflag);
+
                 
                 
                 # build bashMain.sh for each parallel package
@@ -621,7 +648,9 @@ if($nloops eq 1){
                     
                 my $this_path  = "$local_sep_Dir/$counter/$program";
                 &CJ::writeFile($this_path,$new_script);
-                
+                # build reproducible script for each run
+                CJ::Matlab::build_reproducible_script($program, "$local_sep_Dir/$counter", $runflag);
+
                 
                 
                 # build bashMain.sh for each parallel package
@@ -856,10 +885,10 @@ matlab -nosplash -nodisplay <<HERE
 % make sure each run has different random number stream
 mydate = date;
 RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
-defaultStream = RandStream.getGlobalStream;
-savedState = defaultStream.State;
-fname = sprintf('randState.mat');
-save(fname, 'mydate', 'savedState');
+globalStream = RandStream.getGlobalStream;
+CJsavedState = globalStream.State;
+fname = sprintf('CJrandState.mat');
+save(fname, 'mydate', 'CJsavedState');
 cd $DIR
 run('${PROGRAM}');
 quit;
@@ -892,10 +921,10 @@ matlab -nosplash -nodisplay <<HERE
 % make sure each run has different random number stream
 mydate = date;
 RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
-defaultStream = RandStream.getGlobalStream;
-savedState = defaultStream.State;
-fname = sprintf('randState.mat');
-save(fname, 'mydate', 'savedState');
+globalStream = RandStream.getGlobalStream;
+CJsavedState = globalStream.State;
+fname = sprintf('CJrandState.mat');
+save(fname, 'mydate', 'CJsavedState');
 cd $DIR
 run('${PROGRAM}');
 quit;
@@ -1036,10 +1065,10 @@ addpath(genpath(bin_path));  % recursive path
 % make sure each run has different random number stream
 mydate = date;
 RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
-defaultStream = RandStream.getGlobalStream;
-savedState = defaultStream.State;
-fname = sprintf('randState.mat');
-save(fname, 'mydate', 'savedState');
+globalStream = RandStream.getGlobalStream;
+CJsavedState = globalStream.State;
+fname = sprintf('CJrandState.mat');
+save(fname, 'mydate', 'CJsavedState');
 cd $DIR
 run('${PROGRAM}');
 quit;
@@ -1081,10 +1110,10 @@ addpath(genpath(bin_path));
 % make sure each run has different random number stream
 mydate = date;
 RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
-defaultStream = RandStream.getGlobalStream;
-savedState = defaultStream.State;
-fname = sprintf('randState.mat');
-save(fname, 'mydate', 'savedState');
+globalStream = RandStream.getGlobalStream;
+CJsavedState = globalStream.State;
+fname = sprintf('CJrandState.mat');
+save(fname, 'mydate', 'CJsavedState');
 cd $DIR
 run('${PROGRAM}');
 quit;
