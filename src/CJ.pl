@@ -260,14 +260,14 @@ if ($runflag eq "deploy" || $runflag eq "run"){
 #    EXPERIMENT FOLDER
 #============================================
    
-CJ::message("Creating reproducible script reproducible_$program");
-CJ::Matlab::build_reproducible_script($program, $local_sep_Dir, $runflag);
 
 
 my $cmd = "cp $BASE/$program $local_sep_Dir/";
 &CJ::my_system($cmd,$verbose);
-my $cmd = "mv $BASE/reproducible_$program $local_sep_Dir/";
-&CJ::my_system($cmd,$verbose);
+    
+CJ::message("Creating reproducible script reproducible_$program");
+CJ::Matlab::build_reproducible_script($program, $local_sep_Dir, $runflag);
+    
 
     
     
