@@ -4,15 +4,59 @@ package CJ;
 use strict;
 use warnings;
 use CJ::CJVars;
-$::VERSION = 0.0.1;
+
+sub version_info{
+my $version_script="\n\n          This is Clusterjob (CJ) verion 1.1.0";
+$version_script .=  "\n          Copyright (c) 2015 Hatef Monajemi (monajemi\@stanford.edu)";
+$version_script .="\n\n          CJ may be copied only under the terms and conditions of";
+$version_script .=  "\n          the GNU General Public License, which may be found in the CJ";
+$version_script .=  "\n          source code. For more info please visit";
+$version_script .=  "\n          https://github.com/monajemi/clusterjob";
+    return $version_script ;
+}
 
 
 
 
 
 
+# This is the CJ confirmation included in the
+# reproducible package
+sub build_cj_confirmation{
+    my ($package, $path) = @_;
+    
+    my $info = retrieve_package_info($package);
+    my $program = $info->{'program'};
+    
+    my $version_script = &CJ::version_info() ;
+my $confirmation_script =<<CONFIRM;
+$version_script
+------------------------------------------------------------
+This reproducible package is generated using Clusterjob (CJ)
+on $info->{'month'} $info->{'day'}, $info->{'year'} at $info->{'hour'}:$info->{'min'}:$info->{'sec'}. To reproduce the results,
+please rerun
+    "reproduce_$program"
 
+The following is the job discription:
 
+PACKAGE     = $info->{'package'}
+PROGRAM     = $info->{'program'}
+LOCAL_PATH  = $info->{'local_path'}
+MACHINE     = $info->{'machine'}
+ACCOUNT     = $info->{'account'}
+RUNFLAG     = $info->{'runflag'}
+BQS         = $info->{'bqs'}
+REMOTE_PATH = $info->{'remote_path'}
+JOB_ID      = $info->{'job_id'};
+
+------------------------------------------------------------
+    
+CONFIRM
+
+CJ::writeFile("$path/CJ_CONFIRMATION.TXT", $confirmation_script);
+my $cmd = "chmod +x $path/CJ_CONFIRMATION.TXT";
+&CJ::my_system($cmd,0);
+}
 
 # ======
 # Build master script
@@ -725,9 +769,15 @@ sub retrieve_package_info{
     $info->{'program'}  = $program;
     $info->{'message'}   = $message;
     
-    
-    
-    
+    my @datearray = ( $package =~ m/^(\d{4})(\D{3})(\d{2})_(\d{2})(\d{2})(\d{2})$/g );
+    $info->{'year'}   = $datearray[0];
+    $info->{'month'}  = $datearray[1];
+    $info->{'day'}    = $datearray[2];
+    $info->{'hour'}   = $datearray[3];
+    $info->{'min'}    = $datearray[4];
+    $info->{'sec'}    = $datearray[5];
+
+
     
     return $info;
 }

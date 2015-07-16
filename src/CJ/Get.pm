@@ -255,6 +255,14 @@ sub get_results{
     
     my $cmd = "rsync -arvz  $account:${remote_path}/* $get_tmp_dir/$package";
     &CJ::my_system($cmd,$verbose);
+    
+    
+    # build a CJ confirmation file
+    my $confirm_path = "$get_tmp_dir/$package";
+    &CJ::build_cj_confirmation($package, $confirm_path);
+
+    
+    
     &CJ::message("Please see your last results in $get_tmp_dir/$package");
     
     

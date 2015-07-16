@@ -11,14 +11,8 @@ use CJ::Matlab;  # Contains Matlab related subs
 use CJ::Get;     # Contains Get related subs
 use Getopt::Declare;
 use vars qw($message $mem $dep_folder $verbose $text_header_lines);  # options
-$::VERSION  ="\n\n          This is Clusterjob (CJ) verion 1.1.0";
-$::VERSION .=  "\n          Copyright (c) 2015 Hatef Monajemi (monajemi\@stanford.edu)";
-$::VERSION .="\n\n          CJ may be copied only under the terms and conditions of";
-$::VERSION .=  "\n          the GNU General Public License, which may be found in the CJ";
-$::VERSION .=  "\n          source code. For more info please visit";
-$::VERSION .=  "\n          https://github.com/monajemi/clusterjob";
 
-
+$::VERSION = &CJ::version_info();
 
 
 
@@ -393,8 +387,6 @@ $last_instance.=`cat $BASE/$program`;
 &CJ::writeFile($last_instance_file, $last_instance);
 
     
-
-
     
     
 }elsif($runflag eq "parrun"  || $runflag eq "pardeploy"){
