@@ -90,7 +90,7 @@ $master_script.="$docstring";
         $master_script .= "mkdir ${remote_sep_Dir}"."/logs" . "\n" ;
         $master_script .= "mkdir ${remote_sep_Dir}"."/scripts" . "\n" ;
     
-        my $tagstr="$programName\_$date";
+        my $tagstr="CJ$date\_$programName";
         if($bqs eq "SGE"){
             
         $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem -N $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n";
@@ -113,7 +113,7 @@ $master_script.="$docstring";
         $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/scripts" . "\n" ;
         
         
-        my $tagstr="$programName\_$date\_$counter";
+        my $tagstr="CJ$date\_$counter\_$programName";
         if($bqs eq "SGE"){
             $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem -N $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n";
         }elsif($bqs eq "SLURM"){
