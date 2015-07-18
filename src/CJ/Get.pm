@@ -10,6 +10,158 @@ use CJ::CJVars;
 
 
 
+sub gather_results{
+    my ($package,$pattern, $dir_name, $verbose) = @_;
+    
+    
+    if ( (!defined($pattern)) ||  (!defined($dir_name)) ){
+        &CJ::err("Pattern and dir_name must be provided for gather with parrun packages, eg, 'clusterjob gather *.mat MATFILES' ");
+    }
+
+    
+    my $machine;
+    my $account;
+    my $remote_path;
+    my $local_path;
+    my $job_id;
+    my $bqs;
+    my $runflag;
+    my $program;
+    
+    
+    my $info;
+    if(&CJ::is_valid_package_name($package) ){
+        
+        
+        my $cmd= "grep -q '$package' '$run_history_file'";
+        my $pattern_exists = system($cmd);chomp($pattern_exists);
+        
+        
+        
+        if ($pattern_exists==0){
+            
+            $info  = &CJ::retrieve_package_info($package);
+            $machine = $info->{'machine'};
+            $account    = $info->{'account'};
+            $remote_path = $info->{'remote_path'};
+            $runflag    = $info->{'runflag'};
+            $bqs        = $info->{'bqs'};
+            $job_id     = $info->{'job_id'};
+            $program    = $info->{'program'};
+            
+            
+            
+        }else{
+            &CJ::err("No such job found in CJ database");
+        }
+        
+    }else{
+        
+        $info  = &CJ::retrieve_package_info();   # retrieves the last instance info;
+        $machine    = $info->{'machine'};
+        $package    = $info->{'package'};
+        $account    = $info->{'account'};
+        $remote_path = $info->{'remote_path'};
+        $runflag    = $info->{'runflag'};
+        $bqs        = $info->{'bqs'};
+        $job_id     = $info->{'job_id'};
+        $program    = $info->{'program'};
+        
+    }
+    
+    # gather IS ONLY FOR PARRUN
+    if(! $runflag =~ m/^par*/){
+        CJ::err("GATHER must be called for a 'parrun' package. Please use GET instead.");
+    }
+
+    
+    
+
+    # Get current remote directory from .ssh_config
+    # user might wanna rename, copy to anothet place,
+    # etc. We consider the latest one , and if the
+    # saved remote is different, we issue a warning
+    # for the user.
+    #print "$machine\n";
+    my $ssh             = &CJ::host($machine);
+    my $remotePrefix    = $ssh->{remote_repo};
+    
+    my @program_name    = split /\./,$program;
+    my  $lastone = pop @program_name;
+    my $program_name   =   join "\_",@program_name;
+    my $current_remote_path = "$remotePrefix/$program_name/$package";
+    
+    #print("$remote_path");
+    if($current_remote_path ne $remote_path){
+        &CJ::warning("the .ssh_config remote directory and the history remote are not the same. CJ is choosing:\n     $account:${current_remote_path}.");
+        $remote_path = $current_remote_path;
+    }
+    
+    
+    
+# Find number of jobs to be gathered
+my @job_ids = split(',', $job_id);
+my $num_res = 1+$#job_ids;
+    
+# header for bqs's
+my $HEADER = &CJ::bash_header($bqs);
+my $bash_remote_path  = $remote_path;
+$bash_remote_path =~ s/~/\$HOME/;
+my $gather_bash_script=<<GATHER;
+    $HEADER
+    
+    TARGET_DIR=$remote_path/$dir_name
+    rm -rf \$TARGET_DIR
+    mkdir \$TARGET_DIR
+        
+    for COUNTER in \$(seq $num_res);do
+      cd $remote_path/\$COUNTER
+        for file in \$(ls -C1 $pattern );do
+            if [ ! -f \$TARGET_DIR/\$file ];then
+                cp \$file \$TARGET_DIR
+            else
+            echo "Files are not distict. Use REDUCE instead of GATEHR"; exit 1;
+            fi
+        done
+    done
+        
+GATHER
+        
+    my $gather_name = "cj_gather.sh";
+    my $gather_bash_path = "/tmp/$gather_name";
+    &CJ::writeFile($gather_bash_path,$gather_bash_script);
+    
+    my $cmd = "scp $gather_bash_path $account:$remote_path/";
+    
+    &CJ::my_system($cmd,$verbose);
+    
+    
+    &CJ::message("Gathering $pattern in $dir_name...");
+    $cmd = "ssh $account 'cd $remote_path; srun bash -l $gather_name > cj_gather.out'";
+    &CJ::my_system($cmd,$verbose);
+    
+    
+    # Get the feedback
+    $cmd = "scp  $account:$remote_path/cj_gather.out /tmp/";
+    &CJ::my_system($cmd,$verbose);
+    
+    
+    if ( ! -s "/tmp/cj_gather.out" ){
+    &CJ::message("Gathering results done! Please use \"CJ get \" to get your results.");
+    }else{
+    my $error = `cat "/tmp/cj_gather.out"`;
+    &CJ::err("$error");
+    }
+    
+}
+
+
+
+
+
+
+
+
 
 
 sub reduce_results{
@@ -76,7 +228,7 @@ sub reduce_results{
     # Get current remote directory from .ssh_config
     # user might wanna rename, copy to anothet place,
     # etc. We consider the latest one , and if the
-    # save remote is different, we issue a warning
+    # saved remote is different, we issue a warning
     # for the user.
     #print "$machine\n";
     my $ssh             = &CJ::host($machine);
@@ -108,7 +260,7 @@ sub reduce_results{
     &CJ::message("Checking progress of runs...");
     my $cmd = "rsync $check_path $account:$remote_path/;ssh $account 'source ~/.bashrc;cd $remote_path; bash $check_name'";
     &CJ::my_system($cmd,$verbose);
-    # Run a script to gather all *.mat files of the same name.
+    # Run a script to gather all files of the same name.
     my $completed_filename = "completed_list.txt";
     my $remaining_filename = "remaining_list.txt";
     
@@ -135,7 +287,6 @@ sub reduce_results{
     &CJ::writeFile($collect_bash_path,$collect_bash_script);
    
     $cmd = "scp $collect_bash_path $CJ_reduce_matlab $account:$remote_path/";
-    
     &CJ::my_system($cmd,$verbose);
    
     

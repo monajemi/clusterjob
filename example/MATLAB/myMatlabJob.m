@@ -14,6 +14,15 @@ fprintf(fid, '%s, %s, %s\n','SUID','counter1', 'counter2');
 
 for i = 1:length(l)
  for j = 1:length(k)
+	
+	counter = (i-1)*length(k) + j ;	
+	% open a file for testing gather
+	file2 = sprintf('file_%i', counter);
+	fid2 = fopen(file2,'at');
+        fprintf(fid2, '%i\n', counter);
+	fclose(fid2)
+
+	% File for testing reduce
 	fprintf(fid, '%s, %i, %i\n', SUID,i,r(j));
   end
 end

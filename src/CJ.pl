@@ -26,7 +26,7 @@ $::VERSION = &CJ::version_info();
 
 
 #=========================================
-# create .info directory
+# create .info directory if it doesnt exist
 mkdir "$install_dir/.info" unless (-d "$install_dir/.info");
 
 # create history file if it does not exist
@@ -97,6 +97,8 @@ my $spec = <<'EOSPEC';
                                                }
    reduce       <filename> [<pkg>] 	 reduce results of parrun [nocase]
                                                   {defer{&CJ::Get::reduce_results($pkg,$filename,$verbose,$text_header_lines)}}
+   gather       <pattern>  <dir_name> [<pkg>]	gather results of parrun [nocase]
+                                                  {defer{&CJ::Get::gather_results($pkg,$pattern,$dir_name,$verbose)}}
    get          [<pkg>]	                 bring results back to local machine [nocase]
                                                   {defer{&CJ::Get::get_results($pkg,$verbose)}}
    save         <pkg> [<path>]	         save a package in path [nocase]
