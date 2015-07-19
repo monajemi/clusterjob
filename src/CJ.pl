@@ -73,8 +73,8 @@ my $spec = <<'EOSPEC';
    history      [<argin>]              	         [ditto]  
    clean        [<pkg>]	                 clean certain package [nocase]
                                               {defer{ &CJ::clean($pkg,$verbose); }}
-   state        [<pkg>]	                 state of package [nocase]
-                                              {defer{ &CJ::get_state($pkg) }}
+   state        [<pkg>] [<num>]	                 state of package [nocase]
+                                              {defer{ &CJ::get_state($pkg,$num) }}
    info         [<pkg>]	                 info of certain package [nocase]
                                               {defer{ &CJ::show_info($pkg); }}
    show         [<pkg>]	                 show program of certain package [nocase]

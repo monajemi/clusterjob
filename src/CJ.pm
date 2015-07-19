@@ -518,7 +518,7 @@ sub show_info
 
 sub get_state
 {
-    my ($package) = @_;
+    my ($package,$num) = @_;
     
     
     my $info;
@@ -559,7 +559,6 @@ sub get_state
     
     
     if($runflag =~ m/^par*/){
-        my $num = shift;
         
         # par case
         my @job_ids = split(',',$job_id);
@@ -578,7 +577,7 @@ sub get_state
         my @states = split('\n',$states);
         
         
-        if($num eq ""){
+        if((!defined $num) || ($num eq "")){
             print '-' x 50;print "\n";
             print "PACKAGE " . "$package" . "\n";
             print "CLUSTER " . "$account" . "\n";
@@ -594,7 +593,8 @@ sub get_state
             print '-' x 50;print "\n";
             print "PACKAGE " . "$package" . "\n";
             print "CLUSTER " . "$account" . "\n";
-            print "$num     " . "$job_ids[$num]      "  . "$states[$num]" . "\n";
+            my $tmp = $num -1;
+            print "$num     " . "$job_ids[$tmp]      "  . "$states[$tmp]" . "\n";
         }else{
             &CJ::err("incorrect entry. Input $num >= $#states.")
         }
