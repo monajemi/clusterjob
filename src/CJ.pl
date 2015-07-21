@@ -877,12 +877,13 @@ matlab -nosplash -nodisplay <<HERE
 <MATPATH>
 
 % make sure each run has different random number stream
+myversion = version;
 mydate = date;
 RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
 globalStream = RandStream.getGlobalStream;
 CJsavedState = globalStream.State;
 fname = sprintf('CJrandState.mat');
-save(fname, 'mydate', 'CJsavedState');
+save(fname,'myversion','mydate', 'CJsavedState');
 cd $DIR
 run('${PROGRAM}');
 quit;
@@ -909,16 +910,17 @@ echo WORKDIR \$SLURM_SUBMIT_DIR
 date
 cd $DIR
 
-module load matlab\/R2014a
+module load matlab\/R2014b
 matlab -nosplash -nodisplay <<HERE
 <MATPATH>
 % make sure each run has different random number stream
+myversion = version;
 mydate = date;
 RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
 globalStream = RandStream.getGlobalStream;
 CJsavedState = globalStream.State;
 fname = sprintf('CJrandState.mat');
-save(fname, 'mydate', 'CJsavedState');
+save(fname, 'myversion' ,'mydate', 'CJsavedState');
 cd $DIR
 run('${PROGRAM}');
 quit;
@@ -1057,12 +1059,13 @@ addpath(genpath(bin_path));  % recursive path
     
     
 % make sure each run has different random number stream
+myversion = version;
 mydate = date;
 RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
 globalStream = RandStream.getGlobalStream;
 CJsavedState = globalStream.State;
 fname = sprintf('CJrandState.mat');
-save(fname, 'mydate', 'CJsavedState');
+save(fname, 'myversion','mydate', 'CJsavedState');
 cd $DIR
 run('${PROGRAM}');
 quit;
@@ -1089,7 +1092,7 @@ echo WORKDIR \$SLURM_SUBMIT_DIR
 date
 cd $DIR
 
-module load matlab\/R2014a
+module load matlab\/R2014b
 matlab -nosplash -nodisplay <<HERE
 <MATPATH>
 
@@ -1102,12 +1105,13 @@ addpath(genpath(bin_path));
     
     
 % make sure each run has different random number stream
+myversion = version;
 mydate = date;
 RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
 globalStream = RandStream.getGlobalStream;
 CJsavedState = globalStream.State;
 fname = sprintf('CJrandState.mat');
-save(fname, 'mydate', 'CJsavedState');
+save(fname,'myversion', 'mydate', 'CJsavedState');
 cd $DIR
 run('${PROGRAM}');
 quit;
