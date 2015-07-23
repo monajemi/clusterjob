@@ -137,7 +137,7 @@ GATHER
     
     
     &CJ::message("Gathering $pattern in $dir_name...");
-    $cmd = "ssh $account 'cd $remote_path; srun bash -l $gather_name > cj_gather.out'";
+    $cmd = "ssh $account 'cd $remote_path; bash -l $gather_name > cj_gather.out'";
     &CJ::my_system($cmd,$verbose);
     
     
