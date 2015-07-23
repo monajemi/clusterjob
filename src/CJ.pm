@@ -177,7 +177,6 @@ sub save_results{
         my $yesno =  <STDIN>; chomp($yesno);
         if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
             
-            
             my $cmd = "rm -rf $save_path/$package/*";
             &CJ::my_system($cmd,$verbose);
             
@@ -288,6 +287,10 @@ sub clean
 {
     my ($package, $verbose) = @_;
     
+    
+    
+    
+    
     my $account;
     my $local_path;
     my $remote_path;
@@ -332,12 +335,16 @@ sub clean
     $save_path   =   $info->{'save_path'};
     
     
+    
+    # make sure s/he really want a deletion
+    CJ::message("Are you sure you would like to clean $package? Y/N");
+    my $yesno =  <STDIN>; chomp($yesno);
+if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
+    
     CJ::message("Cleaning $package");
     my $local_clean     = "$local_path\*";
     my $remote_clean    = "$remote_path\*";
     my $save_clean      = "$save_path\*";
-    
-    
     
     
     if (defined($job_id) && $job_id ne "") {
@@ -365,7 +372,7 @@ sub clean
     # ADD THIS CLEAN TO HISTRY
     $history .= sprintf("%-21s%-10s",$package, $flag);
     &CJ::add_to_history($history);
-    
+}
     
     exit 0;
 
