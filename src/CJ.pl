@@ -76,11 +76,11 @@ my $spec = <<'EOSPEC';
    history      [<argin>]	         [ditto]  
    clean        [<pkg>]	                 clean certain package [nocase]
                                               {defer{ &CJ::clean($pkg,$verbose); }}
-   state        [<pkg>] [<num>]	         state of package [nocase]
+   state        [<pkg>] [/] [<num>]	         state of package [nocase]
                                               {defer{ &CJ::get_state($pkg,$num) }}
    info         [<pkg>]	                 info of certain package [nocase]
                                               {defer{ &CJ::show_info($pkg); }}
-   show         [<pkg>][<num>]	         show program/error of certain package [nocase]
+   show         [<pkg>] [/] [<num>]	         show program/error of certain package [nocase]
                                               {defer{ &CJ::show($pkg,$num,$show_tag) }}
    run          <code> <cluster>	 run code on the cluster [nocase]
                                               {my $runflag = "run";

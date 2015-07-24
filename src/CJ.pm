@@ -428,15 +428,17 @@ sub show
     my $script;
     if($show_tag eq "program" ){
     my $program     = $info->{'program'};
-          $script = (`ssh ${account} 'cat $remote_path/$program'`) ;chomp($script);
-    }elsif($show_tag eq "error" ){
-        if($runflag eq "run"){
-            $script = (`ssh ${account} 'cat $remote_path/logs/*stderr'`) ;chomp($script);
-        }elsif($runflag eq "parrun" && &CJ::isnumeric($num)){
-            $script = (`ssh ${account} 'cat $remote_path/$num/logs/*stderr'`) ;chomp($script);
+        if($num){
+          $script = (`ssh ${account} 'cat $remote_path/$num/$program'`) ;chomp($script);
         }else{
-            &CJ::message("Nothing to show. Please enter a numeric value for subpackage.");
+          $script = (`ssh ${account} 'cat $remote_path/$program'`) ;chomp($script);
         }
+    }elsif($show_tag eq "error" ){
+         if($num){
+           $script = (`ssh ${account} 'cat $remote_path/$num/logs/*stderr'`) ;chomp($script);
+         }else{
+           $script = (`ssh ${account} 'cat $remote_path/$num/logs/*stderr'`) ;chomp($script);
+         }
     }
         
     print "$script \n";
