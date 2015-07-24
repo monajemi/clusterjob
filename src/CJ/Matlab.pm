@@ -91,10 +91,10 @@ sub read_matlab_index_set
             if($this_array[1] =~ /\[\s*(.+?)\s*\]/){
                 
             ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
-            my $floating_pattern = "[-+]?[0-9]*\.?[0-9]+(?:[eE][-+]?[0-9]+)?";
+            my $floating_pattern = "[-+]?[0-9]*[\.]?[0-9]+(?:[eE][-+]?[0-9]+)?";
             my @vals = $numbers =~ /[\;\,]?($floating_pattern)[\;\,]?/g;
+          
                 
-           
             my $high = 1+$#vals;
             my @range = ($low..$high);
             $range = join(',',@range);

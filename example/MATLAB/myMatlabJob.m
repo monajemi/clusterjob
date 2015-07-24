@@ -6,7 +6,7 @@ filename = 'Results.txt';
 SUID     = 'monajemi';
 
 l = 1:10;
-k = [0.2,.4 ,.6 ,.8 ,1e-4];
+k = [20,40,60,80,100];
 
 r = rand(length(k));
 fid = fopen(filename, 'at');
