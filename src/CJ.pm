@@ -607,7 +607,12 @@ sub get_state
             foreach my $i (0..$#job_ids)
             {
                 my $counter = $i+1;
-                my $state= $states[$i]; chomp($state);
+                my $state;
+                if($states[$i]){
+                $state= $states[$i]; chomp($state);
+                }else{
+                $state = "Unknown";
+                }
                 #$state = s/^\s+|\s+$/;
                 $state =~ s/[^A-Za-z]//g;
                 print "$counter     " . "$job_ids[$i]      "  . "$state" . "\n";

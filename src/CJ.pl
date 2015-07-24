@@ -857,8 +857,8 @@ DATE=<DATE>;
 cd $DIR;
 mkdir scripts
 mkdir logs
-SHELLSCRIPT=${DIR}/scripts/hm.runProgram.${DATE}.sh;
-LOGFILE=${DIR}/logs/hm.runProgram.${DATE}.log;
+SHELLSCRIPT=${DIR}/scripts/CJ.runProgram.${DATE}.sh;
+LOGFILE=${DIR}/logs/CJ.runProgram.${DATE}.log;
 MID
 
 if($bqs eq "SGE"){
@@ -1031,8 +1031,8 @@ COUNTER=<COUNTER>;
 cd $DIR;
 mkdir scripts
 mkdir logs
-SHELLSCRIPT=${DIR}/scripts/hm.runProgram.${DATE}.${COUNTER}.sh;
-LOGFILE=${DIR}/logs/hm.runProgram.${DATE}.${COUNTER}.log;
+SHELLSCRIPT=${DIR}/scripts/CJ.runProgram.${DATE}.${COUNTER}.sh;
+LOGFILE=${DIR}/logs/CJ.runProgram.${DATE}.${COUNTER}.log;
 MID
 
 if($bqs eq "SGE"){
