@@ -10,7 +10,7 @@ use CJ::CJVars;  # contains global variables of CJ
 use CJ::Matlab;  # Contains Matlab related subs
 use CJ::Get;     # Contains Get related subs
 use Getopt::Declare;
-use vars qw($message $mem $dep_folder $verbose $text_header_lines);  # options
+use vars qw($message $mem $dep_folder $verbose $text_header_lines $show_tag);  # options
 
 $::VERSION = &CJ::version_info();
 
@@ -56,10 +56,13 @@ $mem        = "8G";      # default memeory
 $message    = "";        # default message
 $verbose    = 0;	 # default - redirect to CJlog
 $text_header_lines = undef;
+$show_tag          = "program";
 
 my $spec = <<'EOSPEC';
    --v[erbose]	                         verbose mode [nocase]
                                              {$verbose=1}
+   --err[or]	                         error tag [nocase]
+                                             {$show_tag="error"}
    --header [=] <num_lines>	         number of header lines for reducing text files
                                           {$text_header_lines=$num_lines;}
    -dep          <dep_path>		 dependency folder path [nocase]
@@ -70,15 +73,15 @@ my $spec = <<'EOSPEC';
                                               {$mem=$memory}
    log          [<argin>]	         historical info -n|pkg|all [nocase]
                                               {defer{ &CJ::show_history($argin) }}
-   history      [<argin>]              	         [ditto]  
+   history      [<argin>]	         [ditto]  
    clean        [<pkg>]	                 clean certain package [nocase]
                                               {defer{ &CJ::clean($pkg,$verbose); }}
-   state        [<pkg>] [<num>]	                 state of package [nocase]
+   state        [<pkg>] [<num>]	         state of package [nocase]
                                               {defer{ &CJ::get_state($pkg,$num) }}
    info         [<pkg>]	                 info of certain package [nocase]
                                               {defer{ &CJ::show_info($pkg); }}
-   show         [<pkg>]	                 show program of certain package [nocase]
-                                              {defer{ &CJ::show_program($pkg) }}
+   show         [<pkg>][<num>]	         show program/error of certain package [nocase]
+                                              {defer{ &CJ::show($pkg,$num,$show_tag) }}
    run          <code> <cluster>	 run code on the cluster [nocase]
                                               {my $runflag = "run";
                                                   {defer{run($cluster,$code,$runflag)}}

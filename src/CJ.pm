@@ -384,9 +384,9 @@ if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
 
 
 
-sub show_program
+sub show
 {
-    my ($package) = @_;
+    my ($package, $num, $show_tag) = @_;
     
     
     my $info;
@@ -419,14 +419,28 @@ sub show_program
     }
     
     
-    
+   
     my $account     = $info->{'account'};
     my $remote_path = $info->{'remote_path'};
+    my $runflag = $info->{'runflag'};
+    
+    
+    my $script;
+    if($show_tag eq "program" ){
     my $program     = $info->{'program'};
-    
-    my $script = (`ssh ${account} 'cat $remote_path/$program'`) ;chomp($script);
-    
+          $script = (`ssh ${account} 'cat $remote_path/$program'`) ;chomp($script);
+    }elsif($show_tag eq "error" ){
+        if($runflag eq "run"){
+            $script = (`ssh ${account} 'cat $remote_path/logs/*stderr'`) ;chomp($script);
+        }elsif($runflag eq "parrun" && &CJ::isnumeric($num)){
+            $script = (`ssh ${account} 'cat $remote_path/$num/logs/*stderr'`) ;chomp($script);
+        }else{
+            &CJ::message("Nothing to show. Please enter a numeric value for subpackage.");
+        }
+    }
+        
     print "$script \n";
+        
     exit 0;
     
 }
