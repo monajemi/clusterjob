@@ -2,7 +2,7 @@
 if [ "$1" == "run" ];then
 perl /Users/hatef/github_projects/clusterjob/src/CJ.pl  run  myMatlabJob.m sherlock -dep ./ -m "test of CJ" -mem "10G"
 elif [ "$1" == "parrun" ];then
-perl /Users/hatef/github_projects/clusterjob/src/CJ.pl  parrun  myMatlabJob.m sherlock -dep ./ -m "test of CJ" -mem "10G"  "$2"
+perl /Users/hatef/github_projects/clusterjob/src/CJ.pl  parrun  myMatlabJob.m proclus -dep ./ -m "test of CJ" -mem "10G"  "$2"
 else 
 perl /Users/hatef/github_projects/clusterjob/src/CJ.pl "$@" 
 fi   

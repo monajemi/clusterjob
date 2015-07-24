@@ -586,20 +586,36 @@ sub get_state
         # par case
         my @job_ids = split(',',$job_id);
         my $jobs = join('|', @job_ids);
-        my $states;
+      
+        
+        my $REC_STATES;
+        my $REC_IDS;
         if($bqs eq "SGE"){
-            $states = (`ssh ${account} 'qstat -u \\* | grep -E "$jobs" ' | awk \'{print \$5}\'`) ;chomp($states);
+            $REC_STATES = (`ssh ${account} 'qstat -u \\* | grep -E "$jobs" ' | awk \'{print \$5}\'`) ;chomp($REC_STATES);
+            $REC_IDS = (`ssh ${account} 'qstat -u \\* | grep -E "$jobs" ' | awk \'{print \$1}\'`) ;chomp($REC_IDS);
+            
         }elsif($bqs eq "SLURM"){
-            $states = (`ssh ${account} 'sacct -n --jobs=$job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$6}\'`) ;chomp($states);
+            $REC_STATES = (`ssh ${account} 'sacct -n --jobs=$job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$6}\'`) ;chomp($REC_STATES);
+            $REC_IDS =  (`ssh ${account} 'sacct -n --jobs=$job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$1}\'`) ;chomp($REC_IDS);
+            
             #$states = (`ssh ${account} 'sacct -n --format=state --jobs=$job_id'`) ;chomp($state);
             
         }else{
             &CJ::err("Unknown batch queueing system");
         }
         
-        my @states = split('\n',$states);
+        my @rec_states = split('\n',$REC_STATES);
+        my @rec_ids = split('\n',$REC_IDS);
+
         
-        
+        my $states={};
+        foreach my $i (0..$#rec_ids){
+            my $key = $rec_ids[$i];
+            my $val = $rec_states[$i];
+            $states->{$key} = $val;
+        }
+            
+
         if((!defined $num) || ($num eq "")){
             print '-' x 50;print "\n";
             print "PACKAGE " . "$package" . "\n";
@@ -608,8 +624,8 @@ sub get_state
             {
                 my $counter = $i+1;
                 my $state;
-                if($states[$i]){
-                $state= $states[$i]; chomp($state);
+                if($states->{$job_ids[$i]}){
+                $state= $states->{$job_ids[$i]}; chomp($state);
                 }else{
                 $state = "Unknown";
                 }
@@ -622,9 +638,15 @@ sub get_state
             print "PACKAGE " . "$package" . "\n";
             print "CLUSTER " . "$account" . "\n";
             my $tmp = $num -1;
-            print "$num     " . "$job_ids[$tmp]      "  . "$states[$tmp]" . "\n";
+            my $val = $states->{$job_ids[$tmp]};
+            if (! $val){
+            $val = "unknwon";
+            }
+            print "$num     " . "$job_ids[$tmp]      "  . "$val" . "\n";
+            
+            
         }else{
-            &CJ::err("incorrect entry. Input $num >= $#states.")
+            &CJ::err("incorrect entry. Input $num >= $#job_ids.")
         }
         
         print '-' x 35;print "\n";
