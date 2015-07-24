@@ -875,7 +875,7 @@ echo WORKDIR \$SGE_O_WORKDIR
 date
 cd $DIR
 
-module load MATLAB-R2014a
+module load MATLAB-R2014b
 matlab -nosplash -nodisplay <<HERE
 <MATPATH>
 
@@ -1049,7 +1049,7 @@ echo WORKDIR \$SGE_O_WORKDIR
 date
 cd $DIR
 
-module load MATLAB-R2014a
+module load MATLAB-R2014b
 matlab -nosplash -nodisplay <<HERE
 <MATPATH>
 
