@@ -120,7 +120,7 @@ my $gather_bash_script=<<GATHER;
             if [ ! -f \$TARGET_DIR/\$file ];then
                 cp \$file \$TARGET_DIR
             else
-            echo "Files are not distict. Use REDUCE instead of GATEHR"; exit 1;
+            echo "Files are not distinct. Use REDUCE instead of GATEHR"; exit 1;
             fi
         done
     done
