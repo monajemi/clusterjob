@@ -180,7 +180,7 @@ sub save_results{
             my $cmd = "rm -rf $save_path/$package/*";
             &CJ::my_system($cmd,$verbose);
             
-            $cmd = "rsync -arz  $get_tmp_dir/$package/ $save_path/package/";
+            $cmd = "rsync -arz  $get_tmp_dir/$package/ $save_path/$package/";
             &CJ::my_system($cmd,$verbose);
             
         }else{
