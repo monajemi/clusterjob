@@ -437,8 +437,15 @@ sub show
          if($num){
            $script = (`ssh ${account} 'cat $remote_path/$num/logs/*stderr'`) ;chomp($script);
          }else{
-           $script = (`ssh ${account} 'cat $remote_path/$num/logs/*stderr'`) ;chomp($script);
+           $script = (`ssh ${account} 'cat $remote_path/logs/*stderr'`) ;chomp($script);
          }
+        
+    }elsif($show_tag eq "ls" ){
+        if($num){
+            $script = (`ssh ${account} 'ls -C1 $remote_path/$num/'`) ;chomp($script);
+        }else{
+            $script = (`ssh ${account} 'ls -C1 $remote_path/'`) ;chomp($script);
+        }
     }
         
     print "$script \n";

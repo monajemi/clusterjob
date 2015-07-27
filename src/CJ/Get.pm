@@ -291,7 +291,11 @@ sub reduce_results{
    
     
     &CJ::message("Reducing results...");
+    if($bqs eq "SLURM"){
     $cmd = "ssh $account 'cd $remote_path; srun bash -l $collect_name'";
+    }else{
+    $cmd = "ssh $account 'cd $remote_path; bash -l $collect_name'";
+    }
     &CJ::my_system($cmd,$verbose);
     
     &CJ::message("Reducing results done! Please use \"CJ get \" to get your results.");
@@ -492,6 +496,8 @@ if [ -f "$bash_remote_path/$completed_filename" ];then
     rm $bash_remote_path/$completed_filename
 fi
     
+    
+touch $completed_filename
 for line in \$(cat $bash_remote_path/$remaining_filename);do
 COUNTER=`grep -o "[0-9]*" <<< \$line`
 if [ -f "$bash_remote_path/\$COUNTER/$res_filename" ];then

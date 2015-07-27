@@ -63,6 +63,8 @@ my $spec = <<'EOSPEC';
                                              {$verbose=1}
    --err[or]	                         error tag [nocase]
                                              {$show_tag="error"}
+   --ls      	                         list tag [nocase]
+                                             {$show_tag="ls"}
    --header [=] <num_lines>	         number of header lines for reducing text files
                                           {$text_header_lines=$num_lines;}
    -dep          <dep_path>		 dependency folder path [nocase]
