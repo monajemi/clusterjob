@@ -741,13 +741,14 @@ sub host{
     my ($host) = $this_host =~ /Host[\t\s]*(.*)/;$host =~ s/^\s+|\s+$//g;
     my ($bqs)  = $this_host =~ /Bqs[\t\s]*(.*)/ ;$bqs =~ s/^\s+|\s+$//g;
     my ($remote_repo)  = $this_host =~ /Repo[\t\s]*(.*)/ ;$remote_repo =~ s/^\s+|\s+$//g;
+    my ($remote_matlabpath)  = $this_host =~ /MATlib[\t\s]*(.*)/;$remote_repo =~ s/^\s+|\s+$//g;
     my $account  = $user . "@" . $host;
     
     
     $ssh_config->{'account'} = $account;
     $ssh_config->{'bqs'}     = $bqs;
     $ssh_config->{'remote_repo'}     = $remote_repo;
-    
+    $ssh_config->{'matlib'}     = $remote_matlabpath; 
     
     return $ssh_config;
 }

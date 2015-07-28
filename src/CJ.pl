@@ -169,7 +169,7 @@ my $account  = $ssh->{account};
 my $bqs      = $ssh->{bqs};
 my $remotePrefix    = $ssh->{remote_repo};
 
-
+   
 
 #check to see if the file and dep folder exists
     
@@ -281,7 +281,7 @@ CJ::Matlab::build_reproducible_script($program, $local_sep_Dir, $runflag);
     
   
 
-my $sh_script = make_shell_script($program,$date,$bqs);
+my $sh_script = make_shell_script($ssh,$program,$date,$bqs);
 $local_sh_path = "$local_sep_Dir/bashMain.sh";
 &CJ::writeFile($local_sh_path, $sh_script);
 
@@ -557,7 +557,7 @@ if($nloops eq 1){
                     
                     # build bashMain.sh for each parallel package
                     my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
-                    my $sh_script = make_par_shell_script($program,$date,$bqs,$counter, $remote_par_sep_dir);
+                    my $sh_script = make_par_shell_script($ssh,$program,$date,$bqs,$counter,$remote_par_sep_dir);
                     $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                     &CJ::writeFile($local_sh_path, $sh_script);
                 
@@ -605,7 +605,7 @@ if($nloops eq 1){
                 
                 # build bashMain.sh for each parallel package
                 my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
-                my $sh_script = make_par_shell_script($program,$date,$bqs,$counter, $remote_par_sep_dir);
+                my $sh_script = make_par_shell_script($ssh,$program,$date,$bqs,$counter, $remote_par_sep_dir);
                 $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
@@ -654,7 +654,7 @@ if($nloops eq 1){
                 
                 # build bashMain.sh for each parallel package
                 my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
-                my $sh_script = make_par_shell_script($program,$date,$bqs,$counter, $remote_par_sep_dir);
+                my $sh_script = make_par_shell_script($ssh,$program,$date,$bqs,$counter, $remote_par_sep_dir);
                 $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
@@ -826,8 +826,10 @@ $last_instance.=`cat $BASE/$program`;
 
 sub make_shell_script
     {
-my ($program,$date,$bqs) = @_;
+        my ($ssh,$program,$date,$bqs) = @_;
 
+        
+        
 my $sh_script;
 
 if($bqs eq "SGE"){
@@ -940,41 +942,35 @@ THERE
 chmod a+x $SHELLSCRIPT
 bash $SHELLSCRIPT > $LOGFILE
     
-    
 BASH
 }
 
-my $pathText;
-if($bqs eq "SGE"){
-# CVX is already setup on solomon and proclus
-$pathText.=<<MATLAB;
- 
+        
+        
+my $pathText.=<<MATLAB;
+        
+% add user defined path
+addpath $ssh->{matlib} -begin
+
 % generate recursive path
 addpath(genpath('.'));
     
-cvx_setup;
-cvx_quiet(true)
-% Find and add Sedumi Path for machines that have CVX installed
-cvx_path = which('cvx_setup.m');
-oldpath = textscan( cvx_path, '%s', 'Delimiter', '/');
-newpath = horzcat(oldpath{:});
-sedumi_path = [sprintf('%s/', newpath{1:end-1}) 'sedumi'];
-addpath(sedumi_path)
-% MOSEK
-addpath '~/mosek/7/toolbox/r2013a/'
-MATLAB
-}elsif($bqs eq "SLURM"){
-$pathText.=<<MATLAB;
+try
+    cvx_setup;
+    cvx_quiet(true)
+    % Find and add Sedumi Path for machines that have CVX installed
+        cvx_path = which('cvx_setup.m');
+    oldpath = textscan( cvx_path, '%s', 'Delimiter', '/');
+    newpath = horzcat(oldpath{:});
+    sedumi_path = [sprintf('%s/', newpath{1:end-1}) 'sedumi'];
+    addpath(sedumi_path)
     
-% generate recursive path
-addpath(genpath('.'));
-    
-addpath '~/BPDN/CVX/cvx' -begin
-cvx_setup;
-cvx_quiet(true);
-addpath '~/mosek/7/toolbox/r2013a/'
+catch
+    warning('CVX not enabled. Please set CVX path in .ssh_config if you need CVX for your jobs');
+end
+
 MATLAB
-}
+
         
         
         
@@ -997,17 +993,15 @@ return $sh_script;
 
 sub make_par_shell_script
 {
-my ($program,$date,$bqs,$counter,$remote_path) = @_;
+my ($ssh,$program,$date,$bqs,$counter,$remote_path) = @_;
 
 my $sh_script;
-
 if($bqs eq "SGE"){
     
 $sh_script=<<'HEAD'
 #!/bin/bash -l
 #\$ -cwd
 #\$ -S /bin/bash
-
 
 echo JOB_ID $JOB_ID
 echo WORKDIR $SGE_O_WORKDIR
@@ -1135,43 +1129,29 @@ bash $SHELLSCRIPT > $LOGFILE
 BASH
 }
 
-my $pathText;
-if($bqs eq "SGE"){
-# CVX is already setup on solomon and proclus
-$pathText.=<<MATLAB;
+my $pathText.=<<MATLAB;
+    
+% add user defined path
+addpath $ssh->{matlib} -begin
 
+% generate recursive path
+addpath(genpath('.'));
+
+try
 cvx_setup;
 cvx_quiet(true)
 % Find and add Sedumi Path for machines that have CVX installed
-cvx_path = which('cvx_setup.m');
+    cvx_path = which('cvx_setup.m');
 oldpath = textscan( cvx_path, '%s', 'Delimiter', '/');
 newpath = horzcat(oldpath{:});
 sedumi_path = [sprintf('%s/', newpath{1:end-1}) 'sedumi'];
 addpath(sedumi_path)
-    
 
-
-% MOSEK
-addpath '~/mosek/7/toolbox/r2013a/'
+catch
+warning('CVX not enabled. Please set CVX path in .ssh_config if you need CVX for your jobs');
+end
 
 MATLAB
-}elsif($bqs eq "SLURM"){
-$pathText.=<<MATLAB;
-    
-    
-addpath '~/BPDN/CVX/cvx' -begin
-cvx_setup;
-cvx_quiet(true);
-
-    
-addpath '~/mosek/7/toolbox/r2013a/'
-    
-    
-MATLAB
-
-}
-
-
 
 
 

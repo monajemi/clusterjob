@@ -3,19 +3,22 @@ Host	sherlock.stanford.edu
 User	monajemi
 Bqs	SLURM
 Repo	/scratch/users/monajemi/CJRepo_Remote
+MATlib	~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 [sherlock]
 [solomon]
 Host	solomon.stanford.edu
 User	monajemi
 Bqs	SGE
 Repo	~/CJRepo_Remote
+MATlib	~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 [solomon]
 
 [proclus]
 Host	proclus.stanford.edu
 User	monajemi
-Bqs	SGE
+Bqs SGE
 Repo	~/CJRepo_Remote
+MATlib	~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 [proclus]
 
 [myMac]
@@ -23,6 +26,7 @@ Host	local
 User	hatef
 Bqs	none	
 Repo	~/CJRepo_local
+MATlib	~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 [myMac]
 
 
