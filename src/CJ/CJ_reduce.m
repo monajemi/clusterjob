@@ -13,18 +13,8 @@ elseif( isa(A, 'cell'))  % double or char
 C = reduce_cell(A,B);
 
 elseif( isa(A,'struct') )
-flds = fields(A);
-for j = 1:length(flds)
-    if( isa(A.(flds{j}),'double') )
-    C.(flds{j}) = reduce_double( A.(flds{j}) , B.(flds{j}) );
-    elseif(isa(A.(flds{j}),'char') )
-    C.(flds{j}) = reduce_char( A.(flds{j}) , B.(flds{j}) );
-    elseif( isa(A.(flds{j}),'cell')  )
-    C.(flds{j}) = reduce_cell( A.(flds{j}) , B.(flds{j}) );
-else
-    error('   CJerr:: class %s is not recognized', class(A.(flds{j})) );
-end
-end
+
+C = reduce_struct(A,B);
 
 else
 error('   CJerr::Not implemeneted yet');
@@ -34,7 +24,49 @@ end
 
 end  %CJ_reduce
 
+function c = reduce_struct(a,b)
 
+% make a and b same size and class if
+% they are empty
+if(isempty(a) && isstruct(b))
+    vfields = fields(b);
+    for i = 1:length(vfields)
+    field = vfields{i};
+    a.(field) = [];
+    end
+
+elseif(isempty(b) && isstruct(a))
+
+    vfields = fields(a);
+    for i = 1:length(vfields)
+    field = vfields{i};
+    b.(field) = [];
+    end
+
+elseif(isempty(b) && isempty(a))
+    c = [];
+    return;
+end
+
+
+
+flds = fields(a);
+for j = 1:length(flds)
+    if( isa(a.(flds{j}),'double') )
+    c.(flds{j}) = reduce_double( a.(flds{j}) , b.(flds{j}) );
+    elseif(isa(a.(flds{j}),'char') )
+    c.(flds{j}) = reduce_char( a.(flds{j}) , b.(flds{j}) );
+    elseif( isa(a.(flds{j}),'cell')  )
+    c.(flds{j}) = reduce_cell( a.(flds{j}) , b.(flds{j}) );
+    elseif( isa(a.(flds{j}),'strcut')  )
+    c.(flds{j}) = reduce_structure( a.(flds{j}) , b.(flds{j}) );
+    else
+    error('   CJerr:: class %s is not recognized', class(A.(flds{j})) );
+    end
+end
+
+
+end
 
 
 function c = reduce_cell(a,b);
@@ -46,11 +78,20 @@ c = a;
 return;
 end
 
-w = cellfun( @(x) isa(x,'char') , a, 'UniformOutput', false );
-if(sum([w{:}]) > 0)   % if we find one character
-c = cellfun( @reduce_char , a, b, 'UniformOutput', false );
-else
-c = cellfun( @reduce_double , a, b, 'UniformOutput', false );
+w_char   = cellfun( @(x) isa(x,'char') , a, 'UniformOutput', false );
+w_double = cellfun( @(x) isa(x,'char') , a, 'UniformOutput', false );
+w_struct = cellfun( @(x) isa(x,'struct') , a, 'UniformOutput', false );
+w_cell   = cellfun( @(x) isa(x,'cell') , a, 'UniformOutput', false );
+
+if(sum([w_char{:}]) > 0)            % if we find one character
+     c = cellfun( @reduce_char   , a, b, 'UniformOutput', false );
+elseif(sum([w_double{:}]) > 0)      % we we find one double
+     c = cellfun( @reduce_double , a, b, 'UniformOutput', false );
+elseif(sum([w_struct{:}]) > 0)      % we we find one structure
+     c = cellfun( @reduce_struct , a, b, 'UniformOutput', false );
+elseif(sum([w_cell{:}]) > 0)        % we we find one cell in our cell array
+     c = cellfun( @reduce_cell   , a, b, 'UniformOutput', false );
+
 end
 
 end  %reduce_cell
