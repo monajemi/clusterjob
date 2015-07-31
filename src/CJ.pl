@@ -478,7 +478,9 @@ my @forlines_to_matlab_interpret;
    
 for my $this_forline (@forline_list) {
     
+    
     my ($idx_tag, $range) = &CJ::Matlab::read_matlab_index_set($this_forline, $TOP,$verbose);
+    
     
     # if we can't establish range, we output undef
     if(defined($range)){
@@ -491,7 +493,6 @@ for my $this_forline (@forline_list) {
     
 }
 
-    
 
     
 if ( @tags_to_matlab_interpret ) { # if we need to run matlab

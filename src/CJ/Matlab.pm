@@ -87,19 +87,21 @@ sub read_matlab_index_set
             #extract the range
             my @this_array    = split(/\s*=\s*/,$this_line);
             
+            
             my $numbers;
             if($this_array[1] =~ /\[\s*(.+?)\s*\]/){
-                
             ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
             my $floating_pattern = "[-+]?[0-9]*[\.]?[0-9]+(?:[eE][-+]?[0-9]+)?";
             my @vals = $numbers =~ /[\;\,]?($floating_pattern)[\;\,]?/g;
-          
-                
+
+
             my $high = 1+$#vals;
             my @range = ($low..$high);
             $range = join(',',@range);
                 
             }
+            
+           
             
         }elsif($rightarray[1] =~ /\s*(\D+).*/) {
             #print "$rightarray[1]"."\n";
@@ -139,6 +141,7 @@ sub read_matlab_index_set
         
         
     }
+ 
 
     return ($idx_tag, $range);
 }

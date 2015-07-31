@@ -699,7 +699,7 @@ sub grep_var_line
     my $this_line;
     my @lines = split /\n/, $string;
     foreach my $line (@lines) {
-        if($line =~ /\s*(?<!\%)${pattern}\s*=.*/){
+        if($line =~ /^\s*(?<!\%)${pattern}\s*=.*/){
             $this_line = $line;
             last;
         }

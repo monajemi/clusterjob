@@ -52,13 +52,13 @@ end
 
 flds = fields(a);
 for j = 1:length(flds)
-    if( isa(a.(flds{j}),'double') )
+    if( isa(a.(flds{j}),'double') && isa(b.(flds{j}),'double') )   % Matlab assumes empty is double class
     c.(flds{j}) = reduce_double( a.(flds{j}) , b.(flds{j}) );
-    elseif(isa(a.(flds{j}),'char') )
+    elseif(isa(a.(flds{j}),'char') || isa(b.(flds{j}),'char') )
     c.(flds{j}) = reduce_char( a.(flds{j}) , b.(flds{j}) );
-    elseif( isa(a.(flds{j}),'cell')  )
+    elseif( isa(a.(flds{j}),'cell')  || isa(b.(flds{j}),'cell')  )
     c.(flds{j}) = reduce_cell( a.(flds{j}) , b.(flds{j}) );
-    elseif( isa(a.(flds{j}),'strcut')  )
+    elseif( isa(a.(flds{j}),'strcut') || isa(b.(flds{j}),'struct')  )
     c.(flds{j}) = reduce_structure( a.(flds{j}) , b.(flds{j}) );
     else
     error('   CJerr:: class %s is not recognized', class(A.(flds{j})) );
