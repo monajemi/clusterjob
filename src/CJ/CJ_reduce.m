@@ -24,45 +24,69 @@ end  %CJ_reduce
 
 
 
-
-
-
 function c = reduce_struct(a,b)
 
-% make a and b same size and class if
-% they are empty
-if(isempty(a) && isstruct(b))
-    vfields = fields(b);
-    for i = 1:length(vfields)
-    field = vfields{i};
-    a.(field) = [];
-    end
+if(  isequaln(a,b) )
+c = a;
+return;
+end
 
-elseif(isempty(b) && isstruct(a))
-    vfields = fields(a);
-    for i = 1:length(vfields)
-    field = vfields{i};
-    b.(field) = [];
-    end
-
-elseif(isempty(b) && isempty(a))
-    c = [];
-    return;
+if( isempty(a) )
+flds = fields(b);
+elseif(isempty(b))
+flds = fields(a);
+else
+flds = fields(a);
 end
 
 
-flds = fields(a);
 for j = 1:length(flds)
+
+    if(isstruct(a))
     tmp1 = a.(flds{j});
+    else
+    tmp1 = [];
+    end
+
+
+    if(isstruct(b))
     tmp2 = b.(flds{j});
+    else
+    tmp2 = [];
+    end
+
+
+
     if( isa(tmp1,'double') && isa(tmp2,'double') )   % Matlab assumes empty is double class
         c.(flds{j}) = reduce_double( tmp1 , tmp2 );
+        
     elseif( isa(tmp1,'char') || isa(tmp2,'char') )
         c.(flds{j}) = reduce_char( tmp1, tmp2 );
+
     elseif( isa(tmp1,'cell')  || isa(tmp2,'cell')  )
         c.(flds{j}) = reduce_cell( tmp1 , tmp2 );
+
     elseif( isa(tmp1,'struct') || isa(tmp2,'struct')  )
-        c.(flds{j}) = reduce_struct( tmp1, tmp2 );
+        if(isempty(tmp1))
+        tmp1  = tmp2;
+        vfields = fields(tmp2);
+        for i = 1:length(vfields)
+        field = vfields{i};
+        [tmp1.(field)] = deal([]);
+        end
+
+        elseif(isempty(tmp2))
+        tmp2 = tmp1;
+        vfields = fields(tmp1);
+        for i = 1:length(vfields)
+        field = vfields{i};
+        [tmp2.(field)] = deal([]);
+        end
+        end
+
+
+        c.(flds{j}) = arrayfun( @reduce_struct  , tmp1, tmp2, 'UniformOutput', true );
+
     else
     error('   CJerr:: class %s is not recognized', class(a.(flds{j})) );
     end
