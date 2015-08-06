@@ -18,6 +18,98 @@ $version_script .=  "\n          https://github.com/monajemi/clusterjob";
 
 
 
+#
+#
+#sub rerun
+#{
+#    my ($package, $num) = @_;
+#    
+#    
+#    my $info;
+#    if( (!defined $package) || ($package eq "") ){
+#        #read the first lines of last_instance.info;
+#        $info = &CJ::retrieve_package_info();
+#        $package = $info->{'package'};
+#        
+#    }else{
+#        
+#        if( &CJ::is_valid_package_name($package) ){
+#            # read info from $run_history_file
+#            
+#            my $cmd= "grep -q '$package' '$run_history_file'";
+#            my $pattern_exists = system($cmd);chomp($pattern_exists);
+#            
+#            if ($pattern_exists==0){
+#                $info = &CJ::retrieve_package_info($package);
+#                
+#            }else{
+#                CJ::err("No such job found in the database");
+#            }
+#            
+#        }else{
+#            &CJ::err("incorrect usage: nothing to show");
+#        }
+#        
+#        
+#        
+#    }
+#    
+#    
+#    
+#    my $account     = $info->{'account'};
+#    my $remote_path = $info->{'remote_path'};
+#    my $runflag = $info->{'runflag'};
+#    my $program = $info->{'program'};
+#    
+#    my $programName = &CJ::remove_extention($program);
+#
+#    my $date = &CJ::date();
+#    
+#    if($num){
+#        # rerun only one job
+#        my $tagstr="CJ$date\_$num\_$programName";
+#        if($bqs eq "SGE"){
+#            $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem -N $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n";
+#        }elsif($bqs eq "SLURM"){
+#            
+#            $master_script.="sbatch --mem=$mem  --time=40:00:00  -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
+#            
+#        }else{
+#            &CJ::err("unknown BQS");
+#        }
+#
+#        
+#        
+#    
+#    }else{
+#        # Rerun the master script
+#    
+#    }
+#        
+#    
+#
+#    
+#    exit 0;
+#    
+#}
+#
+#
+#
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # This is the CJ confirmation included in the
@@ -339,7 +431,8 @@ sub clean
     # make sure s/he really want a deletion
     CJ::message("Are you sure you would like to clean $package? Y/N");
     my $yesno =  <STDIN>; chomp($yesno);
-if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
+    
+    if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
     
     CJ::message("Cleaning $package");
     my $local_clean     = "$local_path\*";
@@ -372,6 +465,18 @@ if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
     # ADD THIS CLEAN TO HISTRY
     $history .= sprintf("%-21s%-10s",$package, $flag);
     &CJ::add_to_history($history);
+        
+        
+    my @time_array = ( $time =~ m/../g );
+    $time = join(":",@time_array);
+    # Add the change to run_history file
+my $text =<<TEXT;
+## Clean
+    Date -> $hist_date
+    TIME -> $time
+TEXT
+&CJ::add_change_to_run_history($package, $text);
+        
 }
     
     exit 0;
@@ -780,16 +885,16 @@ sub retrieve_package_info{
     $machine        = `grep -A 14 $package $run_history_file| sed -n '2{p;q;}'` ; chomp($machine);
     $account        = `grep -A 14 $package $run_history_file| sed -n '3{p;q;}'` ; chomp($account);
     $local_prefix   = `grep -A 14 $package $run_history_file| sed -n '4{p;q;}'` ; chomp($local_prefix);
-    $local_path      = `grep -A 14 $package $run_history_file| sed -n '5{p;q;}'` ; chomp($local_path);
+    $local_path     = `grep -A 14 $package $run_history_file| sed -n '5{p;q;}'` ; chomp($local_path);
     $remote_prefix  = `grep -A 14 $package $run_history_file| sed -n '6{p;q;}'` ; chomp($remote_prefix);
-    $remote_path     = `grep -A 14 $package $run_history_file| sed -n '7{p;q;}'` ; chomp($remote_path);
+    $remote_path    = `grep -A 14 $package $run_history_file| sed -n '7{p;q;}'` ; chomp($remote_path);
     $job_id         = `grep -A 14 $package $run_history_file| sed -n '8{p;q;}'` ; chomp($job_id);
     $bqs            = `grep -A 14 $package $run_history_file| sed -n '9{p;q;}'` ; chomp($bqs);
     $save_prefix    = `grep -A 14 $package $run_history_file| sed -n '10{p;q;}'` ; chomp($save_prefix);
-    $save_path       = `grep -A 14 $package $run_history_file| sed -n '11{p;q;}'` ; chomp($save_path);
+    $save_path      = `grep -A 14 $package $run_history_file| sed -n '11{p;q;}'` ; chomp($save_path);
     $runflag        = `grep -A 14 $package $run_history_file| sed -n '12{p;q;}'` ; chomp($runflag);
     $program        = `grep -A 14 $package $run_history_file| sed -n '13{p;q;}'` ; chomp($program);
-    $message        = `grep -A 14 $package $run_history_file| sed -n '14{p;q;}'`; chomp($message);
+    $message        = `grep -A 14 $package $run_history_file| sed -n '14{p;q;}'` ; chomp($message);
     
     }else{
     
@@ -812,7 +917,7 @@ sub retrieve_package_info{
         
     }
     
-    $info->{'package'}   = $package;
+    ($info->{'package'})   = $package =~ m/^(?:\[?)(\d{4}\D{3}\d{2}_\d{6})(?:\])$/g;
     $info->{'machine'}   = $machine;
     $info->{'account'}   = $account;
     $info->{'local_prefix'} = $local_prefix;
@@ -962,6 +1067,8 @@ sub touch
 
 sub writeFile
 {
+    
+    # it should generate a bak up later!
     my ($path, $contents) = @_;
     open(FILE,">$path") or die "can't create file $path";
     print FILE $contents;
@@ -1007,6 +1114,41 @@ sub add_to_run_history
     close $FILE;
     
 }
+
+
+
+sub add_change_to_run_history
+{
+    my ($package, $text) = @_;
+    
+    
+    # find the related package
+    my $START = "\\[$package\\]";
+    my $END   = "\\[\\/$package\\]";
+    
+    
+    my $TOP = `awk \'1;/$START/{exit}\' $run_history_file`;
+    my $THIS = `awk \'/$START/{flag=1;next}/$END/{flag=0}flag\' $run_history_file`;
+    my $BOT = `awk \'/$END/,0\' $run_history_file`;
+   
+my $contents="$TOP"."$THIS"."$text"."$BOT";
+    
+&CJ::writeFile($run_history_file, $contents)
+    
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 sub remove_extention

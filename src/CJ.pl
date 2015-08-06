@@ -84,6 +84,8 @@ my $spec = <<'EOSPEC';
                                               {defer{ &CJ::show_info($pkg); }}
    show         [<pkg>] [/] [<num>]	         show program/error of certain package [nocase]
                                               {defer{ &CJ::show($pkg,$num,$show_tag) }}
+   rerun        [<pkg>] [/] [<num>]	 rerun certain (failed) job [nocase]
+                                              {defer{ &CJ::rerun($pkg,$num) }}
    run          <code> <cluster>	 run code on the cluster [nocase]
                                               {my $runflag = "run";
                                                   {defer{run($cluster,$code,$runflag)}}
@@ -368,7 +370,7 @@ $history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, " ", 
 
 
 my $run_history=<<TEXT;
-${date}
+\[${date}\]
 $machine
 ${account}
 ${localPrefix}
@@ -382,6 +384,7 @@ ${saveDir}/${date}
 $runflag
 $program
 $message
+\[\/${date}\]
 TEXT
 
 &CJ::add_to_run_history($run_history);
@@ -768,8 +771,8 @@ $history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, " ", 
     
     
 my $run_history=<<TEXT;
-${date}
-$machine
+\[${date}\]
+${machine}
 ${account}
 ${localPrefix}
 ${localDir}/${date}
@@ -782,6 +785,7 @@ ${saveDir}/${date}
 $runflag
 $program
 $message
+\[\/${date}\]
 TEXT
     
     
