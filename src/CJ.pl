@@ -1061,7 +1061,11 @@ addpath(genpath(bin_path));  % recursive path
 % make sure each run has different random number stream
 myversion = version;
 mydate = date;
-RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
+    
+% To get different Randstate for different jobs
+rng(${COUNTER})
+seed = sum(100*clock) + 1000 * rand;
+RandStream.setGlobalStream(RandStream('mt19937ar','seed', seed));
 globalStream = RandStream.getGlobalStream;
 CJsavedState = globalStream.State;
 fname = sprintf('CJrandState.mat');
@@ -1107,7 +1111,10 @@ addpath(genpath(bin_path));
 % make sure each run has different random number stream
 myversion = version;
 mydate = date;
-RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
+% To get different Randstate for different jobs
+rng(${COUNTER})
+seed = sum(100*clock) + 1000 * rand;
+RandStream.setGlobalStream(RandStream('mt19937ar','seed', seed));
 globalStream = RandStream.getGlobalStream;
 CJsavedState = globalStream.State;
 fname = sprintf('CJrandState.mat');
