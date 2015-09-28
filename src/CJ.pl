@@ -1064,7 +1064,7 @@ mydate = date;
     
 % To get different Randstate for different jobs
 rng(${COUNTER})
-seed = sum(100*clock) + 1000 * rand;
+seed = sum(100*clock) + randi(10^6);
 RandStream.setGlobalStream(RandStream('mt19937ar','seed', seed));
 globalStream = RandStream.getGlobalStream;
 CJsavedState = globalStream.State;
@@ -1113,7 +1113,7 @@ myversion = version;
 mydate = date;
 % To get different Randstate for different jobs
 rng(${COUNTER})
-seed = sum(100*clock) + 1000 * rand;
+seed = sum(100*clock) + randi(10^6);
 RandStream.setGlobalStream(RandStream('mt19937ar','seed', seed));
 globalStream = RandStream.getGlobalStream;
 CJsavedState = globalStream.State;
