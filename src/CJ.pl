@@ -10,7 +10,7 @@ use CJ::CJVars;  # contains global variables of CJ
 use CJ::Matlab;  # Contains Matlab related subs
 use CJ::Get;     # Contains Get related subs
 use Getopt::Declare;
-use vars qw($message $mem $dep_folder $verbose $text_header_lines $show_tag);  # options
+use vars qw($message $mem $dep_folder $verbose $text_header_lines $show_tag $qsub_extra);  # options
 
 $::VERSION = &CJ::version_info();
 
@@ -57,7 +57,7 @@ $message    = "";        # default message
 $verbose    = 0;	 # default - redirect to CJlog
 $text_header_lines = undef;
 $show_tag          = "program";
-
+$qsub_extra        = "";
 my $spec = <<'EOSPEC';
    --v[erbose]	                         verbose mode [nocase]
                                              {$verbose=1}
@@ -73,9 +73,12 @@ my $spec = <<'EOSPEC';
                                               {$message=$msg}
    -mem          <memory>	         memory requested [nocase]
                                               {$mem=$memory}
+   -alloc[ate]   <resources>	         machine specific allocation [nocase]
+                                          {$qsub_extra=$resources}
    log          [<argin>]	         historical info -n|pkg|all [nocase]
                                               {defer{ &CJ::show_history($argin) }}
-   history      [<argin>]	         [ditto]  
+   history      [<argin>]	         [ditto]
+
    clean        [<pkg>]	                 clean certain package [nocase]
                                               {defer{ &CJ::clean($pkg,$verbose); }}
    state        [<pkg>] [/] [<num>]	         state of package [nocase]
@@ -86,19 +89,19 @@ my $spec = <<'EOSPEC';
                                               {defer{ &CJ::show($pkg,$num,$show_tag) }}
    run          <code> <cluster>	 run code on the cluster [nocase]
                                               {my $runflag = "run";
-                                                  {defer{run($cluster,$code,$runflag)}}
+                                                  {defer{run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
    deploy       <code> <cluster>	 deploy code on the cluster [nocase]
                                               {my $runflag = "deploy";
-                                                  {defer{run($cluster,$code,$runflag)}}
+                                                  {defer{run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
    parrun       <code> <cluster>	 parrun code on the cluster [nocase]
                                               {my $runflag = "parrun";
-                                                  {defer{run($cluster,$code,$runflag)}}
+                                                  {defer{run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
    pardeploy    <code> <cluster>	 pardeploy code on the cluster [nocase]
                                               {my $runflag = "pardeploy";
-                                                  {defer{run($cluster,$code,$runflag)}}
+                                                  {defer{run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
    reduce       <filename> [<pkg>] 	 reduce results of parrun [nocase]
                                                   {defer{&CJ::Get::reduce_results($pkg,$filename,$verbose,$text_header_lines)}}
@@ -108,8 +111,6 @@ my $spec = <<'EOSPEC';
                                                   {defer{&CJ::Get::get_results($pkg,$verbose)}}
    save         <pkg> [<path>]	         save a package in path [nocase]
                                                   {defer{&CJ::save_results($pkg,$path,$verbose)}}
-
-
 EOSPEC
 
 my $opts = Getopt::Declare->new($spec);
@@ -132,11 +133,9 @@ my $opts = Getopt::Declare->new($spec);
 
 sub run{
     
-    my ($machine,$program, $runflag) = @_;
+    my ($machine,$program, $runflag,$qsub_extra) = @_;
     
     my $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
-
-    
     
     CJ::message("$runflag"."ing [$program] on [$machine]");
    
@@ -287,7 +286,7 @@ $local_sh_path = "$local_sep_Dir/bashMain.sh";
 
 # Build master-script for submission
 my $master_script;
-$master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir);
+$master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir, $qsub_extra);
     
     
 
@@ -562,7 +561,7 @@ if($nloops eq 1){
                     $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                     &CJ::writeFile($local_sh_path, $sh_script);
                 
-                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir,$counter);
+                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir,$qsub_extra,$counter);
                 } #v0
     
 
@@ -610,7 +609,7 @@ if($nloops eq 1){
                 $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
-                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir,$counter);
+                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir,$qsub_extra,$counter);
             } #v0
         } #v1
     
@@ -660,7 +659,7 @@ if($nloops eq 1){
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
                 
-                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir,$counter);
+                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir,$qsub_extra,$counter);
                 
         } #v0
         } #v1
