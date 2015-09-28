@@ -10,7 +10,7 @@ use CJ::CJVars;  # contains global variables of CJ
 use CJ::Matlab;  # Contains Matlab related subs
 use CJ::Get;     # Contains Get related subs
 use Getopt::Declare;
-use vars qw($message $mem $dep_folder $verbose $text_header_lines $show_tag $qsub_extra);  # options
+use vars qw($message $mem $runtime $dep_folder $verbose $text_header_lines $show_tag $qsub_extra);  # options
 
 $::VERSION = &CJ::version_info();
 
@@ -53,6 +53,7 @@ if( ! -f $history_file ){
 #====================================
 $dep_folder = ".";
 $mem        = "8G";      # default memeory
+$runtime    = "40:00:00";      # default memeory
 $message    = "";        # default message
 $verbose    = 0;	 # default - redirect to CJlog
 $text_header_lines = undef;
@@ -73,6 +74,8 @@ my $spec = <<'EOSPEC';
                                               {$message=$msg}
    -mem          <memory>	         memory requested [nocase]
                                               {$mem=$memory}
+-runtime      <r_time>	         run time requested (default=40:00:00) [nocase]
+                                              {$runtime=$r_time}
    -alloc[ate]   <resources>	         machine specific allocation [nocase]
                                           {$qsub_extra=$resources}
    log          [<argin>]	         historical info -n|pkg|all [nocase]
@@ -286,7 +289,7 @@ $local_sh_path = "$local_sep_Dir/bashMain.sh";
 
 # Build master-script for submission
 my $master_script;
-$master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir, $qsub_extra);
+$master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra);
     
     
 
@@ -561,7 +564,7 @@ if($nloops eq 1){
                     $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                     &CJ::writeFile($local_sh_path, $sh_script);
                 
-                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir,$qsub_extra,$counter);
+                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
                 } #v0
     
 
@@ -609,7 +612,7 @@ if($nloops eq 1){
                 $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
-                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir,$qsub_extra,$counter);
+                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
             } #v0
         } #v1
     
@@ -659,7 +662,7 @@ if($nloops eq 1){
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
                 
-                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$remote_sep_Dir,$qsub_extra,$counter);
+                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
                 
         } #v0
         } #v1
