@@ -74,7 +74,7 @@ my $spec = <<'EOSPEC';
                                               {$message=$msg}
    -mem          <memory>	         memory requested [nocase]
                                               {$mem=$memory}
--runtime      <r_time>	         run time requested (default=40:00:00) [nocase]
+   -runtime      <r_time>	         run time requested (default=40:00:00) [nocase]
                                               {$runtime=$r_time}
    -alloc[ate]   <resources>	         machine specific allocation [nocase]
                                           {$qsub_extra=$resources}

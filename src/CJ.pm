@@ -18,16 +18,16 @@ $version_script .=  "\n          https://github.com/monajemi/clusterjob";
 
 
 
-#
-#
+
+
 #sub rerun
 #{
-#    my ($package, $num) = @_;
+#    my ($package, $counter) = @_;
 #    
 #    
 #    my $info;
 #    if( (!defined $package) || ($package eq "") ){
-#        #read the first lines of last_instance.info;
+#        #read last_instance.info;
 #        $info = &CJ::retrieve_package_info();
 #        $package = $info->{'package'};
 #        
@@ -65,25 +65,26 @@ $version_script .=  "\n          https://github.com/monajemi/clusterjob";
 #
 #    my $date = &CJ::date();
 #    
-#    if($num){
+#    if($counter){
 #        # rerun only one job
-#        my $tagstr="CJ$date\_$num\_$programName";
+#        my $tagstr="CJ$date\_$counter\_$programName";
 #        if($bqs eq "SGE"){
-#            $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem -N $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n";
+#            $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem  -l h_rt=$runtime $qsub_extra -N $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n";
 #        }elsif($bqs eq "SLURM"){
-#            
-#            $master_script.="sbatch --mem=$mem  --time=40:00:00  -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
-#            
+#    
+#            $master_script.="sbatch --mem=$mem --time=$runtime $qsub_extra -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
+#    
 #        }else{
 #            &CJ::err("unknown BQS");
 #        }
 #
-#        
-#        
-#    
+#
+#
+#
+#
 #    }else{
 #        # Rerun the master script
-#    
+#
 #    }
 #        
 #    
@@ -95,7 +96,7 @@ $version_script .=  "\n          https://github.com/monajemi/clusterjob";
 #
 #
 #
-
+#
 
 
 
@@ -125,7 +126,7 @@ my $confirmation_script =<<CONFIRM;
 $version_script
 ------------------------------------------------------------
 This reproducible package is generated using Clusterjob (CJ)
-on $info->{'month'} $info->{'day'}, $info->{'year'} at $info->{'hour'}:$info->{'min'}:$info->{'sec'}. To reproduce the results,
+    on $info->{'date'}->{'month'} $info->{'date'}->{'day'}, $info->{'date'}->{'year'} at $info->{'date'}->{'hour'}:$info->{'date'}->{'min'}:$info->{'date'}->{'sec'}. To reproduce the results,
 please rerun
     "reproduce_$program"
 
@@ -420,11 +421,20 @@ sub clean
         
     }
     
+    
+    
     $account     =   $info->{'account'};
     $local_path  =   $info->{'local_path'};
     $remote_path =   $info->{'remote_path'};
     $job_id      =   $info->{'job_id'};
     $save_path   =   $info->{'save_path'};
+    
+    if(defined($info->{'clean'}->{'date'})){
+        CJ::message("Nothing to clean. Package $package has been cleaned on $info->{'clean'}->{'date'} at $info->{'clean'}->{'time'}.");
+        exit 0;
+    }
+    
+    
     
     
     
@@ -471,9 +481,10 @@ sub clean
     $time = join(":",@time_array);
     # Add the change to run_history file
 my $text =<<TEXT;
-## Clean
-    Date -> $hist_date
+\<Clean\>
+    DATE -> $hist_date
     TIME -> $time
+\<\/Clean\>
 TEXT
 &CJ::add_change_to_run_history($package, $text);
         
@@ -916,8 +927,8 @@ sub retrieve_package_info{
         
         
     }
-    
-    ($info->{'package'})   = $package =~ m/^(?:\[?)(\d{4}\D{3}\d{2}_\d{6})(?:\])$/g;
+    ($package) = $package =~ m/^(?:\[?)(\d{4}\D{3}\d{2}_\d{6})(?:\])$/g;
+    $info->{'package'}  = $package;
     $info->{'machine'}   = $machine;
     $info->{'account'}   = $account;
     $info->{'local_prefix'} = $local_prefix;
@@ -931,14 +942,46 @@ sub retrieve_package_info{
     $info->{'runflag'}  = $runflag;
     $info->{'program'}  = $program;
     $info->{'message'}   = $message;
-    
+    ######## Original run date info
     my @datearray = ( $package =~ m/^(\d{4})(\D{3})(\d{2})_(\d{2})(\d{2})(\d{2})$/g );
-    $info->{'year'}   = $datearray[0];
-    $info->{'month'}  = $datearray[1];
-    $info->{'day'}    = $datearray[2];
-    $info->{'hour'}   = $datearray[3];
-    $info->{'min'}    = $datearray[4];
-    $info->{'sec'}    = $datearray[5];
+    $info->{'date'} = {
+        year    => $datearray[0],
+        month   => $datearray[1],
+        day     => $datearray[2],
+        hour    => $datearray[3],
+        min     => $datearray[4],
+        sec     => $datearray[5],
+    };
+    
+    ######Clean info
+    
+    my $CLEANDATE = undef;
+    my $CLEANTIME = undef;
+    
+
+    # find the related package
+    my $PKG_START = "\\[$package\\]";
+    my $PKG_END   = "\\[\\/$package\\]";
+    my $THIS_RECORD = `awk \'/$PKG_START/{flag=1;next}/$PKG_END/{flag=0}flag\' $run_history_file`;
+    $THIS_RECORD =~ s/\n//g;
+    
+    my $CLEAN_START = "\<Clean\>";
+    my $CLEAN_END = "\<\/Clean\>";
+    if ($THIS_RECORD  =~ /$CLEAN_START(.*?)$CLEAN_END/) {
+        my $result = $1;
+        # do something with results
+        ($CLEANDATE) = $result =~ m/DATE.*?(\d{4}\D{3}\d{2})/;
+        ($CLEANTIME) = $result =~ m/TIME.*?(\d{2}:\d{2}:\d{2})/;
+    }
+   
+    $info->{'clean'} = {
+                date    => $CLEANDATE,
+                time  => $CLEANTIME,
+    };
+
+    #print "$info->{'clean'}->{'date'}\n";
+    #print "$info->{'clean'}->{'time'}\n";
+
 
 
     
@@ -1127,9 +1170,9 @@ sub add_change_to_run_history
     my $END   = "\\[\\/$package\\]";
     
     
-    my $TOP = `awk \'1;/$START/{exit}\' $run_history_file`;
+    my $TOP  = `awk \'1;/$START/{exit}\' $run_history_file`;
     my $THIS = `awk \'/$START/{flag=1;next}/$END/{flag=0}flag\' $run_history_file`;
-    my $BOT = `awk \'/$END/,0\' $run_history_file`;
+    my $BOT  = `awk \'/$END/,0\' $run_history_file`;
    
 my $contents="$TOP"."$THIS"."$text"."$BOT";
     
