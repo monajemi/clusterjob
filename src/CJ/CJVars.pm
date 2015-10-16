@@ -22,7 +22,7 @@ our $savePrefix      = "$HOME/Dropbox/clusterjob_saveRepo/";
 our $last_instance_file = "$install_dir/.info/last_instance.info";
 our $CJlog             = "$install_dir/.info/CJcall.log";
 
-our $get_tmp_dir        = "$install_dir/CJ_get_tmp";
+our $get_tmp_dir        = "$install_dir/../CJ_get_tmp";
 our $history_file       = "$install_dir/.info/history.info";
 our $run_history_file   = "$install_dir/.info/run_history.info";
 our $save_info_file     = "$install_dir/.info/save.info";
