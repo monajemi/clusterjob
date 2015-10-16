@@ -20,83 +20,124 @@ $version_script .=  "\n          https://github.com/monajemi/clusterjob";
 
 
 
-#sub rerun
-#{
-#    my ($package, $counter) = @_;
-#    
-#    
-#    my $info;
-#    if( (!defined $package) || ($package eq "") ){
-#        #read last_instance.info;
-#        $info = &CJ::retrieve_package_info();
-#        $package = $info->{'package'};
-#        
-#    }else{
-#        
-#        if( &CJ::is_valid_package_name($package) ){
-#            # read info from $run_history_file
-#            
-#            my $cmd= "grep -q '$package' '$run_history_file'";
-#            my $pattern_exists = system($cmd);chomp($pattern_exists);
-#            
-#            if ($pattern_exists==0){
-#                $info = &CJ::retrieve_package_info($package);
-#                
-#            }else{
-#                CJ::err("No such job found in the database");
-#            }
-#            
-#        }else{
-#            &CJ::err("incorrect usage: nothing to show");
-#        }
-#        
-#        
-#        
-#    }
-#    
-#    
-#    
-#    my $account     = $info->{'account'};
-#    my $remote_path = $info->{'remote_path'};
-#    my $runflag = $info->{'runflag'};
-#    my $program = $info->{'program'};
-#    
-#    my $programName = &CJ::remove_extention($program);
-#
-#    my $date = &CJ::date();
-#    
-#    if($counter){
-#        # rerun only one job
-#        my $tagstr="CJ$date\_$counter\_$programName";
-#        if($bqs eq "SGE"){
-#            $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem  -l h_rt=$runtime $qsub_extra -N $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n";
-#        }elsif($bqs eq "SLURM"){
-#    
-#            $master_script.="sbatch --mem=$mem --time=$runtime $qsub_extra -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
-#    
-#        }else{
-#            &CJ::err("unknown BQS");
-#        }
-#
-#
-#
-#
-#
-#    }else{
-#        # Rerun the master script
-#
-#    }
-#        
-#    
-#
-#    
-#    exit 0;
-#    
-#}
-#
-#
-#
-#
+sub rerun
+{
+    my ($package,$counter,$mem,$runtime,$qsub_extra,$verbose) = @_;
+   
+    my $info;
+    if( (!defined $package) || ($package eq "") ){
+        #read last_instance.info;
+        $info = &CJ::retrieve_package_info();
+        $package = $info->{'package'};
+        
+    }else{
+        if( &CJ::is_valid_package_name($package) ){
+            # read info from $run_history_file
+            my $cmd= "grep -q '$package' '$run_history_file'";
+            my $pattern_exists = system($cmd);chomp($pattern_exists);
+            
+            if ($pattern_exists==0){
+                $info = &CJ::retrieve_package_info($package);
+                
+            }else{
+                CJ::err("No such job found in the database");
+            }
+            
+        }else{
+            &CJ::err("incorrect usage: nothing to show");
+        }
+        
+        
+        
+    }
+   
+    my $account     = $info->{'account'};
+    my $remote_path = $info->{'remote_path'};
+    my $runflag = $info->{'runflag'};
+    my $program = $info->{'program'};
+    my $job_id = $info->{'job_id'};
+    my $bqs = $info->{'bqs'};
+
+    #my $programName = &CJ::remove_extention($program);
+    
+    my @job_ids = split(',',$job_id);
+
+
+    
+    my $date = &CJ::date();
+    my $master_script;
+    if ($#job_ids eq 0) { # if there is only one job
+        #run
+        $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$runtime,$remote_path,$qsub_extra);
+    }else{
+        #parrun
+        if(@$counter){
+            foreach my $count (@$counter){
+                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$count);
+            }
+        }else{
+            # Package is parrun, run the whole again!
+            foreach my $i (0..$#job_ids){
+               $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$i);
+            }
+        }
+    }
+
+
+    
+
+#===================================
+# write out developed rerun master script
+#===================================
+my $local_master_path="/tmp/rerun_master.sh";
+&CJ::writeFile($local_master_path, $master_script);
+
+    
+#==============================================
+# Send master script over to the server, run it
+#==============================================
+
+&CJ::message("Sending rerun script over to the $account");
+my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
+&CJ::my_system($cmd,$verbose);
+    
+    
+&CJ::message("Submitting job(s)");
+$cmd = "ssh $account 'source ~/.bashrc;cd $remote_path; bash -l rerun_master.sh > $remote_path/rerun_qsub.info; sleep 2'";
+&CJ::my_system($cmd,$verbose);
+    
+    
+    
+# bring the log file
+my $qsubfilepath="$remote_path/rerun_qsub.info";
+$cmd = "rsync -avz $account:$qsubfilepath  $install_dir/";
+&CJ::my_system($cmd,$verbose);
+
+die;
+    
+    
+    
+    
+    
+    
+#=======================================
+# run master script
+#=======================================
+
+
+#=======================================
+# write changes to the run_history file
+#=======================================
+  # - replace the old job_id's by new one
+  # - Keep track of the old id in the rerun section
+  #  <Rerun>  .... </Rerun>
+
+exit 0;
+}
+
+
+
+
 
 
 
@@ -861,10 +902,10 @@ sub host{
     my $account  = $user . "@" . $host;
     
     
-    $ssh_config->{'account'} = $account;
-    $ssh_config->{'bqs'}     = $bqs;
+    $ssh_config->{'account'}         = $account;
+    $ssh_config->{'bqs'}             = $bqs;
     $ssh_config->{'remote_repo'}     = $remote_repo;
-    $ssh_config->{'matlib'}     = $remote_matlabpath; 
+    $ssh_config->{'matlib'}          = $remote_matlabpath;
     
     return $ssh_config;
 }
@@ -877,7 +918,7 @@ sub retrieve_package_info{
     
     my ($package) = @_;
     my $info = {};
-    
+
     my $machine   ;
     my $account   ;
     my $local_prefix;
@@ -927,7 +968,7 @@ sub retrieve_package_info{
         
         
     }
-    ($package) = $package =~ m/^(?:\[?)(\d{4}\D{3}\d{2}_\d{6})(?:\])$/g;
+    ($package) = $package =~ m/^(?:\[?)(\d{4}\D{3}\d{2}_\d{6})(?:\]?)$/g;
     $info->{'package'}  = $package;
     $info->{'machine'}   = $machine;
     $info->{'account'}   = $account;
@@ -943,6 +984,7 @@ sub retrieve_package_info{
     $info->{'program'}  = $program;
     $info->{'message'}   = $message;
     ######## Original run date info
+   
     my @datearray = ( $package =~ m/^(\d{4})(\D{3})(\d{2})_(\d{2})(\d{2})(\d{2})$/g );
     $info->{'date'} = {
         year    => $datearray[0],

@@ -82,16 +82,16 @@ my $spec = <<'EOSPEC';
                                               {defer{ &CJ::show_history($argin) }}
    history      [<argin>]	         [ditto]
 
-   clean        [<pkg>]	                 clean certain package [nocase]
+   clean        [<pkg>]		         clean certain package [nocase]
                                               {defer{ &CJ::clean($pkg,$verbose); }}
-   state        [<pkg>] [/] [<num>]	         state of package [nocase]
-                                              {defer{ &CJ::get_state($pkg,$num) }}
+   state        [<pkg> [/] [<counter>]]	 state of package [nocase]
+                                              {defer{ &CJ::get_state($pkg,$counter) }}
    info         [<pkg>]	                 info of certain package [nocase]
                                               {defer{ &CJ::show_info($pkg); }}
-   show         [<pkg>] [/] [<num>]	         show program/error of certain package [nocase]
-                                              {defer{ &CJ::show($pkg,$num,$show_tag) }}
-   rerun        [<pkg>] [/] [<num>]	 rerun certain (failed) job [nocase]
-                                              {defer{ &CJ::rerun($pkg,$num) }}
+   show         [<pkg> [/] [<counter>]]	 show program/error of certain package [nocase]
+                                              {defer{ &CJ::show($pkg,$counter,$show_tag) }}
+   rerun        [<pkg> [/] [<counter>...]]	 rerun certain (failed) job [nocase]
+                                               {defer{&CJ::rerun($pkg,\@counter,$mem,$runtime,$qsub_extra,$verbose) }}
    run          <code> <cluster>	 run code on the cluster [nocase]
                                               {my $runflag = "run";
                                                   {defer{run($cluster,$code,$runflag,$qsub_extra)}}
