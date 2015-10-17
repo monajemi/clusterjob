@@ -370,32 +370,30 @@ $history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, " ", 
 &CJ::add_to_history($history);
 }
 
-
-my $run_history=<<TEXT;
-\[${date}\]
-$machine
-${account}
-${localPrefix}
-${localDir}/${date}
-${remotePrefix}
-${remoteDir}/${date}
-$job_id
-$bqs
-${savePrefix}
-${saveDir}/${date}
-$runflag
-$program
-$message
-\[\/${date}\]
-TEXT
-
-&CJ::add_to_run_history($run_history);
-
+    
+    
+my $runinfo={
+'package'       => ${date},
+machine       => ${machine},
+account       => ${account},
+local_prefix  => ${localPrefix},
+local_path    => "${localDir}/${date}",
+remote_prefix => ${remotePrefix},
+remote_path   => "${remoteDir}/${date}",
+job_id        => $job_id,
+bqs           => $bqs,
+save_prefix   => ${savePrefix},
+save_path     => "${saveDir}/${date}",
+runflag       => $runflag,
+program       => $program,
+message       => $message,
+};
+&CJ::add_to_run_history($runinfo);
     
     
     
-my $last_instance=$run_history;
-$last_instance.=`cat $BASE/$program`;
+my $last_instance=$date;
+#$last_instance.=`cat $BASE/$program`;
 &CJ::writeFile($last_instance_file, $last_instance);
 
     
@@ -768,36 +766,31 @@ $history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, " ", 
 &CJ::add_to_history($history);
 }
 
-    
-    
-    
-    
-my $run_history=<<TEXT;
-\[${date}\]
-${machine}
-${account}
-${localPrefix}
-${localDir}/${date}
-${remotePrefix}
-${remoteDir}/${date}
-$job_id
-$bqs
-${savePrefix}
-${saveDir}/${date}
-$runflag
-$program
-$message
-\[\/${date}\]
-TEXT
-    
-    
-&CJ::add_to_run_history($run_history);
 
 
     
+my $runinfo={
+'package'       => ${date},
+machine       => ${machine},
+account       => ${account},
+local_prefix  => ${localPrefix},
+local_path    => "${localDir}/${date}",
+remote_prefix => ${remotePrefix},
+remote_path   => "${remoteDir}/${date}",
+job_id        => $job_id,
+bqs           => $bqs,
+save_prefix   => ${savePrefix},
+save_path     => "${saveDir}/${date}",
+runflag       => $runflag,
+program       => $program,
+message       => $message,
+};
+&CJ::add_to_run_history($runinfo);
+
     
-my $last_instance=$run_history;
-$last_instance.=`cat $BASE/$program`;
+    
+my $last_instance=${date};
+#$last_instance.=`cat $BASE/$program`;
 &CJ::writeFile($last_instance_file, $last_instance);
 
     

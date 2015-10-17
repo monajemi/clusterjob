@@ -568,10 +568,14 @@ sub show
     }
     
     
+    if(defined($info->{'clean'}->{'date'})){
+        CJ::message("Nothing to clean. Package $package has been cleaned on $info->{'clean'}->{'date'} at $info->{'clean'}->{'time'}.");
+        exit 0;
+    }
    
     my $account     = $info->{'account'};
     my $remote_path = $info->{'remote_path'};
-    my $runflag = $info->{'runflag'};
+    my $runflag     = $info->{'runflag'};
     
     
     my $script;
@@ -660,13 +664,17 @@ sub show_info
     my $job_id     = $info->{'job_id'};
     my $program    = $info->{'program'};
 
+    my $cleanflag;
+    if(defined($info->{'clean'}->{'date'})){
+    $cleanflag = ",cleaned($info->{'clean'}->{'date'} at $info->{'clean'}->{'time'})";
+    }
     
     print '-' x 35;print "\n";
     print "PACKAGE: " . "$package" . "\n";
     print "PROGRAM: " . "$program" . "\n";
     print "ACCOUNT: " . "$account" . "\n";
     print "PATH   : " . "$remote_path" . "\n";
-    print "FLAG   : " . "$runflag"  . "\n";
+    print "FLAGS   : " . "$runflag"  . "$cleanflag" . "\n";
     print '-' x 35;print "\n";
 
     
@@ -909,8 +917,7 @@ sub host{
 sub retrieve_package_info{
     
     my ($package) = @_;
-    my $info = {};
-
+    
     my $machine   ;
     my $account   ;
     my $local_prefix;
@@ -925,7 +932,10 @@ sub retrieve_package_info{
     my $program   ;
     my $message   ;
     
-    if(! $package eq ""){
+    if(!$package){
+        $package    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($package);
+    }
+
     $machine        = `grep -A 14 $package $run_history_file| sed -n '2{p;q;}'` ; chomp($machine);
     $account        = `grep -A 14 $package $run_history_file| sed -n '3{p;q;}'` ; chomp($account);
     $local_prefix   = `grep -A 14 $package $run_history_file| sed -n '4{p;q;}'` ; chomp($local_prefix);
@@ -940,27 +950,9 @@ sub retrieve_package_info{
     $program        = `grep -A 14 $package $run_history_file| sed -n '13{p;q;}'` ; chomp($program);
     $message        = `grep -A 14 $package $run_history_file| sed -n '14{p;q;}'` ; chomp($message);
     
-    }else{
     
-        $package    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($package);
-        $machine    =   `sed -n '2{p;q;}' $last_instance_file`;chomp($machine);
-        $account    =   `sed -n '3{p;q;}' $last_instance_file`;chomp($account);
-        $local_prefix =  `sed -n '4{p;q;}' $last_instance_file`;chomp($local_prefix);
-        $local_path  =   `sed -n '5{p;q;}' $last_instance_file`;chomp($local_path);
-        $remote_prefix =`sed -n '6{p;q;}' $last_instance_file`;chomp($remote_prefix);
-        $remote_path =   `sed -n '7{p;q;}' $last_instance_file`;chomp($remote_path);
-        $job_id     =   `sed -n '8{p;q;}' $last_instance_file`;chomp($job_id);
-        $bqs        =   `sed -n '9{p;q;}' $last_instance_file`;chomp($bqs);
-        $save_prefix=   `sed -n '10{p;q;}' $last_instance_file`;chomp($save_prefix);
-        $save_path   =   `sed -n '11{p;q;}' $last_instance_file`;chomp($save_path);
-        $runflag    =   `sed -n '12{p;q;}' $last_instance_file`;chomp($runflag);
-        $program    =   `sed -n '13{p;q;}' $last_instance_file`;chomp($program);
-        $message    =   `sed -n '14{p;q;}' $last_instance_file`;chomp($message);
-        
-        
-        
-    }
     ($package) = $package =~ m/^(?:\[?)(\d{4}\D{3}\d{2}_\d{6})(?:\]?)$/g;
+    my $info = {};
     $info->{'package'}  = $package;
     $info->{'machine'}   = $machine;
     $info->{'account'}   = $account;
@@ -1184,7 +1176,27 @@ sub add_to_history
 
 sub add_to_run_history
 {
-    my ($text) = @_;
+    my ($runinfo) = @_;
+my $text=<<TEXT;
+\[$runinfo->{'package'}\]
+$runinfo->{machine}
+$runinfo->{account}
+$runinfo->{local_prefix}
+$runinfo->{local_path}
+$runinfo->{remote_prefix}
+$runinfo->{remote_path}
+$runinfo->{job_id}
+$runinfo->{bqs}
+$runinfo->{save_prefix}
+$runinfo->{save_path}
+$runinfo->{runflag}
+$runinfo->{program}
+$runinfo->{message}
+\[\/$runinfo->{'package'}\]
+TEXT
+
+    
+    
     # ADD THIS SAVE TO HISTRY
     open (my $FILE , '>>', $run_history_file) or die("could not open file '$run_history_file' $!");
     print $FILE "$text\n";
