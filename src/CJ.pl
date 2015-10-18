@@ -344,7 +344,7 @@ if($runflag eq "run"){
 my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
     
     my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
-    $job_ids = &CJ::read_qsub($local_qsub_info_file);
+    my $job_ids = &CJ::read_qsub($local_qsub_info_file);
     $job_id = $job_ids->[0]; # there is only one in this case
 CJ::message("Job-id: $job_id");
     
@@ -721,13 +721,13 @@ my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzf ${tarfile} ; c
     
 # bring the log file
 my $qsubfilepath="$remote_sep_Dir/qsub.info";
-my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/.info";
+my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/.info/";
 &CJ::my_system($cmd,$verbose) unless ($runflag eq "pardeploy");
     
 
     
 my @job_ids;
-
+my $job_id;
 if($runflag eq "parrun"){
     # read run info
     my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
@@ -735,7 +735,7 @@ if($runflag eq "parrun"){
     $job_id = join(',', @{$job_ids});
 
     
-&CJ::message("Job-ids: $job_ids[0]-$job_ids[$#job_ids]");
+&CJ::message("Job-ids: $job_ids->[0]-$job_ids->[-1]");
     
 #delete the local qsub.info after use
 my $cmd = "rm $local_qsub_info_file";
@@ -744,7 +744,7 @@ my $cmd = "rm $local_qsub_info_file";
     
 
 
-$history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, "$job_ids[0]-$job_ids[-1]", $short_message);
+$history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, "$job_ids->[0]-$job_ids->[-1]", $short_message);
 &CJ::add_to_history($history);
     
     

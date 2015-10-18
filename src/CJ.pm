@@ -24,6 +24,8 @@ sub rerun
 {
     my ($package,$counter,$mem,$runtime,$qsub_extra,$verbose) = @_;
    
+   
+    
     my $info;
     if( (!defined $package) || ($package eq "") ){
         #read last_instance.info;
@@ -51,6 +53,15 @@ sub rerun
         
     }
    
+    
+    
+    
+    if(defined($info->{'clean'}->{'date'})){
+        CJ::message("Nothing to clean. Package $package has been cleaned on $info->{'clean'}->{'date'} at $info->{'clean'}->{'time'}.");
+        exit 0;
+    }
+
+    
     my $account     = $info->{'account'};
     my $remote_path = $info->{'remote_path'};
     my $runflag = $info->{'runflag'};
@@ -102,26 +113,45 @@ my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
 &CJ::my_system($cmd,$verbose);
     
     
-    #&CJ::message("Submitting job(s)");
-    #$cmd = "ssh $account 'source ~/.bashrc;cd $remote_path; bash -l rerun_master.sh > $remote_path/rerun_qsub.info; sleep 2'";
-    #&CJ::my_system($cmd,$verbose);
+    &CJ::message("Submitting job(s)");
+    $cmd = "ssh $account 'source ~/.bashrc;cd $remote_path; bash -l rerun_master.sh > $remote_path/rerun_qsub.info; sleep 2'";
+    &CJ::my_system($cmd,$verbose);
     
     
     
-# bring the log file
-    #my $qsubfilepath="$remote_path/rerun_qsub.info";
-    #$cmd = "rsync -avz $account:$qsubfilepath  $install_dir/";
-    #&CJ::my_system($cmd,$verbose);
+    # bring the log file
+    my $qsubfilepath="$remote_path/rerun_qsub.info";
+    $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/.info/";
+    &CJ::my_system($cmd,$verbose);
 
-
+    
+    
+    my $rerun_qsub_info_file = "$install_dir/.info/"."rerun_qsub.info";
+    my $rerun_job_ids = &CJ::read_qsub($rerun_qsub_info_file); # array ref
+    my $rerun_job_id = join(',', @{$rerun_job_ids});
+    
+   
 
 #=======================================
 # write changes to the run_history file
 #=======================================
   # - replace the old job_id's by new one
-  # - Keep track of the old id in the rerun section
-my @runinfo;
-
+    
+    my ($TOP,$THIS,$BOT)  = &CJ::read_record($package);
+    
+    if($#job_ids eq 0){
+           $THIS =~ s/$job_ids[0]/$rerun_job_ids->[0]/g;
+    }else{
+        foreach my $i (0..$#{$counter}){
+            $THIS =~ s/$job_ids[$i]/$rerun_job_ids->[$i]/g;
+        }
+    }
+    
+    my $contents = "$TOP"."$THIS"."$BOT";
+    &CJ::writeFile($run_history_file, $contents);
+    
+# - Keep track of the old id in the rerun section
+ my @runinfo;
     if($#job_ids eq 0){
         $runinfo[0] = "($job_ids[0])";
     }else{
@@ -137,12 +167,6 @@ TEXT
 
 my $type = "Rerun";
 &CJ::add_change_to_run_history($package, $text, $type);
-
-    
-    die;
-    
-    
-    
 
 exit 0;
 }
@@ -1236,20 +1260,14 @@ sub add_change_to_run_history
 {
     my ($package, $text,$type) = @_;
     
-    
-    # find the related package
-    my $START = "\\[$package\\]";
-    my $END   = "\\[\\/$package\\]";
+    my ($TOP,$THIS,$BOT)  = &CJ::read_record($package);
     
     
-    my $TOP  = `awk \'1;/$START/{exit}\' $run_history_file`;
-    my $THIS = `awk \'/$START/{flag=1;next}/$END/{flag=0}flag\' $run_history_file`;
-    my $BOT  = `awk \'/$END/,0\' $run_history_file`;
     
     my $contents;
     if(lc($type) eq "clean"){
         
-        $contents="$TOP"."$THIS"."\<Clean\>"."$text"."\<\/Clean\>"."$BOT";
+        $contents="$TOP"."$THIS"."\<Clean\>\n"."$text"."\<\/Clean\>\n"."$BOT";
         
     }elsif(lc($type) eq "rerun"){
         my $info = &CJ::retrieve_package_info($package);
@@ -1298,7 +1316,19 @@ sub add_change_to_run_history
 
 
 
+sub read_record{
+    my ($package) = @_;
+    # find the related package
+    my $START = "\\[$package\\]";
+    my $END   = "\\[\\/$package\\]";
+    
+    
+    my $TOP  = `awk \'1;/$START/{exit}\' $run_history_file`;
+    my $THIS = `awk \'/$START/{flag=1;next}/$END/{flag=0}flag\' $run_history_file`;
+    my $BOT  = `awk \'/$END/,0\' $run_history_file`;
 
+    return ($TOP,$THIS,$BOT);
+}
 
 
 
@@ -1308,16 +1338,15 @@ sub read_qsub{
 
 open my $FILE, '<', $qsub_file;
 
-
+my @job_ids;
 while(<$FILE>){
-    my $job_id_info = $_;
-    chomp($job_id_info);
-    ($this_job_id) = $job_id_info =~/(\d+)/; # get the first string of integer, i.e., job_id
+    my $job_id_info = $_;chomp($job_id_info);
+    my ($this_job_id) = $job_id_info =~/(\d+)/; # get the first string of integer, i.e., job_id
     push @job_ids, $this_job_id;
 }
 close $FILE;
 
-    return \@job_ids;
+return \@job_ids;
 }
 
 
