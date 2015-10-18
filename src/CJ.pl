@@ -342,12 +342,10 @@ my $job_id;
 if($runflag eq "run"){
 # read run info
 my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
-open my $FILE, '<', $local_qsub_info_file;
-my $job_id_info = <$FILE>;
-close $FILE;
     
-chomp($job_id_info);
-($job_id) = $job_id_info =~ /(\d+)/; # get the first string of integer, i.e., job_id
+    my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
+    $job_ids = &CJ::read_qsub($local_qsub_info_file);
+    $job_id = $job_ids->[0]; # there is only one in this case
 CJ::message("Job-id: $job_id");
     
 #delete the local qsub.info after use
@@ -723,7 +721,7 @@ my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzf ${tarfile} ; c
     
 # bring the log file
 my $qsubfilepath="$remote_sep_Dir/qsub.info";
-my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/";
+my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/.info";
 &CJ::my_system($cmd,$verbose) unless ($runflag eq "pardeploy");
     
 
@@ -732,19 +730,9 @@ my @job_ids;
 
 if($runflag eq "parrun"){
     # read run info
-        my $local_qsub_info_file = "$install_dir/"."qsub.info";
-        open my $FILE, '<', $local_qsub_info_file;
-    
-    
-        while(<$FILE>){
-        my $job_id_info = $_;
-        chomp($job_id_info);
-        ($this_job_id) = $job_id_info =~/(\d+)/; # get the first string of integer, i.e., job_id
-        push @job_ids, $this_job_id;
-        }
-        close $FILE;
-
-$job_id = join(',', @job_ids);
+    my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
+    $job_ids = &CJ::read_qsub($local_qsub_info_file);
+    $job_id = join(',', @{$job_ids});
 
     
 &CJ::message("Job-ids: $job_ids[0]-$job_ids[$#job_ids]");
@@ -792,15 +780,6 @@ message       => $message,
 my $last_instance=${date};
 #$last_instance.=`cat $BASE/$program`;
 &CJ::writeFile($last_instance_file, $last_instance);
-
-    
-    
-    
-    
-    
-    
-    
-    
     
 
 }else{

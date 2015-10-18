@@ -97,24 +97,22 @@ my $local_master_path="/tmp/rerun_master.sh";
 # Send master script over to the server, run it
 #==============================================
 
-&CJ::message("Sending rerun script over to the $account");
+&CJ::message("Sending rerun script over to $account");
 my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
 &CJ::my_system($cmd,$verbose);
     
     
-&CJ::message("Submitting job(s)");
-$cmd = "ssh $account 'source ~/.bashrc;cd $remote_path; bash -l rerun_master.sh > $remote_path/rerun_qsub.info; sleep 2'";
-&CJ::my_system($cmd,$verbose);
+    #&CJ::message("Submitting job(s)");
+    #$cmd = "ssh $account 'source ~/.bashrc;cd $remote_path; bash -l rerun_master.sh > $remote_path/rerun_qsub.info; sleep 2'";
+    #&CJ::my_system($cmd,$verbose);
     
     
     
 # bring the log file
-my $qsubfilepath="$remote_path/rerun_qsub.info";
-$cmd = "rsync -avz $account:$qsubfilepath  $install_dir/";
-&CJ::my_system($cmd,$verbose);
+    #my $qsubfilepath="$remote_path/rerun_qsub.info";
+    #$cmd = "rsync -avz $account:$qsubfilepath  $install_dir/";
+    #&CJ::my_system($cmd,$verbose);
 
-die;
-    
 
 
 #=======================================
@@ -122,7 +120,29 @@ die;
 #=======================================
   # - replace the old job_id's by new one
   # - Keep track of the old id in the rerun section
-  #  <Rerun>  .... </Rerun>
+my @runinfo;
+
+    if($#job_ids eq 0){
+        $runinfo[0] = "($job_ids[0])";
+    }else{
+        foreach my $i (0..$#{$counter}){
+        $runinfo[$i] = "$counter->[$i]"."($job_ids[$i])";
+        }
+    }
+    
+my $runinfo = join(',', @runinfo);
+my $text =<<TEXT;
+    $date -> $runinfo
+TEXT
+
+my $type = "Rerun";
+&CJ::add_change_to_run_history($package, $text, $type);
+
+    
+    die;
+    
+    
+    
 
 exit 0;
 }
@@ -514,12 +534,10 @@ sub clean
     $time = join(":",@time_array);
     # Add the change to run_history file
 my $text =<<TEXT;
-\<Clean\>
     DATE -> $hist_date
     TIME -> $time
-\<\/Clean\>
 TEXT
-&CJ::add_change_to_run_history($package, $text);
+&CJ::add_change_to_run_history($package, $text, "clean");
         
 }
     
@@ -1009,6 +1027,14 @@ sub retrieve_package_info{
     #print "$info->{'clean'}->{'time'}\n";
 
 
+    ###### Rerun info
+    $info->{'rerun'} = undef;
+    my $RERUN_START = "\<Rerun\>";
+    my $RERUN_END = "\<\/Rerun\>";
+    if ($THIS_RECORD  =~ /$RERUN_START(.*?)$RERUN_END/) {
+        $info->{'rerun'} = 1;
+    }
+
 
     
     return $info;
@@ -1208,7 +1234,7 @@ TEXT
 
 sub add_change_to_run_history
 {
-    my ($package, $text) = @_;
+    my ($package, $text,$type) = @_;
     
     
     # find the related package
@@ -1219,9 +1245,52 @@ sub add_change_to_run_history
     my $TOP  = `awk \'1;/$START/{exit}\' $run_history_file`;
     my $THIS = `awk \'/$START/{flag=1;next}/$END/{flag=0}flag\' $run_history_file`;
     my $BOT  = `awk \'/$END/,0\' $run_history_file`;
-   
-my $contents="$TOP"."$THIS"."$text"."$BOT";
     
+    my $contents;
+    if(lc($type) eq "clean"){
+        
+        $contents="$TOP"."$THIS"."\<Clean\>"."$text"."\<\/Clean\>"."$BOT";
+        
+    }elsif(lc($type) eq "rerun"){
+        my $info = &CJ::retrieve_package_info($package);
+        if($info->{'rerun'}){
+            # find where <\Rerun> is, and add this info just before that
+            
+            my @THIS = split(/^/, $THIS);
+            
+            my $rerun_end = "\<\/Rerun\>";
+            my $rerun_end_line_index;
+            for my $i (0..$#THIS){
+                 if ($THIS[$i] =~ /$rerun_end/){
+                     $rerun_end_line_index = $i;
+                 }
+            }
+            
+        my @NEW_THIS;
+            my $numlines = 1+$#THIS;
+            foreach my $i (0..$numlines){
+                if($i<$rerun_end_line_index){
+                    push @NEW_THIS, $THIS[$i];
+                }elsif($i eq $rerun_end_line_index){
+                    push @NEW_THIS, $text;
+                }else{
+                    push @NEW_THIS, $THIS[$i-1];
+                }
+            }
+            
+            
+        my $NEW_THIS = join("", @NEW_THIS);
+        $contents="$TOP"."$NEW_THIS"."$BOT";
+
+        }else{
+            #firt time calling rerun
+          $contents="$TOP"."$THIS"."\<Rerun\>\n"."$text"."\<\/Rerun\>\n"."$BOT";
+        }
+        
+        
+    }else{
+        &CJ::err("Change of type '$type' is  not recognized");
+    }
 &CJ::writeFile($run_history_file, $contents)
     
 }
@@ -1234,10 +1303,22 @@ my $contents="$TOP"."$THIS"."$text"."$BOT";
 
 
 
+sub read_qsub{
+    my ($qsub_file) = @_;
+
+open my $FILE, '<', $qsub_file;
 
 
+while(<$FILE>){
+    my $job_id_info = $_;
+    chomp($job_id_info);
+    ($this_job_id) = $job_id_info =~/(\d+)/; # get the first string of integer, i.e., job_id
+    push @job_ids, $this_job_id;
+}
+close $FILE;
 
-
+    return \@job_ids;
+}
 
 
 sub remove_extention
