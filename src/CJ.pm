@@ -1391,4 +1391,22 @@ sub remove_extention
 
 
 
+
+sub add_cmd{
+    my $lastnum=`grep "." $cmd_history_file | tail -1  | awk \'{print \$1}\' `;
+    my $cmdline = `ps -o args $$ | grep CJ.pl`;
+    my $cmd_history = sprintf("%-15u%s",$lastnum+1, $cmdline );
+    
+    #print "$cmdline\n";
+    my $cmd = "printf '$cmd_history' >> $cmd_history_file";
+    system($cmd);
+    
+    my $records_to_keep = 5000;
+    $cmd = "tail -n $records_to_keep $cmd_history_file > /tmp/cmd_history_file.tmp; cat /tmp/cmd_history_file.tmp > $cmd_history_file; rm /tmp/cmd_history_file.tmp";
+    system($cmd);
+    
+}
+
+
+
 1;

@@ -51,11 +51,8 @@ if( ! -f $cmd_history_file ){
 
 
 
+&CJ::add_cmd();  #store CJ command
 
-my $cmdline = `ps -o args $$ | grep CJ.pl`;
-#print "$cmdline\n";
-my $cmd = "printf '$cmdline' >> $cmd_history_file";
-system($cmd);
 
 
 #====================================
