@@ -733,7 +733,7 @@ sub show_info
     my $job_id     = $info->{'job_id'};
     my $program    = $info->{'program'};
 
-    my $cleanflag;
+    my $cleanflag="";
     if(defined($info->{'clean'}->{'date'})){
     $cleanflag = ",cleaned($info->{'clean'}->{'date'} at $info->{'clean'}->{'time'})";
     }
