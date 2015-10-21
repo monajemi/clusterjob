@@ -5,11 +5,11 @@ package CJ::CJVars;
 use strict;
 use warnings;
 use parent 'Exporter'; # imports and subclasses Exporter
-use FILE::Basename qw(dirname);
+use File::Basename qw(dirname);
+use File::Spec;
 
 
-
-my  $CJ_dir = File::Basename::dirname(__FILE__);
+my  $CJ_dir = File::Basename::dirname(File::Spec->rel2abs(__FILE__));
 my  @CJ_dir_array = split '/',$CJ_dir;
 my  $lastone = pop @CJ_dir_array;
 our $install_dir  = join '/', @CJ_dir_array;
