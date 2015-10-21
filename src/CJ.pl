@@ -102,7 +102,7 @@ my $spec = <<'EOSPEC';
    clean        [<pkg>]		         clean certain package [nocase]
                                               {defer{ &CJ::add_cmd(); &CJ::clean($pkg,$verbose); }}
    state        [<pkg> [/] [<counter>]]	 state of package [nocase]
-                                              {defer{ add_cmd();&CJ::get_state($pkg,$counter) }}
+                                              {defer{ &CJ::add_cmd();&CJ::get_state($pkg,$counter) }}
    info         [<pkg>]	                 info of certain package [nocase]
                                               {defer{ &CJ::add_cmd();&CJ::show_info($pkg); }}
    show         [<pkg> [/] [<counter>]]	 show program/error of certain package [nocase]
