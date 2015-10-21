@@ -1390,22 +1390,42 @@ sub remove_extention
 }
 
 
+sub reexecute_cmd{
+    my ($cmd_num,$verbose) = @_;
+    my $cmd=`grep '^\\b$cmd_num\\b' $cmd_history_file | awk \'{\$1=\"\"; print \$0}\' `;
+    $cmd =~ s/^\s+|\s+$//g;
+    #print "$cmd\n";
+    system("$cmd");
+}
+
 
 
 sub add_cmd{
+    my ($cmdline) = @_;
+    
+    
+    if(! $cmdline){
+      $cmdline = `ps -o args $$ | grep CJ.pl`;
+    }
+    
     my $lastnum=`grep "." $cmd_history_file | tail -1  | awk \'{print \$1}\' `;
     if(! $lastnum){
-    $lastnum = 0;
+        $lastnum = 0;
     }
-    my $cmdline = `ps -o args $$ | grep CJ.pl`;
-    my $cmd_history = sprintf("%-15u%s",$lastnum+1, $cmdline );
+
     
-    #print "$cmdline\n";
-    my $cmd = "printf '$cmd_history' >> $cmd_history_file";
-    system($cmd);
+    
+    
+    my $cmd_history = sprintf("%-15u%s",$lastnum+1, $cmdline );chomp($cmd_history);
+    
+    open (my $FILE , '>>', $cmd_history_file) or die("could not open file '$cmd_history_file' $!");
+    print $FILE "$cmd_history\n";
+    close $FILE;
+    
+    
     
     my $records_to_keep = 5000;
-    $cmd = "tail -n $records_to_keep $cmd_history_file > /tmp/cmd_history_file.tmp; cat /tmp/cmd_history_file.tmp > $cmd_history_file; rm /tmp/cmd_history_file.tmp";
+    my $cmd = "tail -n $records_to_keep $cmd_history_file > /tmp/cmd_history_file.tmp; cat /tmp/cmd_history_file.tmp > $cmd_history_file; rm /tmp/cmd_history_file.tmp";
     system($cmd);
     
 }
