@@ -24,13 +24,14 @@ our $CJlog             = "$install_dir/.info/CJcall.log";
 
 our $get_tmp_dir        = "$install_dir/../CJ_get_tmp";
 our $history_file       = "$install_dir/.info/history.info";
+our $cmd_history_file= "$install_dir/.info/cmd_history.info";
 our $run_history_file   = "$install_dir/.info/run_history.info";
 our $save_info_file     = "$install_dir/.info/save.info";
 our $ssh_config_file    = "$install_dir/.ssh_config";
 
 
 # Export global variables
-our @EXPORT = qw($install_dir $remotePrefix $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $run_history_file $save_info_file $ssh_config_file $CJlog);
+our @EXPORT = qw($install_dir $remotePrefix $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $CJlog);
 
 
 

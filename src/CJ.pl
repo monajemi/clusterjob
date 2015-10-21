@@ -36,6 +36,11 @@ if( ! -f $history_file ){
     &CJ::add_to_history($header);
 }
 
+if( ! -f $cmd_history_file ){
+    &CJ::touch($cmd_history_file);
+}
+
+
 
 # create run_history file if it does not exit
 # this file contains more information about a run
@@ -46,6 +51,11 @@ if( ! -f $history_file ){
 
 
 
+
+my $cmdline = `ps -o args $$ | grep CJ.pl`;
+#print "$cmdline\n";
+my $cmd = "printf '$cmdline' >> $cmd_history_file";
+system($cmd);
 
 
 #====================================
@@ -82,6 +92,8 @@ my $spec = <<'EOSPEC';
                                               {defer{ &CJ::show_history($argin) }}
    history      [<argin>]	         [ditto]
 
+   cmd          [<argin>]	         historical info -n [nocase]
+                                              {defer{ &CJ::show_cmd_history($argin) }} 
    clean        [<pkg>]		         clean certain package [nocase]
                                               {defer{ &CJ::clean($pkg,$verbose); }}
    state        [<pkg> [/] [<counter>]]	 state of package [nocase]
@@ -123,7 +135,7 @@ my $opts = Getopt::Declare->new($spec);
 
 #    print "$opts->{'-m'}\n";
 #    print "$opts->{'-mem'}\n";
-#   print "$text_header_lines\n";
+#    print "$text_header_lines\n";
 #$opts->usage();
 
 

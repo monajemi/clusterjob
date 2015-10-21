@@ -389,7 +389,34 @@ sub save_results{
 
 
 
+sub show_cmd_history{
+    my ($argin) = @_;
 
+    if( (!defined $argin) || ($argin eq "") ){
+        $argin= 50;
+    }
+    
+        
+    if($argin =~ m/^\-?\d*$/){
+        
+        $argin =~ s/\D//g;   #remove any non-digit
+        my $info=`tail -n  $argin $cmd_history_file`;chomp($info);
+        print "$info \n";
+       
+    }elsif($argin =~ m/^\-?all$/){
+        my $info=`cat $cmd_history_file`;chomp($info);
+        print "$info \n";
+    }else{
+        &CJ::err("Incorrect usage: nothing to show");
+    }
+    
+    
+    
+    
+    exit 0;
+
+
+}
 
 
 
