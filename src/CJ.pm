@@ -1394,6 +1394,9 @@ sub remove_extention
 
 sub add_cmd{
     my $lastnum=`grep "." $cmd_history_file | tail -1  | awk \'{print \$1}\' `;
+    if(! $lastnum){
+    $lastnum = 0;
+    }
     my $cmdline = `ps -o args $$ | grep CJ.pl`;
     my $cmd_history = sprintf("%-15u%s",$lastnum+1, $cmdline );
     
