@@ -638,7 +638,7 @@ sub show
     
     
     if(defined($info->{'clean'}->{'date'})){
-        CJ::message("Nothing to clean. Package $package has been cleaned on $info->{'clean'}->{'date'} at $info->{'clean'}->{'time'}.");
+        CJ::message("Nothing to show. Package $package has been cleaned on $info->{'clean'}->{'date'} at $info->{'clean'}->{'time'}.");
         exit 0;
     }
    
