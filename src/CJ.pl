@@ -10,7 +10,7 @@ use CJ::CJVars;  # contains global variables of CJ
 use CJ::Matlab;  # Contains Matlab related subs
 use CJ::Get;     # Contains Get related subs
 use Getopt::Declare;
-use vars qw($message $mem $runtime $dep_folder $verbose $text_header_lines $show_tag $qsub_extra);  # options
+use vars qw($message $mem $runtime $dep_folder $verbose $text_header_lines $show_tag $qsub_extra $cmdline);  # options
 
 $::VERSION = &CJ::version_info();
 
@@ -50,8 +50,15 @@ if( ! -f $cmd_history_file ){
 #=========================================
 
 
-
-
+#==========================================
+#    Get the command line history
+#==========================================
+my $cmd    = `ps -o args $$ | grep CJ.pl`;
+my @cmd = split(/\s/,$cmd);
+$cmdline = "$cmd[0] "." $cmd[1]";
+foreach ( @ARGV ) {
+    $cmdline .= /\s/ ?   " \"" . $_ . "\"":     " "   . $_;
+}
 
 
 
@@ -66,14 +73,16 @@ $verbose    = 0;	 # default - redirect to CJlog
 $text_header_lines = undef;
 $show_tag          = "program";
 $qsub_extra        = "";
+
+
 my $spec = <<'EOSPEC';
      -help 	  Show usage information [undocumented]
-                   {&CJ::add_cmd();$self->usage(0);}
+                    {defer{&CJ::add_cmd($cmdline);$self->usage(0);}}
      
      -Help  	 	  [ditto]  [undocumented]
      -HELP		  [ditto]  [undocumented]
      -version		Show version info [undocumented]
-                          {&CJ::add_cmd();$self->version(0);}
+                         {defer{&CJ::add_cmd($cmdline);$self->version(0);}}
      -Version		  [ditto] [undocumented]
      -v 	          [ditto] [undocumented]
     --v[erbose]	                         verbose mode [nocase]
@@ -95,44 +104,44 @@ my $spec = <<'EOSPEC';
    -alloc[ate]   <resources>	         machine specific allocation [nocase]
                                           {$qsub_extra=$resources}
    log          [<argin>]	         historical info -n|pkg|all [nocase]
-                                          {defer{&CJ::add_cmd(); &CJ::show_history($argin) }}
+                                          {defer{&CJ::add_cmd($cmdline); &CJ::show_history($argin) }}
    history      [<argin>]	         [ditto]
    cmd          [<argin>]	         command history -n|all [nocase]
                                               {defer{ &CJ::show_cmd_history($argin) }}
    clean        [<pkg>]		         clean certain package [nocase]
-                                              {defer{ &CJ::add_cmd(); &CJ::clean($pkg,$verbose); }}
+                                              {defer{ &CJ::add_cmd($cmdline); &CJ::clean($pkg,$verbose); }}
    state        [<pkg> [/] [<counter>]]	 state of package [nocase]
-                                              {defer{ &CJ::add_cmd();&CJ::get_state($pkg,$counter) }}
+                                              {defer{ &CJ::add_cmd($cmdline);&CJ::get_state($pkg,$counter) }}
    info         [<pkg>]	                 info of certain package [nocase]
-                                              {defer{ &CJ::add_cmd();&CJ::show_info($pkg); }}
+                                              {defer{ &CJ::add_cmd($cmdline);&CJ::show_info($pkg); }}
    show         [<pkg> [/] [<counter>]]	 show program/error of certain package [nocase]
-                                              {defer{ &CJ::add_cmd();&CJ::show($pkg,$counter,$show_tag) }}
+                                              {defer{ &CJ::add_cmd($cmdline);&CJ::show($pkg,$counter,$show_tag) }}
    rerun        [<pkg> [/] [<counter>...]]	 rerun certain (failed) job [nocase]
-                                               {defer{&CJ::add_cmd();&CJ::rerun($pkg,\@counter,$mem,$runtime,$qsub_extra,$verbose) }}
+                                               {defer{&CJ::add_cmd($cmdline);&CJ::rerun($pkg,\@counter,$mem,$runtime,$qsub_extra,$verbose) }}
    run          <code> <cluster>	 run code on the cluster [nocase]
                                               {my $runflag = "run";
-                                                  {defer{&CJ::add_cmd();run($cluster,$code,$runflag,$qsub_extra)}}
+                                                  {defer{&CJ::add_cmd($cmdline); run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
    deploy       <code> <cluster>	 deploy code on the cluster [nocase]
                                               {my $runflag = "deploy";
-                                                  {defer{&CJ::add_cmd();run($cluster,$code,$runflag,$qsub_extra)}}
+                                                  {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
    parrun       <code> <cluster>	 parrun code on the cluster [nocase]
                                               {my $runflag = "parrun";
-                                                  {defer{&CJ::add_cmd();run($cluster,$code,$runflag,$qsub_extra)}}
+                                                  {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
    pardeploy    <code> <cluster>	 pardeploy code on the cluster [nocase]
                                               {my $runflag = "pardeploy";
-                                                  {defer{&CJ::add_cmd();run($cluster,$code,$runflag,$qsub_extra)}}
+                                                  {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
    reduce       <filename> [<pkg>] 	 reduce results of parrun [nocase]
-                                                  {defer{&CJ::add_cmd();&CJ::Get::reduce_results($pkg,$filename,$verbose,$text_header_lines)}}
+                                                  {defer{&CJ::add_cmd($cmdline);&CJ::Get::reduce_results($pkg,$filename,$verbose,$text_header_lines)}}
    gather       <pattern>  <dir_name> [<pkg>]	gather results of parrun [nocase]
-                                                  {defer{&CJ::add_cmd();&CJ::Get::gather_results($pkg,$pattern,$dir_name,$verbose)}}
+                                                  {defer{&CJ::add_cmd($cmdline);&CJ::Get::gather_results($pkg,$pattern,$dir_name,$verbose)}}
    get          [<pkg>]	                 bring results back to local machine [nocase]
-                                                  {defer{&CJ::add_cmd();&CJ::Get::get_results($pkg,$verbose)}}
+                                                  {defer{&CJ::add_cmd($cmdline);&CJ::Get::get_results($pkg,$verbose)}}
    save         <pkg> [<path>]	         save a package in path [nocase]
-                                                  {defer{&CJ::add_cmd();  &CJ::save_results($pkg,$path,$verbose)}}
+                                                  {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pkg,$path,$verbose)}}
    @<cmd_num:+i>	                          re-executes a previous command avaiable in command history [nocase]
                                                   {defer{&CJ::reexecute_cmd($cmd_num,$verbose) }}
 EOSPEC

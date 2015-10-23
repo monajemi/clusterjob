@@ -4,6 +4,7 @@ package CJ;
 use strict;
 use warnings;
 use CJ::CJVars;
+use Term::ReadLine;
 
 sub version_info{
 my $version_script="\n\n          This is Clusterjob (CJ) verion 1.1.0";
@@ -1402,11 +1403,6 @@ sub reexecute_cmd{
 
 sub add_cmd{
     my ($cmdline) = @_;
-    
-    
-    if(! $cmdline){
-      $cmdline = `ps -o args $$ | grep CJ.pl`;
-    }
     
     my $lastnum=`grep "." $cmd_history_file | tail -1  | awk \'{print \$1}\' `;
     if(! $lastnum){
