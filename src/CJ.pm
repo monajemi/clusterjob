@@ -926,7 +926,7 @@ sub grep_var_line
     my $this_line;
     my @lines = split /\n/, $string;
     foreach my $line (@lines) {
-        if($line =~ /^\s*(?<!\%)${pattern}\s*=.*/){
+        if($line =~ /^\s*(?<!\%)\s*${pattern}\s*=.*/){
             $this_line = $line;
             last;
         }
@@ -934,7 +934,7 @@ sub grep_var_line
     if($this_line){
         return $this_line;
     }else{
-        &CJ::err("Variable '$pattern' was not declared.\n");
+        &CJ::err(" Variable '$pattern' is not declared.\n");
     }
 }
 

@@ -10,6 +10,40 @@ use CJ;
 
 
 
+sub check_initialization{
+    my ($tag_list,$TOP,$BOT,$verbose) = @_;
+    
+    my @BOT_lines = split /\n/, $BOT;
+   
+    
+    my @pattern;
+    foreach my $tag (@$tag_list){
+    # grep the line that has this tag as argument
+    push @pattern, "\\(.*\\b$tag\\b\.*\\)\|\\{.*\\b$tag\\b\.*\\}";
+    }
+    my $pattern = join("\|", @pattern);
+    
+    my @vars;
+    foreach my $line (@BOT_lines) {
+        if($line =~ /(.*)${pattern}\s*=.*/){
+            my @tmp = split "\\(|\\{", $line;
+            my $var  = $tmp[0];
+            $var =~ s/^\s+|\s+$//g;
+            push @vars, $var;
+        }
+    }
+    
+    foreach(@vars)
+    {
+        my $line = &CJ::grep_var_line($_,$TOP);
+    }
+
+}
+
+
+
+
+
 sub build_reproducible_script{
     my ($program, $path, $runflag) = @_;
 

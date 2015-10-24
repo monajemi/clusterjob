@@ -542,7 +542,7 @@ if ( @tags_to_matlab_interpret ) { # if we need to run matlab
 #===================================================
 #     Check that user has initialized for loop vars
 #===================================================
-    #&CJ::Matlab::check_initialization(@idx_tags,$TOP,$BOT, $verbose);
+&CJ::Matlab::check_initialization(\@idx_tags,$TOP,$BOT,$verbose);
     
     
     
