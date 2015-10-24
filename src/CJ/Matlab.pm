@@ -238,18 +238,6 @@ foreach my $tag (@$tag_list){
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 sub uncomment_matlab_line{
     my ($line) = @_;
     $line =~ s/^(?:(?!\').)*\K\%(.*)//;

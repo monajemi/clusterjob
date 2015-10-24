@@ -452,9 +452,10 @@ while(<$fh>){
 }
 close $fh;
     
-    # later include fors on one line
+    # this includes fors on one line
     
-my @lines = split('\n', $script_lines);
+my @lines = split('\n|;\s*(?=for)', $script_lines);
+
 my @forlines_idx_set;
 foreach my $i (0..$#lines){
 $line = $lines[$i];
@@ -536,11 +537,22 @@ if ( @tags_to_matlab_interpret ) { # if we need to run matlab
     }
 }
     
+    
+    
+#===================================================
+#     Check that user has initialized for loop vars
+#===================================================
+    #&CJ::Matlab::check_initialization(@idx_tags,$TOP,$BOT, $verbose);
+    
+    
+    
+    
+    
+    
+    
 #==============================================
 #        MASTER SCRIPT
 #==============================================
-
-    
     
     
     
