@@ -1,8 +1,8 @@
-#/usr/bin/perl
+#/usr/bin/perl -w
 #
 # Copyright (c) 2015 Hatef Monajemi (monajemi@stanford.edu)
 
-
+use strict;
 use lib '/Users/hatef/github_projects/clusterjob/src';  #for testing
 
 use CJ;          # contains essential functions
@@ -10,6 +10,8 @@ use CJ::CJVars;  # contains global variables of CJ
 use CJ::Matlab;  # Contains Matlab related subs
 use CJ::Get;     # Contains Get related subs
 use Getopt::Declare;
+use Term::ReadKey;   # reading keys!:)
+use Term::ANSIColor qw(:constants); # for changing terminal text colors
 use vars qw($message $mem $runtime $dep_folder $verbose $text_header_lines $show_tag $qsub_extra $cmdline);  # options
 
 $::VERSION = &CJ::version_info();
@@ -76,73 +78,78 @@ $qsub_extra        = "";
 
 
 my $spec = <<'EOSPEC';
+      prompt 	    opens CJ prompt command [undocumented]
+                    {defer{cj_prompt()}}
      -help 	  Show usage information [undocumented]
                     {defer{&CJ::add_cmd($cmdline);$self->usage(0);}}
-     
+     help  	 	  [ditto]  [undocumented]
+
      -Help  	 	  [ditto]  [undocumented]
      -HELP		  [ditto]  [undocumented]
      -version		Show version info [undocumented]
-                         {defer{&CJ::add_cmd($cmdline);$self->version(0);}}
+                    {defer{&CJ::add_cmd($cmdline);$self->version(0);}}
      -Version		  [ditto] [undocumented]
+      version		  [ditto] [undocumented]
+      Version		  [ditto] [undocumented]
      -v 	          [ditto] [undocumented]
-    --v[erbose]	                         verbose mode [nocase]
+     --v[erbose]	                                  verbose mode [nocase]
                                              {$verbose=1}
-   --err[or]	                         error tag [nocase]
+     --err[or]	                                          error tag [nocase]
                                              {$show_tag="error"}
-   --ls      	                         list tag [nocase]
+     --ls      	                                          list tag [nocase]
                                              {$show_tag="ls"}
-   --header [=] <num_lines:+i>	         number of header lines for reducing text files
+     --header [=] <num_lines:+i>	                  number of header lines for reducing text files
                                           {$text_header_lines=$num_lines;}
-   -dep          <dep_path>		 dependency folder path [nocase]
+     -dep          <dep_path>		                  dependency folder path [nocase]
                                               {$dep_folder=$dep_path}
-   -m            <msg>	                 reminder message
+     -m            <msg>	                          reminder message
                                               {$message=$msg}
-   -mem          <memory>	         memory requested [nocase]
+     -mem          <memory>	                          memory requested [nocase]
                                               {$mem=$memory}
-   -runtime      <r_time>	         run time requested (default=40:00:00) [nocase]
+     -runtime      <r_time>	                          run time requested (default=40:00:00) [nocase]
                                               {$runtime=$r_time}
-   -alloc[ate]   <resources>	         machine specific allocation [nocase]
+     -alloc[ate]   <resources>	                          machine specific allocation [nocase]
                                           {$qsub_extra=$resources}
-   log          [<argin>]	         historical info -n|pkg|all [nocase]
+     log          [<argin>]	                          historical info -n|pkg|all [nocase]
                                           {defer{&CJ::add_cmd($cmdline); &CJ::show_history($argin) }}
-   history      [<argin>]	         [ditto]
-   cmd          [<argin>]	         command history -n|all [nocase]
+     history      [<argin>]	         [ditto]
+     cmd          [<argin>]	                          command history -n|all [nocase]
                                               {defer{ &CJ::show_cmd_history($argin) }}
-   clean        [<pkg>]		         clean certain package [nocase]
+     clean        [<pkg>]		                  clean certain package [nocase]
                                               {defer{ &CJ::add_cmd($cmdline); &CJ::clean($pkg,$verbose); }}
-   state        [<pkg> [/] [<counter>]]	 state of package [nocase]
+     state        [<pkg> [/] [<counter>]]	          state of package [nocase]
                                               {defer{ &CJ::add_cmd($cmdline);&CJ::get_state($pkg,$counter) }}
-   info         [<pkg>]	                 info of certain package [nocase]
+     info         [<pkg>]	                          info of certain package [nocase]
                                               {defer{ &CJ::add_cmd($cmdline);&CJ::show_info($pkg); }}
-   show         [<pkg> [/] [<counter>]]	 show program/error of certain package [nocase]
+     show         [<pkg> [/] [<counter>]]	          show program/error of certain package [nocase]
                                               {defer{ &CJ::add_cmd($cmdline);&CJ::show($pkg,$counter,$show_tag) }}
-   rerun        [<pkg> [/] [<counter>...]]	 rerun certain (failed) job [nocase]
+     rerun        [<pkg> [/] [<counter>...]]	          rerun certain (failed) job [nocase]
                                                {defer{&CJ::add_cmd($cmdline);&CJ::rerun($pkg,\@counter,$mem,$runtime,$qsub_extra,$verbose) }}
-   run          <code> <cluster>	 run code on the cluster [nocase]
+     run          <code> <cluster>	                  run code on the cluster [nocase]
                                               {my $runflag = "run";
                                                   {defer{&CJ::add_cmd($cmdline); run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
-   deploy       <code> <cluster>	 deploy code on the cluster [nocase]
+     deploy       <code> <cluster>	                  deploy code on the cluster [nocase]
                                               {my $runflag = "deploy";
                                                   {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
-   parrun       <code> <cluster>	 parrun code on the cluster [nocase]
+     parrun       <code> <cluster>	                  parrun code on the cluster [nocase]
                                               {my $runflag = "parrun";
                                                   {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
-   pardeploy    <code> <cluster>	 pardeploy code on the cluster [nocase]
+     pardeploy    <code> <cluster>	                  pardeploy code on the cluster [nocase]
                                               {my $runflag = "pardeploy";
                                                   {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
-   reduce       <filename> [<pkg>] 	 reduce results of parrun [nocase]
+     reduce       <filename> [<pkg>] 	                  reduce results of parrun [nocase]
                                                   {defer{&CJ::add_cmd($cmdline);&CJ::Get::reduce_results($pkg,$filename,$verbose,$text_header_lines)}}
-   gather       <pattern>  <dir_name> [<pkg>]	gather results of parrun [nocase]
+     gather       <pattern>  <dir_name> [<pkg>]	          gather results of parrun [nocase]
                                                   {defer{&CJ::add_cmd($cmdline);&CJ::Get::gather_results($pkg,$pattern,$dir_name,$verbose)}}
-   get          [<pkg>]	                 bring results back to local machine [nocase]
+     get          [<pkg>]	                          bring results back to local machine [nocase]
                                                   {defer{&CJ::add_cmd($cmdline);&CJ::Get::get_results($pkg,$verbose)}}
-   save         <pkg> [<path>]	         save a package in path [nocase]
+     save         <pkg> [<path>]	                  save a package in path [nocase]
                                                   {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pkg,$path,$verbose)}}
-   @<cmd_num:+i>	                          re-executes a previous command avaiable in command history [nocase]
+     @<cmd_num:+i>	                                  re-executes a previous command avaiable in command history [nocase]
                                                   {defer{&CJ::reexecute_cmd($cmd_num,$verbose) }}
 EOSPEC
 
@@ -155,6 +162,98 @@ my $opts = Getopt::Declare->new($spec);
 #$opts->usage();
 
 
+
+
+
+#==========================
+#   prompt
+#==========================
+sub cj_prompt{
+    
+    my $localhost = `uname -n`;chomp($localhost);
+    my $localuser = `id -un`;chomp($localuser);
+    my $exit = 0;
+    my $prompt = "[$localhost:$localuser] CJ>";
+    print WHITE, ON_BLACK $prompt, RESET . " ";
+    print  "$::VERSION\n \n \n";
+    
+    
+    
+    
+    
+    # Read the key input:
+    
+    while (! $exit){
+        print WHITE, ON_BLACK $prompt, RESET . " ";
+        
+        
+        
+        while((my $pressedKey=ReadControlKey()) ne "return" )
+        {
+            #my $new_record = get_interactive_cmd_record($pressedKey, $previous_record)
+            #my $cmd        = read_cmd($new_record);
+            $cmd = "help";
+            print "\e[K"."$cmd\r". WHITE, ON_BLACK $prompt, RESET . " ";
+            # if it s up and down do something (history)
+            #otherwise dont do anything until enetring retun key
+        }
+        
+        die;
+        my $input = <STDIN>;
+        $input =~ s/[\n\r\f\t]//g;
+        
+        my @exitarray= qw(exit q quit end);
+        my %exithash;
+        $exithash{$_} = 1 for (@exitarray);
+        
+        if(exists $exithash{$input}){
+            $exit = 1;
+            print RESET;
+        }else{
+            
+        
+            
+            my $perl = `which perl`; chomp($perl);
+            my $cmd = "$perl $install_dir/CJ.pl" . " $input";
+            system($cmd);
+
+        }
+        
+    }
+    
+}
+
+
+
+
+sub ReadControlKey{
+    my $key;
+    ReadMode 4;   # turn off control keys
+    
+    my $chr = ReadKey(0);
+    my $code = ord($chr);
+    if($code==27){
+        my $code2 = ord(ReadKey -1);
+        if($code2 eq 91){
+            my $arrow = ord(ReadKey -1);
+            
+            $key = "up"    if ( $arrow == 65 );
+            $key = "down"  if ( $arrow == 66 );
+            $key = "right" if ( $arrow == 67 );
+            $key = "left"  if ( $arrow == 68 );
+            
+            
+        }else{
+            $key = $chr;
+        }
+    }elsif($code==10){ # enter
+        $key = "return";
+    }else{
+        $key = $chr;
+    }
+    ReadMode 0 ; # Reset the control
+    return $key;
+}
 
 
 
@@ -192,7 +291,7 @@ my $history = sprintf("%-15u%-15s",$lastnum+1, $hist_date );
     
     
     
-$short_message = substr($message, 0, 30);
+my $short_message = substr($message, 0, 30);
 
     
     
@@ -314,7 +413,7 @@ CJ::Matlab::build_reproducible_script($program, $local_sep_Dir, $runflag);
   
 
 my $sh_script = make_shell_script($ssh,$program,$date,$bqs);
-$local_sh_path = "$local_sep_Dir/bashMain.sh";
+my $local_sh_path = "$local_sep_Dir/bashMain.sh";
 &CJ::writeFile($local_sh_path, $sh_script);
 
 # Build master-script for submission
@@ -458,7 +557,7 @@ my @lines = split('\n|;\s*(?=for)', $script_lines);
 
 my @forlines_idx_set;
 foreach my $i (0..$#lines){
-$line = $lines[$i];
+my $line = $lines[$i];
     if ($line =~ /^\s*(for.*)/ ){
     push @forlines_idx_set, $i;
     }
@@ -600,7 +699,7 @@ if($nloops eq 1){
                     # build bashMain.sh for each parallel package
                     my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
                     my $sh_script = make_par_shell_script($ssh,$program,$date,$bqs,$counter,$remote_par_sep_dir);
-                    $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
+                    my $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                     &CJ::writeFile($local_sh_path, $sh_script);
                 
                 $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
@@ -648,7 +747,7 @@ if($nloops eq 1){
                 # build bashMain.sh for each parallel package
                 my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
                 my $sh_script = make_par_shell_script($ssh,$program,$date,$bqs,$counter, $remote_par_sep_dir);
-                $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
+                my $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
                 $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
@@ -697,7 +796,7 @@ if($nloops eq 1){
                 # build bashMain.sh for each parallel package
                 my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
                 my $sh_script = make_par_shell_script($ssh,$program,$date,$bqs,$counter, $remote_par_sep_dir);
-                $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
+                my $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
                 
@@ -771,7 +870,7 @@ my $job_id;
 if($runflag eq "parrun"){
     # read run info
     my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
-    $job_ids = &CJ::read_qsub($local_qsub_info_file);
+    my $job_ids = &CJ::read_qsub($local_qsub_info_file);
     $job_id = join(',', @{$job_ids});
 
     
