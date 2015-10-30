@@ -1393,12 +1393,25 @@ sub remove_extention
 
 sub reexecute_cmd{
     my ($cmd_num,$verbose) = @_;
-    my $cmd=`grep '^\\b$cmd_num\\b' $cmd_history_file | awk \'{\$1=\"\"; print \$0}\' `;
-    $cmd =~ s/^\s+|\s+$//g;
+    my $cmd= &CJ::get_cmd($cmd_num, 0);
     #print "$cmd\n";
     system("$cmd");
 }
 
+
+
+sub get_cmd{
+    my ($cmd_num, $is_interactive) = @_;
+    
+    my $cmd;
+    if($is_interactive){
+    $cmd=`grep '^\\b$cmd_num\\b' $cmd_history_file | awk \'{\$1=\"\";\$2=\"\";\$3=\"\"; print \$0}\' `;
+    }else{
+    $cmd=`grep '^\\b$cmd_num\\b' $cmd_history_file | awk \'{\$1=\"\"; print \$0}\' `;
+    }
+    $cmd =~ s/^\s+|\s+$//g;
+    return $cmd;
+}
 
 
 sub add_cmd{

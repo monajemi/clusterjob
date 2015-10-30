@@ -10,8 +10,10 @@ use CJ::CJVars;  # contains global variables of CJ
 use CJ::Matlab;  # Contains Matlab related subs
 use CJ::Get;     # Contains Get related subs
 use Getopt::Declare;
-use Term::ReadKey;   # reading keys!:)
-use Term::ANSIColor qw(:constants); # for changing terminal text colors
+#use Term::ReadKey;
+use Term::ReadLine;
+#use Term::ANSIColor qw(:constants); # for changing terminal text colors
+use Digest::SHA qw(sha1_hex); # generate hexa-decimal SHA1 PID
 use vars qw($message $mem $runtime $dep_folder $verbose $text_header_lines $show_tag $qsub_extra $cmdline);  # options
 
 $::VERSION = &CJ::version_info();
@@ -79,7 +81,7 @@ $qsub_extra        = "";
 
 my $spec = <<'EOSPEC';
       prompt 	    opens CJ prompt command [undocumented]
-                    {defer{cj_prompt()}}
+                     {defer{cj_prompt()}}
      -help 	  Show usage information [undocumented]
                     {defer{&CJ::add_cmd($cmdline);$self->usage(0);}}
      help  	 	  [ditto]  [undocumented]
@@ -151,6 +153,9 @@ my $spec = <<'EOSPEC';
                                                   {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pkg,$path,$verbose)}}
      @<cmd_num:+i>	                                  re-executes a previous command avaiable in command history [nocase]
                                                   {defer{&CJ::reexecute_cmd($cmd_num,$verbose) }}
+     <unknown>...	                                  unknown arguments will be send to bash [undocumented]
+                                                  {defer{my $cmd = join(" ",@unknown); system("$cmd")}}
+
 EOSPEC
 
 my $opts = Getopt::Declare->new($spec);
@@ -170,91 +175,155 @@ my $opts = Getopt::Declare->new($spec);
 #==========================
 sub cj_prompt{
     
-    my $localhost = `uname -n`;chomp($localhost);
-    my $localuser = `id -un`;chomp($localuser);
-    my $exit = 0;
-    my $prompt = "[$localhost:$localuser] CJ>";
-    print WHITE, ON_BLACK $prompt, RESET . " ";
+
+    my $COLOR = "\033[47;30m";
+    my $RESET = "\033[0m";
+    
+    #my $prompt = "${COLOR}[$localHostName:$localUserName] CJ>$RESET ";
+
+    my $prompt = "[$localHostName:$localUserName] CJ> ";
     print  "$::VERSION\n \n \n";
     
     
+    #my $promptsize = `echo -n \"$prompt\" | wc -c | tr -d " "`;
     
-    
-    
-    # Read the key input:
-    
-    while (! $exit){
-        print WHITE, ON_BLACK $prompt, RESET . " ";
-        
-        
-        
-        while((my $pressedKey=ReadControlKey()) ne "return" )
-        {
-            #my $new_record = get_interactive_cmd_record($pressedKey, $previous_record)
-            #my $cmd        = read_cmd($new_record);
-            $cmd = "help";
-            print "\e[K"."$cmd\r". WHITE, ON_BLACK $prompt, RESET . " ";
-            # if it s up and down do something (history)
-            #otherwise dont do anything until enetring retun key
-        }
-        
-        die;
-        my $input = <STDIN>;
-        $input =~ s/[\n\r\f\t]//g;
-        
-        my @exitarray= qw(exit q quit end);
-        my %exithash;
-        $exithash{$_} = 1 for (@exitarray);
-        
-        if(exists $exithash{$input}){
-            $exit = 1;
-            print RESET;
-        }else{
-            
-        
-            
-            my $perl = `which perl`; chomp($perl);
-            my $cmd = "$perl $install_dir/CJ.pl" . " $input";
-            system($cmd);
+    #$promptsize = $promptsize+1;  # I add one white space
+   
 
-        }
+    my $term = Term::ReadLine->new('CJ shell');
+    #$term->ornaments(0);  # disable ornaments.
+    
+    
+    my $exit = 0;
+    my @exitarray= qw(exit q quit end);
+    my %exithash;
+    $exithash{$_} = 1 for (@exitarray);
+    
+    while (!exists $exithash{my $input = $term->readline($prompt)}) {
+        #print WHITE, ON_BLACK $prompt, RESET . " ";
+        
+          my $perl = `which perl`; chomp($perl);
+          my $cmd = "$perl $install_dir/CJ.pl" . " $input";
+          system($cmd);
+         $term->addhistory($input) if /\S/;
+        
         
     }
+    
+    
+#    
+#    # Read the key input:
+#    
+#    while (! $exit){
+#        print WHITE, ON_BLACK $prompt, RESET . " ";
+#        
+#        my $total_record=`grep "." $cmd_history_file | tail -1  | awk \'{print \$1}\' `;
+#        if(! $total_record){
+#            $total_record = 0;
+#        }
+#        
+#        my $previous_record = $total_record;
+#        my $curcol = $promptsize+1;
+#        my $keyhash;
+#        while((my ($pressedKey, $pressedCode)= each %{$keyhash = ReadControlKey()} )[0] ne "return" )
+#        {
+#            my $new_record;
+#            my $cmd="";
+#            my $cmdsize;
+#            if($pressedKey eq "up" && ($previous_record gt 1)){
+#                $new_record = $previous_record-1;
+#                $cmd        = &CJ::get_cmd($new_record, 1);
+#                $cmdsize = `echo -n \"$cmd\" | wc -c | tr -d " "`;
+#                print "\r\033[K". WHITE, ON_BLACK $prompt, RESET . " " ."$cmd" ;
+#                $previous_record = $new_record;
+#            }elsif($pressedKey eq "down"  && ($previous_record lt $total_record)){
+#                $new_record = $previous_record+1;
+#                $cmd        = &CJ::get_cmd($new_record, 1);
+#                $cmdsize = `echo -n \"$cmd\" | wc -c | tr -d " "`;
+#                print "\r\033[K". WHITE, ON_BLACK $prompt, RESET . " " ."$cmd";
+#                $previous_record = $new_record;
+#            }
+#            
+#            my $totalcol = $promptsize + $cmdsize;
+#            
+#            if($pressedKey eq "right" ){
+#            print "\033[C";
+#            $curcol = $curcol+1;
+#            }
+#            if($pressedKey eq "left" && ($curcol gt $promptsize+1) ){
+#            print "\033[D";
+#            $curcol = $curcol-1;
+#    
+#            }
+#            if($pressedCode eq 127 && ($curcol gt $promptsize+1) ){ #delete decimal
+#            print "\033[D";
+#            $curcol = $curcol-1;
+#            }
+#
+#        }
+#        
+#        print "\033[0m\n"; # Clear ANSI attributes
+    
+#        die;
+#        my $input = <STDIN>;
+#        $input =~ s/[\n\r\f\t]//g;
+#        
+#        my @exitarray= qw(exit q quit end);
+#        my %exithash;
+#        $exithash{$_} = 1 for (@exitarray);
+#        
+#        if(exists $exithash{$input}){
+#            $exit = 1;
+#            print RESET;
+#        }else{
+#            
+#        
+#            
+#            my $perl = `which perl`; chomp($perl);
+#            my $cmd = "$perl $install_dir/CJ.pl" . " $input";
+#            system($cmd);
+#
+#        }
+#        
+#    }
     
 }
 
 
-
-
-sub ReadControlKey{
-    my $key;
-    ReadMode 4;   # turn off control keys
-    
-    my $chr = ReadKey(0);
-    my $code = ord($chr);
-    if($code==27){
-        my $code2 = ord(ReadKey -1);
-        if($code2 eq 91){
-            my $arrow = ord(ReadKey -1);
-            
-            $key = "up"    if ( $arrow == 65 );
-            $key = "down"  if ( $arrow == 66 );
-            $key = "right" if ( $arrow == 67 );
-            $key = "left"  if ( $arrow == 68 );
-            
-            
-        }else{
-            $key = $chr;
-        }
-    }elsif($code==10){ # enter
-        $key = "return";
-    }else{
-        $key = $chr;
-    }
-    ReadMode 0 ; # Reset the control
-    return $key;
-}
-
+#
+#
+#sub ReadControlKey{
+#    my $key;
+#    ReadMode 4;   # turn off control keys
+#    
+#    my $chr = ReadKey(0);
+#    my $code = ord($chr);
+#    if($code==27){
+#        my $code2 = ord(ReadKey -1);
+#        if($code2 eq 91){
+#            my $arrow = ord(ReadKey -1);
+#            
+#            $key = "up"    if ( $arrow == 65 );
+#            $key = "down"  if ( $arrow == 66 );
+#            $key = "right" if ( $arrow == 67 );
+#            $key = "left"  if ( $arrow == 68 );
+#            
+#            
+#        }else{
+#            $key = $chr;
+#        }
+#    }elsif($code==10){ # enter
+#        $key = "return";
+#    }else{
+#        $key = $chr;
+#    }
+#    ReadMode 0 ; # Reset the control
+#    
+#    my %keyhash = ($key => $code);
+#
+#    return \%keyhash;
+#}
+#
 
 
 #========================================================================
@@ -283,6 +352,9 @@ sub run{
 #         DATE OF CALL
 #====================================
 my $date = &CJ::date();
+    
+
+    
 # Find the last number
 my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
 my ($hist_date, $time) = split('\_', $date);
@@ -299,7 +371,12 @@ my $ssh      = &CJ::host($machine);
 my $account  = $ssh->{account};
 my $bqs      = $ssh->{bqs};
 my $remotePrefix    = $ssh->{remote_repo};
-
+    
+# TO BE IMPLEMENTED
+#my $sha_expr = "$localUserName:$localHostname:$program:$account:$date";
+#my $PID  = sha1_hex("$sha_expr");
+#print "$PID\n";
+    
    
 
 #check to see if the file and dep folder exists

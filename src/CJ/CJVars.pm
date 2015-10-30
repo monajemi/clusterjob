@@ -7,6 +7,18 @@ use warnings;
 use parent 'Exporter'; # imports and subclasses Exporter
 use File::Basename qw(dirname);
 use File::Spec;
+use IO::Socket::INET;
+
+
+
+my $sock = IO::Socket::INET->new(
+    PeerAddr=> "example.com",
+    PeerPort=> 80,
+    Proto   => "tcp");
+our $localIP = $sock->sockhost; chomp($localIP);
+
+our $localUserName = `id -un`;chomp($localUserName);  # Later on add the CJusername
+our $localHostName = `uname -n`;chomp($localHostName);
 
 
 my  $CJ_dir = File::Basename::dirname(File::Spec->rel2abs(__FILE__));
@@ -31,7 +43,7 @@ our $ssh_config_file    = "$install_dir/.ssh_config";
 
 
 # Export global variables
-our @EXPORT = qw($install_dir $remotePrefix $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $CJlog);
+our @EXPORT = qw($install_dir $remotePrefix $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $CJlog $localIP $localHostName $localUserName);
 
 
 
