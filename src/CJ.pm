@@ -5,6 +5,8 @@ use strict;
 use warnings;
 use CJ::CJVars;
 use Term::ReadLine;
+use Time::Local;
+
 
 sub version_info{
 my $version_script="\n\n          This is Clusterjob (CJ) verion 1.1.0";
@@ -232,7 +234,7 @@ my $cmd = "chmod +x $path/CJ_CONFIRMATION.TXT";
 # ======
 # Build master script
 sub make_master_script{
-    my($master_script,$runflag,$program,$date,$bqs,$mem, $runtime, $remote_sep_Dir,$qsub_extra,$counter) = @_;
+    my($master_script,$runflag,$program,$date,$pid,$bqs,$mem, $runtime, $remote_sep_Dir,$qsub_extra,$counter) = @_;
     
     
     
@@ -261,7 +263,7 @@ $master_script.="$docstring";
         $master_script .= "mkdir ${remote_sep_Dir}"."/logs" . "\n" ;
         $master_script .= "mkdir ${remote_sep_Dir}"."/scripts" . "\n" ;
     
-        my $tagstr="CJ$date\_$programName";
+        my $tagstr="CJ_$pid\_$programName";
         if($bqs eq "SGE"){
             
         $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem -l h_rt=$runtime $qsub_extra -N $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n";
@@ -284,7 +286,7 @@ $master_script.="$docstring";
         $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/scripts" . "\n" ;
         
         
-        my $tagstr="CJ$date\_$counter\_$programName";
+        my $tagstr="CJ_$pid\_$counter\_$programName";
         if($bqs eq "SGE"){
             $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem  -l h_rt=$runtime $qsub_extra -N $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n";
         }elsif($bqs eq "SLURM"){
@@ -1110,21 +1112,40 @@ sub retrieve_package_info{
 sub date{
 my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
 $year 	+= 1900;
-my @abbr = qw( JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC );
-my $date = sprintf ("%04d%03s%02d_%02d%02d%02d", $year, $abbr[$mon], $mday, $hour,$min, $sec);
+my @month_abbr = qw( Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec );
+my @day_abbr = qw( Sun Mon Tue Wed Thu Fri Sat );
+
+my @t = localtime(time);
+my $gmt_offset_in_seconds = timegm(@t) - timelocal(@t);
+    my $abs_offset;
+    my $sign="";
+    if($gmt_offset_in_seconds<0){
+        $abs_offset = $gmt_offset_in_seconds * (-1);
+        $sign = "-";
+    }else{
+        $abs_offset = $gmt_offset_in_seconds ;
+    }
+    
+my ($gmt_offset_hour, $remainder_in_second) = (int($abs_offset/3600), $abs_offset%3600);
+(my $gmt_offset_min, $remainder_in_second) = (int($remainder_in_second/60), $remainder_in_second%60);
+
+my $offset = sprintf("%s%02d:%02d:%02d", $sign,$gmt_offset_hour,$gmt_offset_min,$remainder_in_second);
+my $date = sprintf ("%04d-%03s-%02d  %02d:%02d:%02d  \(GMT %s\)", $year, $month_abbr[$mon], $mday, $hour,$min, $sec, $offset);
+    print "$date\n";die;
+
     return $date;
 }
 
 # Check the package name given is valid
-sub is_valid_package_name
+sub is_valid_pid
 {
 my ($name) = @_;
     
 if(!defined($name)){
 $name = ""
 }
-    
-if( $name =~ m/^\d{4}\D{3}\d{2}_\d{6}$/){
+# CJ uses a default abbreviation of SHA which has 8 first characters!
+if( $name =~ m/\b[0-9a-f]{8,40}\b/){
 return 1;
 }else{
 return 0;

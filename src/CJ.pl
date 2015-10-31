@@ -12,6 +12,7 @@ use CJ::Get;     # Contains Get related subs
 use Getopt::Declare;
 #use Term::ReadKey;
 use Term::ReadLine;
+use JSON::PP;
 #use Term::ANSIColor qw(:constants); # for changing terminal text colors
 use Digest::SHA qw(sha1_hex); # generate hexa-decimal SHA1 PID
 use vars qw($message $mem $runtime $dep_folder $verbose $text_header_lines $show_tag $qsub_extra $cmdline);  # options
@@ -112,21 +113,21 @@ my $spec = <<'EOSPEC';
                                               {$runtime=$r_time}
      -alloc[ate]   <resources>	                          machine specific allocation [nocase]
                                           {$qsub_extra=$resources}
-     log          [<argin>]	                          historical info -n|pkg|all [nocase]
+     log          [<argin>]	                          historical info -n|pid|all [nocase]
                                           {defer{&CJ::add_cmd($cmdline); &CJ::show_history($argin) }}
      history      [<argin>]	         [ditto]
      cmd          [<argin>]	                          command history -n|all [nocase]
                                               {defer{ &CJ::show_cmd_history($argin) }}
-     clean        [<pkg>]		                  clean certain package [nocase]
-                                              {defer{ &CJ::add_cmd($cmdline); &CJ::clean($pkg,$verbose); }}
-     state        [<pkg> [/] [<counter>]]	          state of package [nocase]
-                                              {defer{ &CJ::add_cmd($cmdline);&CJ::get_state($pkg,$counter) }}
-     info         [<pkg>]	                          info of certain package [nocase]
-                                              {defer{ &CJ::add_cmd($cmdline);&CJ::show_info($pkg); }}
-     show         [<pkg> [/] [<counter>]]	          show program/error of certain package [nocase]
-                                              {defer{ &CJ::add_cmd($cmdline);&CJ::show($pkg,$counter,$show_tag) }}
-     rerun        [<pkg> [/] [<counter>...]]	          rerun certain (failed) job [nocase]
-                                               {defer{&CJ::add_cmd($cmdline);&CJ::rerun($pkg,\@counter,$mem,$runtime,$qsub_extra,$verbose) }}
+     clean        [<pid>]		                  clean certain package [nocase]
+                                              {defer{ &CJ::add_cmd($cmdline); &CJ::clean($pid,$verbose); }}
+     state        [<pid> [/] [<counter>]]	          state of package [nocase]
+                                              {defer{ &CJ::add_cmd($cmdline);&CJ::get_state($pid,$counter) }}
+     info         [<pid>]	                          info of certain package [nocase]
+                                              {defer{ &CJ::add_cmd($cmdline);&CJ::show_info($pid); }}
+     show         [<pid> [/] [<counter>]]	          show program/error of certain package [nocase]
+                                              {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$show_tag) }}
+     rerun        [<pid> [/] [<counter>...]]	          rerun certain (failed) job [nocase]
+                                               {defer{&CJ::add_cmd($cmdline);&CJ::rerun($pid,\@counter,$mem,$runtime,$qsub_extra,$verbose) }}
      run          <code> <cluster>	                  run code on the cluster [nocase]
                                               {my $runflag = "run";
                                                   {defer{&CJ::add_cmd($cmdline); run($cluster,$code,$runflag,$qsub_extra)}}
@@ -143,14 +144,14 @@ my $spec = <<'EOSPEC';
                                               {my $runflag = "pardeploy";
                                                   {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
-     reduce       <filename> [<pkg>] 	                  reduce results of parrun [nocase]
-                                                  {defer{&CJ::add_cmd($cmdline);&CJ::Get::reduce_results($pkg,$filename,$verbose,$text_header_lines)}}
-     gather       <pattern>  <dir_name> [<pkg>]	          gather results of parrun [nocase]
-                                                  {defer{&CJ::add_cmd($cmdline);&CJ::Get::gather_results($pkg,$pattern,$dir_name,$verbose)}}
-     get          [<pkg>]	                          bring results back to local machine [nocase]
-                                                  {defer{&CJ::add_cmd($cmdline);&CJ::Get::get_results($pkg,$verbose)}}
-     save         <pkg> [<path>]	                  save a package in path [nocase]
-                                                  {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pkg,$path,$verbose)}}
+     reduce       <filename> [<pid>] 	                  reduce results of parrun [nocase]
+                                                  {defer{&CJ::add_cmd($cmdline);&CJ::Get::reduce_results($pid,$filename,$verbose,$text_header_lines)}}
+     gather       <pattern>  <dir_name> [<pid>]	          gather results of parrun [nocase]
+                                                  {defer{&CJ::add_cmd($cmdline);&CJ::Get::gather_results($pid,$pattern,$dir_name,$verbose)}}
+     get          [<pid>]	                          bring results back to local machine [nocase]
+                                                  {defer{&CJ::add_cmd($cmdline);&CJ::Get::get_results($pid,$verbose)}}
+     save         <pid> [<path>]	                  save a package in path [nocase]
+                                                  {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
      @<cmd_num:+i>	                                  re-executes a previous command avaiable in command history [nocase]
                                                   {defer{&CJ::reexecute_cmd($cmd_num,$verbose) }}
      <unknown>...	                                  unknown arguments will be send to bash [undocumented]
@@ -209,121 +210,8 @@ sub cj_prompt{
         
         
     }
-    
-    
-#    
-#    # Read the key input:
-#    
-#    while (! $exit){
-#        print WHITE, ON_BLACK $prompt, RESET . " ";
-#        
-#        my $total_record=`grep "." $cmd_history_file | tail -1  | awk \'{print \$1}\' `;
-#        if(! $total_record){
-#            $total_record = 0;
-#        }
-#        
-#        my $previous_record = $total_record;
-#        my $curcol = $promptsize+1;
-#        my $keyhash;
-#        while((my ($pressedKey, $pressedCode)= each %{$keyhash = ReadControlKey()} )[0] ne "return" )
-#        {
-#            my $new_record;
-#            my $cmd="";
-#            my $cmdsize;
-#            if($pressedKey eq "up" && ($previous_record gt 1)){
-#                $new_record = $previous_record-1;
-#                $cmd        = &CJ::get_cmd($new_record, 1);
-#                $cmdsize = `echo -n \"$cmd\" | wc -c | tr -d " "`;
-#                print "\r\033[K". WHITE, ON_BLACK $prompt, RESET . " " ."$cmd" ;
-#                $previous_record = $new_record;
-#            }elsif($pressedKey eq "down"  && ($previous_record lt $total_record)){
-#                $new_record = $previous_record+1;
-#                $cmd        = &CJ::get_cmd($new_record, 1);
-#                $cmdsize = `echo -n \"$cmd\" | wc -c | tr -d " "`;
-#                print "\r\033[K". WHITE, ON_BLACK $prompt, RESET . " " ."$cmd";
-#                $previous_record = $new_record;
-#            }
-#            
-#            my $totalcol = $promptsize + $cmdsize;
-#            
-#            if($pressedKey eq "right" ){
-#            print "\033[C";
-#            $curcol = $curcol+1;
-#            }
-#            if($pressedKey eq "left" && ($curcol gt $promptsize+1) ){
-#            print "\033[D";
-#            $curcol = $curcol-1;
-#    
-#            }
-#            if($pressedCode eq 127 && ($curcol gt $promptsize+1) ){ #delete decimal
-#            print "\033[D";
-#            $curcol = $curcol-1;
-#            }
-#
-#        }
-#        
-#        print "\033[0m\n"; # Clear ANSI attributes
-    
-#        die;
-#        my $input = <STDIN>;
-#        $input =~ s/[\n\r\f\t]//g;
-#        
-#        my @exitarray= qw(exit q quit end);
-#        my %exithash;
-#        $exithash{$_} = 1 for (@exitarray);
-#        
-#        if(exists $exithash{$input}){
-#            $exit = 1;
-#            print RESET;
-#        }else{
-#            
-#        
-#            
-#            my $perl = `which perl`; chomp($perl);
-#            my $cmd = "$perl $install_dir/CJ.pl" . " $input";
-#            system($cmd);
-#
-#        }
-#        
-#    }
-    
 }
 
-
-#
-#
-#sub ReadControlKey{
-#    my $key;
-#    ReadMode 4;   # turn off control keys
-#    
-#    my $chr = ReadKey(0);
-#    my $code = ord($chr);
-#    if($code==27){
-#        my $code2 = ord(ReadKey -1);
-#        if($code2 eq 91){
-#            my $arrow = ord(ReadKey -1);
-#            
-#            $key = "up"    if ( $arrow == 65 );
-#            $key = "down"  if ( $arrow == 66 );
-#            $key = "right" if ( $arrow == 67 );
-#            $key = "left"  if ( $arrow == 68 );
-#            
-#            
-#        }else{
-#            $key = $chr;
-#        }
-#    }elsif($code==10){ # enter
-#        $key = "return";
-#    }else{
-#        $key = $chr;
-#    }
-#    ReadMode 0 ; # Reset the control
-#    
-#    my %keyhash = ($key => $code);
-#
-#    return \%keyhash;
-#}
-#
 
 
 #========================================================================
@@ -373,11 +261,9 @@ my $bqs      = $ssh->{bqs};
 my $remotePrefix    = $ssh->{remote_repo};
     
 # TO BE IMPLEMENTED
-#my $sha_expr = "$localUserName:$localHostname:$program:$account:$date";
-#my $PID  = sha1_hex("$sha_expr");
-#print "$PID\n";
+my $sha_expr = "$localUserName:$localHostName:$program:$account:$date";
+my $pid  = sha1_hex("$sha_expr");
     
-   
 
 #check to see if the file and dep folder exists
     
@@ -394,15 +280,15 @@ if(! -d "$BASE/$dep_folder" ){
 #=======================================
 #       BUILD DOCSTRING
 #       WE NAME THE REMOTE FOLDERS
-#       BY PROGRAM AND DATE
-#       EXAMPLE : MaxEnt/2014DEC02_1426
+#       BY PROGRAM AND PID
+#       EXAMPLE : MaxEnt/20dd3203e29ec295c50334f6082cee98aae8518e
 #=======================================
 
 
 
 my $program_name   = &CJ::remove_extention($program);
 my $localDir       = "$localPrefix/"."$program_name";
-my $local_sep_Dir = "$localDir/" . "$date"  ;
+my $local_sep_Dir = "$localDir/" . "$pid"  ;
 my $saveDir       = "$savePrefix"."$program_name";
 
 
@@ -434,7 +320,7 @@ my $cmd   = "cp -r $dep_folder/* $local_sep_Dir/";
 #=====================
 my $program_name    = &CJ::remove_extention($program);
 my $remoteDir       = "$remotePrefix/"."$program_name";
-my $remote_sep_Dir = "$remoteDir/" . "$date"  ;
+my $remote_sep_Dir = "$remoteDir/" . "$pid"  ;
 
 # for creating remote directory
 my $outText;
@@ -489,13 +375,13 @@ CJ::Matlab::build_reproducible_script($program, $local_sep_Dir, $runflag);
     
   
 
-my $sh_script = make_shell_script($ssh,$program,$date,$bqs);
+my $sh_script = make_shell_script($ssh,$program,$pid,$bqs);
 my $local_sh_path = "$local_sep_Dir/bashMain.sh";
 &CJ::writeFile($local_sh_path, $sh_script);
 
 # Build master-script for submission
 my $master_script;
-$master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra);
+$master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra);
     
     
 
@@ -592,6 +478,8 @@ message       => $message,
 };
 &CJ::add_to_run_history($runinfo);
     
+    #my $runinfo_json = encode_json $runinfo;
+    #print "$runinfo_json\n"; die;
     
     
 my $last_instance=$date;
@@ -1021,7 +909,7 @@ my $last_instance=${date};
 
 sub make_shell_script
     {
-        my ($ssh,$program,$date,$bqs) = @_;
+        my ($ssh,$program,$pid,$bqs) = @_;
 
         
         
@@ -1052,12 +940,12 @@ HEAD
  
 $sh_script.= <<'MID';
 PROGRAM="<PROGRAM>";
-DATE=<DATE>;
+PID=<PID>;
 cd $DIR;
 mkdir scripts
 mkdir logs
-SHELLSCRIPT=${DIR}/scripts/CJ.runProgram.${DATE}.sh;
-LOGFILE=${DIR}/logs/CJ.runProgram.${DATE}.log;
+SHELLSCRIPT=${DIR}/scripts/CJrun.${PID}.sh;
+LOGFILE=${DIR}/logs/CJrun.${PID}.log;
 MID
 
 if($bqs eq "SGE"){
@@ -1173,7 +1061,7 @@ MATLAB
         
         
 $sh_script =~ s|<PROGRAM>|$program|;
-$sh_script =~ s|<DATE>|$date|;
+$sh_script =~ s|<PID>|$pid|;
 $sh_script =~ s|<MATPATH>|$pathText|;
         
 return $sh_script;
@@ -1188,7 +1076,7 @@ return $sh_script;
 
 sub make_par_shell_script
 {
-my ($ssh,$program,$date,$bqs,$counter,$remote_path) = @_;
+my ($ssh,$program,$pid,$bqs,$counter,$remote_path) = @_;
 
 my $sh_script;
 if($bqs eq "SGE"){
@@ -1217,13 +1105,13 @@ HEAD
 
 $sh_script.= <<'MID';
 PROGRAM="<PROGRAM>";
-DATE=<DATE>;
+PID=<PID>;
 COUNTER=<COUNTER>;
 cd $DIR;
 mkdir scripts
 mkdir logs
-SHELLSCRIPT=${DIR}/scripts/CJ.runProgram.${DATE}.${COUNTER}.sh;
-LOGFILE=${DIR}/logs/CJ.runProgram.${DATE}.${COUNTER}.log;
+SHELLSCRIPT=${DIR}/scripts/CJrun.${PID}.${COUNTER}.sh;
+LOGFILE=${DIR}/logs/CJrun.${PID}.${COUNTER}.log;
 MID
 
 if($bqs eq "SGE"){
@@ -1359,7 +1247,7 @@ MATLAB
 
 
 $sh_script =~ s|<PROGRAM>|$program|;
-$sh_script =~ s|<DATE>|$date|;
+$sh_script =~ s|<PID>|$pid|;
 $sh_script =~ s|<COUNTER>|$counter|;
 $sh_script =~ s|<MATPATH>|$pathText|;
 $sh_script =~ s|<remote_path>|$remote_path|;
