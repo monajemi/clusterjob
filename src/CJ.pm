@@ -6,6 +6,11 @@ use warnings;
 use CJ::CJVars;
 use Term::ReadLine;
 use Time::Local;
+use JSON::PP;
+use Data::Dumper;
+use feature 'say';
+
+
 
 
 sub version_info{
@@ -436,7 +441,7 @@ sub show_history{
         $history_argin= 1;
     }
     
-    if(&CJ::is_valid_package_name($history_argin)){
+    if(&CJ::is_valid_pid($history_argin)){
         # read info from $run_history_file
         
         print '-' x 35;print "\n";
@@ -485,7 +490,7 @@ sub show_history{
 
 sub clean
 {
-    my ($package, $verbose) = @_;
+    my ($pid, $verbose) = @_;
     
     
     
@@ -498,28 +503,16 @@ sub clean
     my $save_path;
     
     my $info;
-    if((!defined $package)  || ($package eq "") ){
+    if((!defined $pid)  || ($pid eq "") ){
         #read the first lines of last_instance.info;
         $info =  &CJ::retrieve_package_info();
-        $package = $info->{'package'};
+        $pid = $info->{'pid'};
     }else{
         
-        if(&CJ::is_valid_package_name($package)){
+        if(&CJ::is_valid_pid($pid)){
             # read info from $run_history_file
-            
-            my $cmd= "grep -q '$package' '$run_history_file'";
-            my $pattern_exists = system($cmd);chomp($pattern_exists);
-            
-            if ($pattern_exists==0){
-                $info =  &CJ::retrieve_package_info($package);
-                
-                # TODO :
-                # CHECK TO SEE IF package has already been deleted
-                #
-                
-            }else{
-                &CJ::err("No such job found in CJ database.");
-            }
+            $info =  &CJ::retrieve_package_info($pid);
+            if(!defined($info)){ &CJ::err("No such job found in CJ database.")};
             
         }else{
             &CJ::err("incorrect usage: nothing to show");
@@ -536,8 +529,11 @@ sub clean
     $job_id      =   $info->{'job_id'};
     $save_path   =   $info->{'save_path'};
     
-    if(defined($info->{'clean'}->{'date'})){
-        CJ::message("Nothing to clean. Package $package has been cleaned on $info->{'clean'}->{'date'} at $info->{'clean'}->{'time'}.");
+    
+    my $short_pid = substr($pid,0,8);
+
+    if(defined($info->{'clean'})){
+        CJ::message("Nothing to clean. Package $short_pid has been cleaned on $info->{'clean'}->{'date'} at $info->{'clean'}->{'time'}.");
         exit 0;
     }
     
@@ -546,19 +542,19 @@ sub clean
     
     
     # make sure s/he really want a deletion
-    CJ::message("Are you sure you would like to clean $package? Y/N");
+    CJ::message("Are you sure you would like to clean $short_pid? Y/N");
     my $yesno =  <STDIN>; chomp($yesno);
     
     if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
     
-    CJ::message("Cleaning $package");
+    CJ::message("Cleaning $short_pid");
     my $local_clean     = "$local_path\*";
     my $remote_clean    = "$remote_path\*";
     my $save_clean      = "$save_path\*";
     
     
     if (defined($job_id) && $job_id ne "") {
-        CJ::message("Deleting jobs associated with package $package");
+        CJ::message("Deleting jobs associated with package $short_pid");
         my @job_ids = split(',',$job_id);
         $job_id = join(' ',@job_ids);
         my $cmd = "rm -rf $local_clean; rm -rf $save_clean; ssh ${account} 'qdel $job_id; rm -rf $remote_clean' " ;
@@ -575,23 +571,21 @@ sub clean
     my $date = &CJ::date();
     # Find the last number
     my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
-    my ($hist_date, $time) = split('\_', $date);
-    my $history = sprintf("%-15u%-15s",$lastnum+1, $hist_date );
-    
+    my $hist_date = (split('\s', $date->{datestr}))[0];
     my $flag = "clean";
     # ADD THIS CLEAN TO HISTRY
-    $history .= sprintf("%-21s%-10s",$package, $flag);
+    my $history = sprintf("%-15u%-15s%-21s%-10s",$lastnum+1, $hist_date,$pid, $flag);
     &CJ::add_to_history($history);
         
         
-    my @time_array = ( $time =~ m/../g );
-    $time = join(":",@time_array);
-    # Add the change to run_history file
-my $text =<<TEXT;
-    DATE -> $hist_date
-    TIME -> $time
-TEXT
-&CJ::add_change_to_run_history($package, $text, "clean");
+#    my @time_array = ( $time =~ m/../g );
+#    $time = join(":",@time_array);
+#    # Add the change to run_history file
+#my $text =<<TEXT;
+#    DATE -> $hist_date
+#    TIME -> $time
+#TEXT
+&CJ::add_change_to_run_history($pid, $date, "clean");
         
 }
     
@@ -988,110 +982,121 @@ sub host{
 
 sub retrieve_package_info{
     
-    my ($package) = @_;
+    my ($pid) = @_;
     
-    my $machine   ;
-    my $account   ;
-    my $local_prefix;
-    my $local_path ;
-    my $remote_prefix;
-    my $remote_path;
-    my $job_id    ;
-    my $bqs       ;
-    my $save_prefix;
-    my $save_path  ;
-    my $runflag   ;
-    my $program   ;
-    my $message   ;
-    
-    if(!$package){
-        $package    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($package);
+    if(!$pid){
+        $pid    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($pid);
     }
-
-    $machine        = `grep -A 14 $package $run_history_file| sed -n '2{p;q;}'` ; chomp($machine);
-    $account        = `grep -A 14 $package $run_history_file| sed -n '3{p;q;}'` ; chomp($account);
-    $local_prefix   = `grep -A 14 $package $run_history_file| sed -n '4{p;q;}'` ; chomp($local_prefix);
-    $local_path     = `grep -A 14 $package $run_history_file| sed -n '5{p;q;}'` ; chomp($local_path);
-    $remote_prefix  = `grep -A 14 $package $run_history_file| sed -n '6{p;q;}'` ; chomp($remote_prefix);
-    $remote_path    = `grep -A 14 $package $run_history_file| sed -n '7{p;q;}'` ; chomp($remote_path);
-    $job_id         = `grep -A 14 $package $run_history_file| sed -n '8{p;q;}'` ; chomp($job_id);
-    $bqs            = `grep -A 14 $package $run_history_file| sed -n '9{p;q;}'` ; chomp($bqs);
-    $save_prefix    = `grep -A 14 $package $run_history_file| sed -n '10{p;q;}'` ; chomp($save_prefix);
-    $save_path      = `grep -A 14 $package $run_history_file| sed -n '11{p;q;}'` ; chomp($save_path);
-    $runflag        = `grep -A 14 $package $run_history_file| sed -n '12{p;q;}'` ; chomp($runflag);
-    $program        = `grep -A 14 $package $run_history_file| sed -n '13{p;q;}'` ; chomp($program);
-    $message        = `grep -A 14 $package $run_history_file| sed -n '14{p;q;}'` ; chomp($message);
     
     
-    ($package) = $package =~ m/^(?:\[?)(\d{4}\D{3}\d{2}_\d{6})(?:\]?)$/g;
-    my $info = {};
-    $info->{'package'}  = $package;
-    $info->{'machine'}   = $machine;
-    $info->{'account'}   = $account;
-    $info->{'local_prefix'} = $local_prefix;
-    $info->{'local_path'} = $local_path;
-    $info->{'remote_prefix'}= $remote_prefix;
-    $info->{'remote_path'}= $remote_path;
-    $info->{'job_id'}    = $job_id;
-    $info->{'bqs'}       = $bqs;
-    $info->{'save_prefix'}  = $save_prefix;
-    $info->{'save_path'}  = $save_path;
-    $info->{'runflag'}  = $runflag;
-    $info->{'program'}  = $program;
-    $info->{'message'}   = $message;
-    ######## Original run date info
-   
-    my @datearray = ( $package =~ m/^(\d{4})(\D{3})(\d{2})_(\d{2})(\d{2})(\d{2})$/g );
-    $info->{'date'} = {
-        year    => $datearray[0],
-        month   => $datearray[1],
-        day     => $datearray[2],
-        hour    => $datearray[3],
-        min     => $datearray[4],
-        sec     => $datearray[5],
-    };
+    my $this_record       = read_record($pid);
     
-    ######Clean info
-    
-    my $CLEANDATE = undef;
-    my $CLEANTIME = undef;
-    
-
-    # find the related package
-    my $PKG_START = "\\[$package\\]";
-    my $PKG_END   = "\\[\\/$package\\]";
-    my $THIS_RECORD = `awk \'/$PKG_START/{flag=1;next}/$PKG_END/{flag=0}flag\' $run_history_file`;
-    $THIS_RECORD =~ s/\n//g;
-    
-    my $CLEAN_START = "\<Clean\>";
-    my $CLEAN_END = "\<\/Clean\>";
-    if ($THIS_RECORD  =~ /$CLEAN_START(.*?)$CLEAN_END/) {
-        my $result = $1;
-        # do something with results
-        ($CLEANDATE) = $result =~ m/DATE.*?(\d{4}\D{3}\d{2})/;
-        ($CLEANTIME) = $result =~ m/TIME.*?(\d{2}:\d{2}:\d{2})/;
+    my $info = undef;
+    if(defined($this_record)){
+    $info = decode_json $this_record;
     }
-   
-    $info->{'clean'} = {
-                date    => $CLEANDATE,
-                time  => $CLEANTIME,
-    };
-
-    #print "$info->{'clean'}->{'date'}\n";
-    #print "$info->{'clean'}->{'time'}\n";
-
-
-    ###### Rerun info
-    $info->{'rerun'} = undef;
-    my $RERUN_START = "\<Rerun\>";
-    my $RERUN_END = "\<\/Rerun\>";
-    if ($THIS_RECORD  =~ /$RERUN_START(.*?)$RERUN_END/) {
-        $info->{'rerun'} = 1;
-    }
-
-
     
-    return $info;
+#    
+#    my $machine   ;
+#    my $account   ;
+#    my $local_prefix;
+#    my $local_path ;
+#    my $remote_prefix;
+#    my $remote_path;
+#    my $job_id    ;
+#    my $bqs       ;
+#    my $save_prefix;
+#    my $save_path  ;
+#    my $runflag   ;
+#    my $program   ;
+#    my $message   ;
+#    
+#
+#
+#    $machine        = `grep -A 14 $package $run_history_file| sed -n '2{p;q;}'` ; chomp($machine);
+#    $account        = `grep -A 14 $package $run_history_file| sed -n '3{p;q;}'` ; chomp($account);
+#    $local_prefix   = `grep -A 14 $package $run_history_file| sed -n '4{p;q;}'` ; chomp($local_prefix);
+#    $local_path     = `grep -A 14 $package $run_history_file| sed -n '5{p;q;}'` ; chomp($local_path);
+#    $remote_prefix  = `grep -A 14 $package $run_history_file| sed -n '6{p;q;}'` ; chomp($remote_prefix);
+#    $remote_path    = `grep -A 14 $package $run_history_file| sed -n '7{p;q;}'` ; chomp($remote_path);
+#    $job_id         = `grep -A 14 $package $run_history_file| sed -n '8{p;q;}'` ; chomp($job_id);
+#    $bqs            = `grep -A 14 $package $run_history_file| sed -n '9{p;q;}'` ; chomp($bqs);
+#    $save_prefix    = `grep -A 14 $package $run_history_file| sed -n '10{p;q;}'` ; chomp($save_prefix);
+#    $save_path      = `grep -A 14 $package $run_history_file| sed -n '11{p;q;}'` ; chomp($save_path);
+#    $runflag        = `grep -A 14 $package $run_history_file| sed -n '12{p;q;}'` ; chomp($runflag);
+#    $program        = `grep -A 14 $package $run_history_file| sed -n '13{p;q;}'` ; chomp($program);
+#    $message        = `grep -A 14 $package $run_history_file| sed -n '14{p;q;}'` ; chomp($message);
+#    
+#    
+#    ($package) = $package =~ m/^(?:\[?)(\d{4}\D{3}\d{2}_\d{6})(?:\]?)$/g;
+#    my $info = {};
+#    $info->{'package'}  = $package;
+#    $info->{'machine'}   = $machine;
+#    $info->{'account'}   = $account;
+#    $info->{'local_prefix'} = $local_prefix;
+#    $info->{'local_path'} = $local_path;
+#    $info->{'remote_prefix'}= $remote_prefix;
+#    $info->{'remote_path'}= $remote_path;
+#    $info->{'job_id'}    = $job_id;
+#    $info->{'bqs'}       = $bqs;
+#    $info->{'save_prefix'}  = $save_prefix;
+#    $info->{'save_path'}  = $save_path;
+#    $info->{'runflag'}  = $runflag;
+#    $info->{'program'}  = $program;
+#    $info->{'message'}   = $message;
+#    ######## Original run date info
+#   
+#    my @datearray = ( $package =~ m/^(\d{4})(\D{3})(\d{2})_(\d{2})(\d{2})(\d{2})$/g );
+#    $info->{'date'} = {
+#        year    => $datearray[0],
+#        month   => $datearray[1],
+#        day     => $datearray[2],
+#        hour    => $datearray[3],
+#        min     => $datearray[4],
+#        sec     => $datearray[5],
+#    };
+#    
+#    ######Clean info
+#    
+#    my $CLEANDATE = undef;
+#    my $CLEANTIME = undef;
+#    
+#
+#    # find the related package
+#    my $PKG_START = "\\[$package\\]";
+#    my $PKG_END   = "\\[\\/$package\\]";
+#    my $THIS_RECORD = `awk \'/$PKG_START/{flag=1;next}/$PKG_END/{flag=0}flag\' $run_history_file`;
+#    $THIS_RECORD =~ s/\n//g;
+#    
+#    my $CLEAN_START = "\<Clean\>";
+#    my $CLEAN_END = "\<\/Clean\>";
+#    if ($THIS_RECORD  =~ /$CLEAN_START(.*?)$CLEAN_END/) {
+#        my $result = $1;
+#        # do something with results
+#        ($CLEANDATE) = $result =~ m/DATE.*?(\d{4}\D{3}\d{2})/;
+#        ($CLEANTIME) = $result =~ m/TIME.*?(\d{2}:\d{2}:\d{2})/;
+#    }
+#   
+#    $info->{'clean'} = {
+#                date    => $CLEANDATE,
+#                time  => $CLEANTIME,
+#    };
+#
+#    #print "$info->{'clean'}->{'date'}\n";
+#    #print "$info->{'clean'}->{'time'}\n";
+#
+#
+#    ###### Rerun info
+#    $info->{'rerun'} = undef;
+#    my $RERUN_START = "\<Rerun\>";
+#    my $RERUN_END = "\<\/Rerun\>";
+#    if ($THIS_RECORD  =~ /$RERUN_START(.*?)$RERUN_END/) {
+#        $info->{'rerun'} = 1;
+#    }
+#
+#
+
+return $info;
 }
 
 
@@ -1130,9 +1135,20 @@ my ($gmt_offset_hour, $remainder_in_second) = (int($abs_offset/3600), $abs_offse
 (my $gmt_offset_min, $remainder_in_second) = (int($remainder_in_second/60), $remainder_in_second%60);
 
 my $offset = sprintf("%s%02d:%02d:%02d", $sign,$gmt_offset_hour,$gmt_offset_min,$remainder_in_second);
-my $date = sprintf ("%04d-%03s-%02d  %02d:%02d:%02d  \(GMT %s\)", $year, $month_abbr[$mon], $mday, $hour,$min, $sec, $offset);
-    print "$date\n";die;
+my $datestr = sprintf ("%04d-%03s-%02d  %02d:%02d:%02d  \(GMT %s\)", $year, $month_abbr[$mon], $mday, $hour,$min, $sec, $offset);
 
+my $date = {
+        year    => $year,
+        month   => $month_abbr[$mon],
+        day     => $mday,
+        hour    => $hour,
+        min     => $min,
+        sec     => $sec,
+        gmt_offset => $offset,
+        datestr  => $datestr
+};
+    
+    
     return $date;
 }
 
@@ -1275,89 +1291,73 @@ sub add_to_history
 
 sub add_to_run_history
 {
-    my ($runinfo) = @_;
+    my ($runinfo_json) = @_;
 my $text=<<TEXT;
-\[$runinfo->{'package'}\]
-$runinfo->{machine}
-$runinfo->{account}
-$runinfo->{local_prefix}
-$runinfo->{local_path}
-$runinfo->{remote_prefix}
-$runinfo->{remote_path}
-$runinfo->{job_id}
-$runinfo->{bqs}
-$runinfo->{save_prefix}
-$runinfo->{save_path}
-$runinfo->{runflag}
-$runinfo->{program}
-$runinfo->{message}
-\[\/$runinfo->{'package'}\]
+$runinfo_json
 TEXT
-
     
-    
-    # ADD THIS SAVE TO HISTRY
-    open (my $FILE , '>>', $run_history_file) or die("could not open file '$run_history_file' $!");
-    print $FILE "$text\n";
-    close $FILE;
-    
+# ADD THIS SAVE TO HISTRY
+open (my $FILE , '>>', $run_history_file) or die("could not open file '$run_history_file' $!");
+print $FILE "$text\n";
+close $FILE;
 }
 
 
 
 sub add_change_to_run_history
 {
-    my ($package, $text,$type) = @_;
+    my ($pid, $date,$type) = @_;
     
-    my ($TOP,$THIS,$BOT)  = &CJ::read_record($package);
+    my $this_record = &CJ::read_record($pid);
     
+    my $info = decode_json $this_record;
     
-    
-    my $contents;
-    if(lc($type) eq "clean"){
-        
-        $contents="$TOP"."$THIS"."\<Clean\>\n"."$text"."\<\/Clean\>\n"."$BOT";
-        
-    }elsif(lc($type) eq "rerun"){
-        my $info = &CJ::retrieve_package_info($package);
-        if($info->{'rerun'}){
-            # find where <\Rerun> is, and add this info just before that
-            
-            my @THIS = split(/^/, $THIS);
-            
-            my $rerun_end = "\<\/Rerun\>";
-            my $rerun_end_line_index;
-            for my $i (0..$#THIS){
-                 if ($THIS[$i] =~ /$rerun_end/){
-                     $rerun_end_line_index = $i;
-                 }
-            }
-            
-        my @NEW_THIS;
-            my $numlines = 1+$#THIS;
-            foreach my $i (0..$numlines){
-                if($i<$rerun_end_line_index){
-                    push @NEW_THIS, $THIS[$i];
-                }elsif($i eq $rerun_end_line_index){
-                    push @NEW_THIS, $text;
-                }else{
-                    push @NEW_THIS, $THIS[$i-1];
-                }
-            }
-            
-            
-        my $NEW_THIS = join("", @NEW_THIS);
-        $contents="$TOP"."$NEW_THIS"."$BOT";
 
-        }else{
-            #firt time calling rerun
-          $contents="$TOP"."$THIS"."\<Rerun\>\n"."$text"."\<\/Rerun\>\n"."$BOT";
-        }
-        
-        
-    }else{
-        &CJ::err("Change of type '$type' is  not recognized");
-    }
+if(lc($type) eq "clean"){
+    $info->{clean}->{date} = $date;
+    #say Dumper($info);
+ 
+}elsif(lc($type) eq "rerun"){
+       if($info->{'rerun'}){
+#            # find where <\Rerun> is, and add this info just before that
+#            
+#            my @THIS = split(/^/, $THIS);
+#            
+#            my $rerun_end = "\<\/Rerun\>";
+#            my $rerun_end_line_index;
+#            for my $i (0..$#THIS){
+#                 if ($THIS[$i] =~ /$rerun_end/){
+#                     $rerun_end_line_index = $i;
+#                 }
+#            }
+#            
+#        my @NEW_THIS;
+#            my $numlines = 1+$#THIS;
+#            foreach my $i (0..$numlines){
+#                if($i<$rerun_end_line_index){
+#                    push @NEW_THIS, $THIS[$i];
+#                }elsif($i eq $rerun_end_line_index){
+#                    push @NEW_THIS, $text;
+#                }else{
+#                    push @NEW_THIS, $THIS[$i-1];
+#                }
+#            }
+#            
+#            
+#        my $NEW_THIS = join("", @NEW_THIS);
+#        $contents="$TOP"."$NEW_THIS"."$BOT";
+#
+       }else{
+           #firt time calling rerun
+           $info->{'rerun'}->{}
+       }
+#        
+#        
+}else{
+       &CJ::err("Change of type '$type' is  not recognized");
+}
+    
+    
 &CJ::writeFile($run_history_file, $contents)
     
 }
@@ -1366,17 +1366,9 @@ sub add_change_to_run_history
 
 
 sub read_record{
-    my ($package) = @_;
-    # find the related package
-    my $START = "\\[$package\\]";
-    my $END   = "\\[\\/$package\\]";
-    
-    
-    my $TOP  = `awk \'1;/$START/{exit}\' $run_history_file`;
-    my $THIS = `awk \'/$START/{flag=1;next}/$END/{flag=0}flag\' $run_history_file`;
-    my $BOT  = `awk \'/$END/,0\' $run_history_file`;
-
-    return ($TOP,$THIS,$BOT);
+    my ($pid) = @_;
+    my $record = `grep -A 1 $pid $run_history_file` ; chomp($record);
+    return $record;
 }
 
 
@@ -1385,7 +1377,7 @@ sub read_record{
 sub read_qsub{
     my ($qsub_file) = @_;
 
-open my $FILE, '<', $qsub_file;
+    open my $FILE, '<', $qsub_file or CJ::err("Job submission failed. Try --verbose for error explanation.");
 
 my @job_ids;
 while(<$FILE>){

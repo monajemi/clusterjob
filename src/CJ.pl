@@ -37,7 +37,7 @@ mkdir "$install_dir/.info" unless (-d "$install_dir/.info");
 # create history file if it does not exist
 if( ! -f $history_file ){
     &CJ::touch($history_file);
-    my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%30s", "count", "date", "package", "action", "machine", "job_id", "message");
+    my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%-30s", "count", "date", "pid", "action", "machine", "job_id", "message");
     &CJ::add_to_history($header);
 }
 
@@ -240,30 +240,16 @@ sub run{
 #         DATE OF CALL
 #====================================
 my $date = &CJ::date();
-    
-
-    
-# Find the last number
-my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
-my ($hist_date, $time) = split('\_', $date);
-my $history = sprintf("%-15u%-15s",$lastnum+1, $hist_date );
-    
-    
-    
-    
-my $short_message = substr($message, 0, 30);
-
-    
-    
 my $ssh      = &CJ::host($machine);
 my $account  = $ssh->{account};
 my $bqs      = $ssh->{bqs};
 my $remotePrefix    = $ssh->{remote_repo};
     
 # TO BE IMPLEMENTED
-my $sha_expr = "$localUserName:$localHostName:$program:$account:$date";
+my $sha_expr = "$localUserName:$localHostName:$program:$account:$date->{datestr}";
 my $pid  = sha1_hex("$sha_expr");
-    
+my $short_pid = substr($pid, 0, 8);  # we use an 8 character abbrviation
+
 
 #check to see if the file and dep folder exists
     
@@ -396,8 +382,8 @@ my $local_master_path="$local_sep_Dir/master.sh";
 #       PROPAGATE THE FILES
 #       AND RUN ON CLUSTER
 #==================================
-my $tarfile="$date".".tar.gz";
-my $cmd="cd $localDir; tar  --exclude '.git' --exclude '*~' --exclude '*.pdf'  -czf $tarfile $date/  ; rm -rf $local_sep_Dir  ; cd $BASE";
+my $tarfile="$pid".".tar.gz";
+my $cmd="cd $localDir; tar  --exclude '.git' --exclude '*~' --exclude '*.pdf'  -czf $tarfile $pid/  ; rm -rf $local_sep_Dir  ; cd $BASE";
 &CJ::my_system($cmd,$verbose);
 
     
@@ -412,8 +398,8 @@ my $cmd = "rsync -avz  ${localDir}/${tarfile} ${account}:$remoteDir/";
 &CJ::my_system($cmd,$verbose);
 
 
-&CJ::message("Submitting package ${date}");
-my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; cd ${date}; bash master.sh > $remote_sep_Dir/qsub.info; sleep 2'";
+&CJ::message("Submitting package $short_pid");
+my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; cd ${pid}; bash master.sh > $remote_sep_Dir/qsub.info; sleep 2'";
 &CJ::my_system($cmd,$verbose) unless ($runflag eq "deploy");
     
 
@@ -428,7 +414,7 @@ my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/.info";
     
     
     
-my $job_id;
+my $job_id="";
 if($runflag eq "run"){
 # read run info
 my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
@@ -436,15 +422,22 @@ my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
     my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
     my $job_ids = &CJ::read_qsub($local_qsub_info_file);
     $job_id = $job_ids->[0]; # there is only one in this case
-CJ::message("Job-id: $job_id");
+    CJ::message("Job-id: $job_id");
     
 #delete the local qsub.info after use
 my $cmd = "rm $local_qsub_info_file";
 &CJ::my_system($cmd,$verbose);
-    
+}else{
+        $job_id ="";
+}
     
 
-$history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, $job_id, $short_message);
+    
+# Find the last number
+my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
+my $hist_date = (split('\s', $date->{datestr}))[0];
+my $short_message = substr($message, 0, 30);
+my $history .= sprintf("%-15u%-15s%-21s%-10s%-15s%-20s%-30s",$lastnum+1, $hist_date, $short_pid, $runflag, $machine, $job_id, $short_message);
 &CJ::add_to_history($history);
 #=================================
 # store tarfile info for deletion
@@ -452,37 +445,32 @@ $history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, $job_
 #=================================
 
     
-}else{
-$job_id ="";
-$history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, " ", $short_message);
-&CJ::add_to_history($history);
-}
 
     
     
 my $runinfo={
-'package'       => ${date},
+pid           => ${pid},
+date          => ${date},
 machine       => ${machine},
 account       => ${account},
 local_prefix  => ${localPrefix},
-local_path    => "${localDir}/${date}",
+local_path    => "${localDir}/${pid}",
 remote_prefix => ${remotePrefix},
-remote_path   => "${remoteDir}/${date}",
+remote_path   => "${remoteDir}/${pid}",
 job_id        => $job_id,
 bqs           => $bqs,
 save_prefix   => ${savePrefix},
-save_path     => "${saveDir}/${date}",
+save_path     => "${saveDir}/${pid}",
 runflag       => $runflag,
 program       => $program,
 message       => $message,
 };
-&CJ::add_to_run_history($runinfo);
     
-    #my $runinfo_json = encode_json $runinfo;
-    #print "$runinfo_json\n"; die;
+my $runinfo_json = encode_json $runinfo;
+&CJ::add_to_run_history($runinfo_json);
+
     
-    
-my $last_instance=$date;
+my $last_instance=$pid;
 #$last_instance.=`cat $BASE/$program`;
 &CJ::writeFile($last_instance_file, $last_instance);
 
@@ -507,7 +495,7 @@ my $scriptfile = "$BASE/$program";
 # ie., all remaining lines are effective codes
 # that actually do something.
 my $script_lines;
-open my $fh, "$scriptfile" or die "Couldn't open file: $!";
+    open my $fh, "$scriptfile" or CJ::err("Couldn't open file: $!");
 while(<$fh>){
     $_ = &CJ::Matlab::uncomment_matlab_line($_);
     if (!/^\s*$/){
@@ -663,11 +651,11 @@ if($nloops eq 1){
                     
                     # build bashMain.sh for each parallel package
                     my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
-                    my $sh_script = make_par_shell_script($ssh,$program,$date,$bqs,$counter,$remote_par_sep_dir);
+                    my $sh_script = make_par_shell_script($ssh,$program,$pid,$bqs,$counter,$remote_par_sep_dir);
                     my $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                     &CJ::writeFile($local_sh_path, $sh_script);
                 
-                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
+                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
                 } #v0
     
 
@@ -715,7 +703,7 @@ if($nloops eq 1){
                 my $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
-                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
+                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date, $pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
             } #v0
         } #v1
     
@@ -760,12 +748,12 @@ if($nloops eq 1){
                 
                 # build bashMain.sh for each parallel package
                 my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
-                my $sh_script = make_par_shell_script($ssh,$program,$date,$bqs,$counter, $remote_par_sep_dir);
+                my $sh_script = make_par_shell_script($ssh,$program,$pid,$bqs,$counter, $remote_par_sep_dir);
                 my $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
                 
-                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
+                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date, $pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
                 
         } #v0
         } #v1
@@ -802,8 +790,8 @@ my $local_master_path="$local_sep_Dir/master.sh";
 #       PROPAGATE THE FILES
 #       AND RUN ON CLUSTER
 #==================================
-my $tarfile="$date".".tar.gz";
-my $cmd="cd $localDir; tar --exclude '.git' --exclude '*~' --exclude '*.pdf' -czf  $tarfile $date/   ; rm -rf $local_sep_Dir  ; cd $BASE";
+my $tarfile="$pid".".tar.gz";
+my $cmd="cd $localDir; tar --exclude '.git' --exclude '*~' --exclude '*.pdf' -czf  $tarfile $pid/   ; rm -rf $local_sep_Dir  ; cd $BASE";
 &CJ::my_system($cmd,$verbose);
 
 
@@ -818,7 +806,7 @@ my $cmd = "rsync -arvz  ${localDir}/${tarfile} ${account}:$remoteDir/";
 
 
 &CJ::message("Submitting job(s)");
-my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzf ${tarfile} ; cd ${date}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep 2'";
+my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzf ${tarfile} ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep 2'";
 &CJ::my_system($cmd,$verbose) unless ($runflag eq "pardeploy");
  
 
@@ -830,12 +818,12 @@ my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/.info/";
     
 
     
-my @job_ids;
+my $job_ids;
 my $job_id;
 if($runflag eq "parrun"){
     # read run info
     my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
-    my $job_ids = &CJ::read_qsub($local_qsub_info_file);
+    $job_ids = &CJ::read_qsub($local_qsub_info_file);
     $job_id = join(',', @{$job_ids});
 
     
@@ -845,44 +833,46 @@ if($runflag eq "parrun"){
 my $cmd = "rm $local_qsub_info_file";
 &CJ::my_system($cmd,$verbose);
     
-    
-
-
-$history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, "$job_ids->[0]-$job_ids->[-1]", $short_message);
-&CJ::add_to_history($history);
-    
-    
 }else{
+$job_ids = "";
 $job_id = "";
-$history .= sprintf("%-21s%-10s%-15s%-20s%-30s",$date, $runflag, $machine, " ", $short_message);
-&CJ::add_to_history($history);
 }
+    
+
+    
+# Find the last number
+my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
+my $hist_date = (split('\s', $date->{datestr}))[0];
+my $short_message = substr($message, 0, 30);
+my $history .= sprintf("%-15u%-15s%-21s%-10s%-15s%-20s%-30s",$lastnum+1, $hist_date, $short_pid, $runflag, $machine, "$job_ids->[0]-$job_ids->[-1]", $short_message);
+&CJ::add_to_history($history);
+    
 
 
 
     
 my $runinfo={
-'package'       => ${date},
+pid           => ${pid},
+date          => ${date},
 machine       => ${machine},
 account       => ${account},
 local_prefix  => ${localPrefix},
-local_path    => "${localDir}/${date}",
+local_path    => "${localDir}/${pid}",
 remote_prefix => ${remotePrefix},
-remote_path   => "${remoteDir}/${date}",
+remote_path   => "${remoteDir}/${pid}",
 job_id        => $job_id,
 bqs           => $bqs,
 save_prefix   => ${savePrefix},
-save_path     => "${saveDir}/${date}",
+save_path     => "${saveDir}/${pid}",
 runflag       => $runflag,
 program       => $program,
 message       => $message,
 };
-&CJ::add_to_run_history($runinfo);
-
     
+my $runinfo_json = encode_json $runinfo;
+&CJ::add_to_run_history($runinfo_json);
     
-my $last_instance=${date};
-#$last_instance.=`cat $BASE/$program`;
+my $last_instance=${pid};
 &CJ::writeFile($last_instance_file, $last_instance);
     
 
