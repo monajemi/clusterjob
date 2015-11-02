@@ -11,8 +11,6 @@ use Data::Dumper;
 use feature 'say';
 
 
-
-
 sub version_info{
 my $version_script="\n\n          This is Clusterjob (CJ) verion 1.1.0";
 $version_script .=  "\n          Copyright (c) 2015 Hatef Monajemi (monajemi\@stanford.edu)";
@@ -30,26 +28,21 @@ $version_script .=  "\n          https://github.com/monajemi/clusterjob";
 
 sub rerun
 {
-    my ($package,$counter,$mem,$runtime,$qsub_extra,$verbose) = @_;
+    my ($pid,$counter,$mem,$runtime,$qsub_extra,$verbose) = @_;
    
    
-    
     my $info;
-    if( (!defined $package) || ($package eq "") ){
+    if( (!defined $pid) || ($pid eq "") ){
         #read last_instance.info;
         $info = &CJ::retrieve_package_info();
-        $package = $info->{'package'};
+        $pid = $info->{'pid'};
         
     }else{
-        if( &CJ::is_valid_package_name($package) ){
+        if( &CJ::is_valid_pid($pid) ){
             # read info from $run_history_file
-            my $cmd= "grep -q '$package' '$run_history_file'";
-            my $pattern_exists = system($cmd);chomp($pattern_exists);
+            $info = &CJ::retrieve_package_info($pid);
             
-            if ($pattern_exists==0){
-                $info = &CJ::retrieve_package_info($package);
-                
-            }else{
+            if (!defined($info)){
                 CJ::err("No such job found in the database");
             }
             
@@ -60,12 +53,11 @@ sub rerun
         
         
     }
-   
     
     
-    
-    if(defined($info->{'clean'}->{'date'})){
-        CJ::message("Nothing to clean. Package $package has been cleaned on $info->{'clean'}->{'date'} at $info->{'clean'}->{'time'}.");
+    my $short_pid = substr($pid,0,8);
+    if($info->{'clean'}){
+        CJ::message("Can't rerun. Package $short_pid has been cleaned on $info->{'clean'}->{'date'}->{datestr}.");
         exit 0;
     }
 
@@ -87,17 +79,17 @@ sub rerun
     my $master_script;
     if ($#job_ids eq 0) { # if there is only one job
         #run
-        $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$runtime,$remote_path,$qsub_extra);
+        $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra);
     }else{
         #parrun
         if(@$counter){
             foreach my $count (@$counter){
-                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$count);
+                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$count);
             }
         }else{
             # Package is parrun, run the whole again!
             foreach my $i (0..$#job_ids){
-               $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$i);
+               $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$i);
             }
         }
     }
@@ -136,8 +128,8 @@ my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
     
     my $rerun_qsub_info_file = "$install_dir/.info/"."rerun_qsub.info";
     my $rerun_job_ids = &CJ::read_qsub($rerun_qsub_info_file); # array ref
-    my $rerun_job_id = join(',', @{$rerun_job_ids});
-    
+    #my $rerun_job_id = join(',', @{$rerun_job_ids});
+
    
 
 #=======================================
@@ -145,18 +137,17 @@ my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
 #=======================================
   # - replace the old job_id's by new one
     
-    my ($TOP,$THIS,$BOT)  = &CJ::read_record($package);
-    
     if($#job_ids eq 0){
-           $THIS =~ s/$job_ids[0]/$rerun_job_ids->[0]/g;
+           $job_id =~ s/$job_ids[0]/$rerun_job_ids->[0]/g;
+        &CJ::message("job-id: $rerun_job_ids->[0]");
+
     }else{
+        &CJ::message("job-id: $rerun_job_ids->[0]-$rerun_job_ids->[-1]");
         foreach my $i (0..$#{$counter}){
-            $THIS =~ s/$job_ids[$i]/$rerun_job_ids->[$i]/g;
+           $job_id =~ s/$job_ids[$i]/$rerun_job_ids->[$i]/g;
         }
     }
-    
-    my $contents = "$TOP"."$THIS"."$BOT";
-    &CJ::writeFile($run_history_file, $contents);
+
     
 # - Keep track of the old id in the rerun section
  my @runinfo;
@@ -168,13 +159,15 @@ my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
         }
     }
     
-my $runinfo = join(',', @runinfo);
-my $text =<<TEXT;
-    $date -> $runinfo
-TEXT
+my $runinfo    = join(',', @runinfo);
+my $this_rerun = "$date -> $runinfo";
+
 
 my $type = "Rerun";
-&CJ::add_change_to_run_history($package, $text, $type);
+my $change = {new_job_id => $job_id,
+              date       => $date,
+    old_job_id => $runinfo};
+&CJ::add_change_to_run_history($pid, $change, $type);
 
 exit 0;
 }
@@ -248,7 +241,7 @@ my $docstring=<<DOCSTRING;
 # EXPERIMENT $program
 # COPYRIGHT 2014:
 # Hatef Monajemi (monajemi AT stanford DOT edu)
-# DATE : $date
+# DATE : $date->{datestr}
 DOCSTRING
 
 my $HEADER = &CJ::bash_header($bqs);
@@ -434,37 +427,20 @@ sub show_cmd_history{
 sub show_history{
     my ($history_argin) = @_;
 
-    # check if it is the name of a package
-    # such as 2015JAN07_212840
-    
+   
     if( (!defined $history_argin) || ($history_argin eq "") ){
         $history_argin= 1;
     }
     
     if(&CJ::is_valid_pid($history_argin)){
-        # read info from $run_history_file
         
-        print '-' x 35;print "\n";
-        print "run info, job $history_argin"; print "\n";
-        print '-' x 35;print "\n";
-        my $cmd= "grep -q '$history_argin' '$run_history_file'";
-        my $pattern_exists = system($cmd);
-        chomp($pattern_exists);
-        
-        if ($pattern_exists==0){
-            
-            my $cmd = "awk '/$history_argin/{f=1}f' $run_history_file | sed -n 1,14p ";
-            
-            system($cmd);
+        if(defined(&CJ::read_record($history_argin))){
+            &CJ::print_detailed_history($history_argin)
         }else{
             &CJ::err("No such job found in CJ database");
         }
         
-        
-        
-        
-        
-        
+    
     }elsif($history_argin =~ m/^\-?\d*$/){
         
         $history_argin =~ s/\D//g;   #remove any non-digit
@@ -486,8 +462,21 @@ sub show_history{
 
 }
 
+sub  print_detailed_history{
+    my ($pid) = @_;
 
+my $record = read_record($pid);
+my $info = decode_json $record;
 
+$Data::Dumper::Sortkeys = 1;
+$Data::Dumper::Terse = 1;
+print "\n\033[32mpid $info->{pid}\033[0m\n";
+print Dumper($info);
+    
+}
+    
+    
+    
 sub clean
 {
     my ($pid, $verbose) = @_;
@@ -533,7 +522,7 @@ sub clean
     my $short_pid = substr($pid,0,8);
 
     if(defined($info->{'clean'})){
-        CJ::message("Nothing to clean. Package $short_pid has been cleaned on $info->{'clean'}->{'date'} at $info->{'clean'}->{'time'}.");
+        CJ::message("Nothing to clean. Package $short_pid has been cleaned on $info->{'clean'}->{'date'}->{'datestr'}.");
         exit 0;
     }
     
@@ -574,7 +563,7 @@ sub clean
     my $hist_date = (split('\s', $date->{datestr}))[0];
     my $flag = "clean";
     # ADD THIS CLEAN TO HISTRY
-    my $history = sprintf("%-15u%-15s%-21s%-10s",$lastnum+1, $hist_date,$pid, $flag);
+    my $history = sprintf("%-15u%-15s%-21s%-10s",$lastnum+1, $hist_date,substr($pid,0,8), $flag);
     &CJ::add_to_history($history);
         
         
@@ -585,7 +574,8 @@ sub clean
 #    DATE -> $hist_date
 #    TIME -> $time
 #TEXT
-&CJ::add_change_to_run_history($pid, $date, "clean");
+        my $change={date => $date};
+&CJ::add_change_to_run_history($pid, $change, "clean");
         
 }
     
@@ -601,27 +591,21 @@ sub clean
 
 sub show
 {
-    my ($package, $num, $show_tag) = @_;
+    my ($pid, $num, $show_tag) = @_;
     
     
     my $info;
-    if( (!defined $package) || ($package eq "") ){
-        #read the first lines of last_instance.info;
+    if( (!defined $pid) || ($pid eq "") ){
+        #read last_instance.info;
         $info = &CJ::retrieve_package_info();
-        $package = $info->{'package'};
+        $pid = $info->{'pid'};
         
     }else{
-        
-        if( &CJ::is_valid_package_name($package) ){
+        if( &CJ::is_valid_pid($pid) ){
             # read info from $run_history_file
+            $info = &CJ::retrieve_package_info($pid);
             
-            my $cmd= "grep -q '$package' '$run_history_file'";
-            my $pattern_exists = system($cmd);chomp($pattern_exists);
-            
-            if ($pattern_exists==0){
-                $info = &CJ::retrieve_package_info($package);
-                
-            }else{
+            if (!defined($info)){
                 CJ::err("No such job found in the database");
             }
             
@@ -632,10 +616,11 @@ sub show
         
         
     }
+
     
-    
+    my $short_pid = substr($pid,0,8);
     if(defined($info->{'clean'}->{'date'})){
-        CJ::message("Nothing to show. Package $package has been cleaned on $info->{'clean'}->{'date'} at $info->{'clean'}->{'time'}.");
+        CJ::message("Nothing to show. Package $short_pid has been cleaned on $info->{'clean'}->{'date'} at $info->{'clean'}->{'time'}.");
         exit 0;
     }
    
@@ -686,27 +671,20 @@ sub show
 
 sub show_info
 {
-    my ($package) = @_;
+    my ($pid) = @_;
    
-    
     my $info;
-    if( (!defined $package) || ($package eq "") ){
-        #read the first lines of last_instance.info;
+    if( (!defined $pid) || ($pid eq "") ){
+        #read last_instance.info;
         $info = &CJ::retrieve_package_info();
-        $package = $info->{'package'};
+        $pid = $info->{'pid'};
         
     }else{
-        
-        if( &CJ::is_valid_package_name($package) ){
+        if( &CJ::is_valid_pid($pid) ){
             # read info from $run_history_file
+            $info = &CJ::retrieve_package_info($pid);
             
-            my $cmd= "grep -q '$package' '$run_history_file'";
-            my $pattern_exists = system($cmd);chomp($pattern_exists);
-            
-            if ($pattern_exists==0){
-                $info = &CJ::retrieve_package_info($package);
-                
-            }else{
+            if (!defined($info)){
                 CJ::err("No such job found in the database");
             }
             
@@ -717,33 +695,25 @@ sub show_info
         
         
     }
-
     
     
+    #print '-' x 35;print "\n";
+    print "\n";
+    print "\033[32mpid $info->{pid}\033[0m\n";
+    print "date: $info->{date}->{datestr}\n";
+    print "user: $info->{user}\n";
+    print "local_host: $info->{local_host} ($info->{local_ip})\n";
+    print "remote_account: $info->{account}\n";
+    print "script: $info->{program}\n";
+    print "remote_path: $info->{remote_path}\n";
+    print "initial_flag: $info->{runflag}\n";
+    print "reruned: ",1+$#{$info->{rerun}} . " times \n" if($info->{rerun}) ;
+    print "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
+    print "\n";
+    print ' ' x 10; print "$info->{message}\n";
+    print "\n";
     
-    
-    my $machine    = $info->{'machine'};
-    my $account    = $info->{'account'};
-    my $remote_path = $info->{'remote_path'};
-    my $runflag    = $info->{'runflag'};
-    my $bqs        = $info->{'bqs'};
-    my $job_id     = $info->{'job_id'};
-    my $program    = $info->{'program'};
-
-    my $cleanflag="";
-    if(defined($info->{'clean'}->{'date'})){
-    $cleanflag = ",cleaned($info->{'clean'}->{'date'} at $info->{'clean'}->{'time'})";
-    }
-    
-    print '-' x 35;print "\n";
-    print "PACKAGE: " . "$package" . "\n";
-    print "PROGRAM: " . "$program" . "\n";
-    print "ACCOUNT: " . "$account" . "\n";
-    print "PATH   : " . "$remote_path" . "\n";
-    print "FLAGS   : " . "$runflag"  . "$cleanflag" . "\n";
-    print '-' x 35;print "\n";
-
-    
+    #print '-' x 35;print "\n";
     
     
     exit 0;
@@ -771,27 +741,20 @@ sub show_info
 
 sub get_state
 {
-    my ($package,$num) = @_;
-    
+    my ($pid,$num) = @_;
     
     my $info;
-    if( (!defined $package) || ($package eq "") ){
-        #read the first lines of last_instance.info;
+    if( (!defined $pid) || ($pid eq "") ){
+        #read last_instance.info;
         $info = &CJ::retrieve_package_info();
-        $package = $info->{'package'};
+        $pid = $info->{'pid'};
         
     }else{
-        
-        if( &CJ::is_valid_package_name($package) ){
+        if( &CJ::is_valid_pid($pid) ){
             # read info from $run_history_file
+            $info = &CJ::retrieve_package_info($pid);
             
-            my $cmd= "grep -q '$package' '$run_history_file'";
-            my $pattern_exists = system($cmd);chomp($pattern_exists);
-            
-            if ($pattern_exists==0){
-                $info = &CJ::retrieve_package_info($package);
-                
-            }else{
+            if (!defined($info)){
                 CJ::err("No such job found in the database");
             }
             
@@ -802,7 +765,6 @@ sub get_state
         
         
     }
-    
     
     my $account = $info->{'account'};
     my $job_id  = $info->{'job_id'};
@@ -847,9 +809,8 @@ sub get_state
             
 
         if((!defined $num) || ($num eq "")){
-            print '-' x 50;print "\n";
-            print "PACKAGE " . "$package" . "\n";
-            print "CLUSTER " . "$account" . "\n";
+            print "\033[32mpid $pid\033[0m\n";
+            print "remote_account: $account\n";
             foreach my $i (0..$#job_ids)
             {
                 my $counter = $i+1;
@@ -865,8 +826,8 @@ sub get_state
             }
         }elsif(&CJ::isnumeric($num) && $num < $#job_ids+1){
             print '-' x 50;print "\n";
-            print "PACKAGE " . "$package" . "\n";
-            print "CLUSTER " . "$account" . "\n";
+            print "\033[32mpid $pid\033[0m\n";
+            print "remote_account: $account\n";
             my $tmp = $num -1;
             my $val = $states->{$job_ids[$tmp]};
             if (! $val){
@@ -891,12 +852,14 @@ sub get_state
             &CJ::err("Unknown batch queueing system");
         }
         
-        print '-' x 35;print "\n";
-        print "PACKAGE " . "$package" . "\n";
-        print "CLUSTER " . "$account" . "\n";
-        print "JOB_ID  " . "$job_id"  . "\n";
-        print "STATE   " . "$state"   . "\n";
-        print '-' x 35;print "\n";
+        
+        print "\n";
+        print "\033[32mpid $pid\033[0m\n";
+        print "remote_account: $account\n";
+        print "job_id: $job_id\n";
+        print "state: $state\n";
+        
+    
     }
     
     
@@ -1306,7 +1269,7 @@ close $FILE;
 
 sub add_change_to_run_history
 {
-    my ($pid, $date,$type) = @_;
+    my ($pid, $change,$type) = @_;
     
     my $this_record = &CJ::read_record($pid);
     
@@ -1314,55 +1277,42 @@ sub add_change_to_run_history
     
 
 if(lc($type) eq "clean"){
-    $info->{clean}->{date} = $date;
+    $info->{clean}->{date} = $change->{date};
     #say Dumper($info);
  
 }elsif(lc($type) eq "rerun"){
+    
        if($info->{'rerun'}){
-#            # find where <\Rerun> is, and add this info just before that
-#            
-#            my @THIS = split(/^/, $THIS);
-#            
-#            my $rerun_end = "\<\/Rerun\>";
-#            my $rerun_end_line_index;
-#            for my $i (0..$#THIS){
-#                 if ($THIS[$i] =~ /$rerun_end/){
-#                     $rerun_end_line_index = $i;
-#                 }
-#            }
-#            
-#        my @NEW_THIS;
-#            my $numlines = 1+$#THIS;
-#            foreach my $i (0..$numlines){
-#                if($i<$rerun_end_line_index){
-#                    push @NEW_THIS, $THIS[$i];
-#                }elsif($i eq $rerun_end_line_index){
-#                    push @NEW_THIS, $text;
-#                }else{
-#                    push @NEW_THIS, $THIS[$i-1];
-#                }
-#            }
-#            
-#            
-#        my $NEW_THIS = join("", @NEW_THIS);
-#        $contents="$TOP"."$NEW_THIS"."$BOT";
-#
+           $info->{'job_id'} = $change->{new_job_id};
+           my $change_record = "$change->{date}->{datestr} > $change->{old_job_id}";
+           push $info->{'rerun'},$change_record;
+           #say Dumper($info);
        }else{
            #firt time calling rerun
-           $info->{'rerun'}->{}
+           $info->{'job_id'} = $change->{new_job_id};
+           my $change_record = "$change->{date}->{datestr} > $change->{old_job_id}";
+           $info->{'rerun'}  = [$change_record];
+           #say Dumper($info);
        }
-#        
+#
 #        
 }else{
        &CJ::err("Change of type '$type' is  not recognized");
 }
     
-    
-&CJ::writeFile($run_history_file, $contents)
-    
+    &CJ::update_record($pid,$info);
 }
 
 
+
+
+sub update_record{
+    my ($pid,$new_info) = @_;
+    #my $old_record = read_record($pid);
+    my $new_record = encode_json($new_info);
+    my $cmd="sed -i '' 's|.*$pid.*|$new_record|'  $run_history_file";
+    &CJ::my_system($cmd,0);
+}
 
 
 sub read_record{

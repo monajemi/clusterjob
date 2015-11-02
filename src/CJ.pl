@@ -450,6 +450,9 @@ my $history .= sprintf("%-15u%-15s%-21s%-10s%-15s%-20s%-30s",$lastnum+1, $hist_d
     
 my $runinfo={
 pid           => ${pid},
+user          => ${localUserName},  # will be changed to CJusername later
+local_ip      => ${localIP},
+local_host    => ${localHostName},
 date          => ${date},
 machine       => ${machine},
 account       => ${account},
@@ -699,7 +702,7 @@ if($nloops eq 1){
                 
                 # build bashMain.sh for each parallel package
                 my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
-                my $sh_script = make_par_shell_script($ssh,$program,$date,$bqs,$counter, $remote_par_sep_dir);
+                my $sh_script = make_par_shell_script($ssh,$program,$pid,$bqs,$counter, $remote_par_sep_dir);
                 my $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
@@ -853,6 +856,9 @@ my $history .= sprintf("%-15u%-15s%-21s%-10s%-15s%-20s%-30s",$lastnum+1, $hist_d
     
 my $runinfo={
 pid           => ${pid},
+user          => ${localUserName},  # will be changed to CJusername later
+local_ip      => ${localIP},
+local_host    => ${localHostName},
 date          => ${date},
 machine       => ${machine},
 account       => ${account},
