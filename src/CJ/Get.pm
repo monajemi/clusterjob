@@ -287,9 +287,6 @@ sub get_results{
    
 
     
-    
-    
-    
     my $info;
     if( (!defined $pid) || ($pid eq "") ){
         #read last_instance.info;

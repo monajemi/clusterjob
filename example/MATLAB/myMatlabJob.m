@@ -22,6 +22,7 @@ for i = 1:length(l)
         fprintf(fid2, '%i\n', counter);
 	fclose(fid2)
 
+
 	% File for testing reduce
 	fprintf(fid, '%s, %i, %i\n', SUID,i,r(j));
   end
