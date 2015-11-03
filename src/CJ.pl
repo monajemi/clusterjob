@@ -231,19 +231,24 @@ sub run{
 
     
     
-    
+#===================
+#  Check connection
+#===================
+my $ssh      = &CJ::host($machine);
+my $account  = $ssh->{account};
+my $bqs      = $ssh->{bqs};
+my $remotePrefix    = $ssh->{remote_repo};
 
-    
+# create remote directory  using outText
+my $sshres = `ssh $account 'mkdir /tmp/CJsshtest; rm -r /tmp/CJsshtest'  2>&1`;
+&CJ::err("Cannot connect to $account: $sshres") if($sshres);
     
     
 #====================================
 #         DATE OF CALL
 #====================================
 my $date = &CJ::date();
-my $ssh      = &CJ::host($machine);
-my $account  = $ssh->{account};
-my $bqs      = $ssh->{bqs};
-my $remotePrefix    = $ssh->{remote_repo};
+
     
 # TO BE IMPLEMENTED
 my $sha_expr = "$localUserName:$localHostName:$program:$account:$date->{datestr}";
@@ -388,7 +393,7 @@ my $cmd="cd $localDir; tar  --exclude '.git' --exclude '*~' --exclude '*.pdf'  -
 
     
 # create remote directory  using outText
-my $cmd = "ssh $account 'echo `$outText` '  ";
+my $cmd = "ssh $account 'echo `ls` '  ";
 &CJ::my_system($cmd, $verbose);
 
 

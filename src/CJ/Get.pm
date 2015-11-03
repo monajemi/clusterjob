@@ -11,7 +11,7 @@ use CJ::CJVars;
 
 
 sub gather_results{
-    my ($package,$pattern, $dir_name, $verbose) = @_;
+    my ($pid, $pattern, $dir_name, $verbose) = @_;
     
     
     if ( (!defined($pattern)) ||  (!defined($dir_name)) ){
@@ -19,55 +19,39 @@ sub gather_results{
     }
 
     
-    my $machine;
-    my $account;
-    my $remote_path;
-    my $local_path;
-    my $job_id;
-    my $bqs;
-    my $runflag;
-    my $program;
     
     
     my $info;
-    if(&CJ::is_valid_package_name($package) ){
-        
-        
-        my $cmd= "grep -q '$package' '$run_history_file'";
-        my $pattern_exists = system($cmd);chomp($pattern_exists);
-        
-        
-        
-        if ($pattern_exists==0){
+    if( (!defined $pid) || ($pid eq "") ){
+        #read last_instance.info;
+        $info = &CJ::retrieve_package_info();
+        $pid        = $info->{'pid'};
+    }else{
+        if( &CJ::is_valid_pid($pid) ){
+            # read info from $run_history_file
+            $info = &CJ::retrieve_package_info($pid);
             
-            $info  = &CJ::retrieve_package_info($package);
-            $machine = $info->{'machine'};
-            $account    = $info->{'account'};
-            $remote_path = $info->{'remote_path'};
-            $runflag    = $info->{'runflag'};
-            $bqs        = $info->{'bqs'};
-            $job_id     = $info->{'job_id'};
-            $program    = $info->{'program'};
-            
-            
+            if (!defined($info)){
+                CJ::err("No such job found in the database");
+            }
             
         }else{
-            &CJ::err("No such job found in CJ database");
+            &CJ::err("incorrect usage: nothing to show");
         }
         
-    }else{
         
-        $info  = &CJ::retrieve_package_info();   # retrieves the last instance info;
-        $machine    = $info->{'machine'};
-        $package    = $info->{'package'};
-        $account    = $info->{'account'};
-        $remote_path = $info->{'remote_path'};
-        $runflag    = $info->{'runflag'};
-        $bqs        = $info->{'bqs'};
-        $job_id     = $info->{'job_id'};
-        $program    = $info->{'program'};
         
     }
+
+    
+    my $machine    = $info->{'machine'};
+    my $account    = $info->{'account'};
+    my $remote_path= $info->{'remote_path'};
+    my $runflag    = $info->{'runflag'};
+    my $bqs        = $info->{'bqs'};
+    my $job_id     = $info->{'job_id'};
+    my $program    = $info->{'program'};
+    
     
     # gather IS ONLY FOR PARRUN
     if(! $runflag =~ m/^par*/){
@@ -89,7 +73,7 @@ sub gather_results{
     my @program_name    = split /\./,$program;
     my  $lastone = pop @program_name;
     my $program_name   =   join "\_",@program_name;
-    my $current_remote_path = "$remotePrefix/$program_name/$package";
+    my $current_remote_path = "$remotePrefix/$program_name/$pid";
     
     #print("$remote_path");
     if($current_remote_path ne $remote_path){
@@ -165,59 +149,43 @@ GATHER
 
 
 sub reduce_results{
-    my ($package,$res_filename,$verbose, $text_header_lines) = @_;
+    my ($pid,$res_filename,$verbose, $text_header_lines) = @_;
     
-    my $machine;
-    my $account;
-    my $remote_path;
-    my $local_path;
-    my $job_id;
-    my $bqs;
-    my $runflag;
-    my $program;
-
+    
     
     my $info;
-    if(&CJ::is_valid_package_name($package) ){
-        
-        
-        my $cmd= "grep -q '$package' '$run_history_file'";
-        my $pattern_exists = system($cmd);chomp($pattern_exists);
-        
-        
-        
-        if ($pattern_exists==0){
+    if( (!defined $pid) || ($pid eq "") ){
+        #read last_instance.info;
+        $info = &CJ::retrieve_package_info();
+        $pid           = $info->{'pid'};
+
+    }else{
+        if( &CJ::is_valid_pid($pid) ){
+            # read info from $run_history_file
+            $info = &CJ::retrieve_package_info($pid);
             
-            $info  = &CJ::retrieve_package_info($package);
-            $machine = $info->{'machine'};
-            $account    = $info->{'account'};
-            $remote_path = $info->{'remote_path'};
-            $runflag    = $info->{'runflag'};
-            $bqs        = $info->{'bqs'};
-            $job_id     = $info->{'job_id'};
-            $program    = $info->{'program'};
-            
-            
+            if (!defined($info)){
+                CJ::err("No such job found in the database");
+            }
             
         }else{
-            &CJ::err("No such job found in CJ database");
+            &CJ::err("incorrect usage: nothing to show");
         }
         
-    }else{
         
-        $info  = &CJ::retrieve_package_info();   # retrieves the last instance info;
-        $machine    = $info->{'machine'};
-        $package    = $info->{'package'};
-        $account    = $info->{'account'};
-        $remote_path = $info->{'remote_path'};
-        $runflag    = $info->{'runflag'};
-        $bqs        = $info->{'bqs'};
-        $job_id     = $info->{'job_id'};
-        $program    = $info->{'program'};
         
     }
 
-# REDUCE IS ONLY FOR PARRUN
+    
+    my $machine       = $info->{'machine'};
+    my $account       = $info->{'account'};
+    my $remote_path   = $info->{'remote_path'};
+    my $runflag       = $info->{'runflag'};
+    my $bqs           = $info->{'bqs'};
+    my $job_id        = $info->{'job_id'};
+    my $program       = $info->{'program'};
+   
+  # REDUCE IS ONLY FOR PARRUN
   if(! $runflag =~ m/^par*/){
       CJ::err("REDUCE must be called for a 'parrun' package. Please use GET instead.");
   }
@@ -237,7 +205,7 @@ sub reduce_results{
     my @program_name    = split /\./,$program;
     my  $lastone = pop @program_name;
     my $program_name   =   join "\_",@program_name;
-    my $current_remote_path = "$remotePrefix/$program_name/$package";
+    my $current_remote_path = "$remotePrefix/$program_name/$pid";
     
     #print("$remote_path");
     if($current_remote_path ne $remote_path){
@@ -249,7 +217,7 @@ sub reduce_results{
     
     
     if (!defined($res_filename)){
-        &CJ::err("The result filename must be provided for Reduce with parrun packages, eg, 'clusterjobreduce Results.mat' ");
+        &CJ::err("The result filename must be provided for Reduce with parrun packages, eg, 'clusterjob reduce Results.mat' ");
     }
     
     my $check_runs = &CJ::Get::make_parrun_check_script($info,$res_filename);
@@ -315,57 +283,45 @@ sub reduce_results{
 
 
 sub get_results{
-    my ($package,$res_filename,$verbose) = @_;
+    my ($pid,$res_filename,$verbose) = @_;
    
 
-    my $machine;
-    my $account;
-    my $remote_path;
-    my $local_path;
-    my $job_id;
-    my $bqs;
-    my $runflag;
-    my $program;
+    
+    
+    
     
     my $info;
-    if(&CJ::is_valid_package_name($package) ){
-        
-        
-        my $cmd= "grep -q '$package' '$run_history_file'";
-        my $pattern_exists = system($cmd);chomp($pattern_exists);
-        
-        
-        
-        if ($pattern_exists==0){
+    if( (!defined $pid) || ($pid eq "") ){
+        #read last_instance.info;
+        $info = &CJ::retrieve_package_info();
+        $pid           = $info->{'pid'};
+    }else{
+        if( &CJ::is_valid_pid($pid) ){
+            # read info from $run_history_file
+            $info = &CJ::retrieve_package_info($pid);
             
-            $info  = &CJ::retrieve_package_info($package);
-            $machine = $info->{'machine'};
-            $account    = $info->{'account'};
-            $remote_path = $info->{'remote_path'};
-            $runflag    = $info->{'runflag'};
-            $bqs        = $info->{'bqs'};
-            $job_id     = $info->{'job_id'};
-            $program    = $info->{'program'};
-            
-            
+            if (!defined($info)){
+                CJ::err("No such job found in the database");
+            }
             
         }else{
-            &CJ::err("No such job found in CJ database");
+            &CJ::err("incorrect usage: nothing to show");
         }
         
-    }else{
         
-        $info  = &CJ::retrieve_package_info();   # retrieves the last instance info;
-        $machine    = $info->{'machine'};
-        $package    = $info->{'package'};
-        $account    = $info->{'account'};
-        $remote_path = $info->{'remote_path'};
-        $runflag    = $info->{'runflag'};
-        $bqs        = $info->{'bqs'};
-        $job_id     = $info->{'job_id'};
-        $program    = $info->{'program'};
         
     }
+    
+    
+    my $machine       = $info->{'machine'};
+    my $account       = $info->{'account'};
+    my $local_path    = $info->{'local_path'};
+    my $remote_path   = $info->{'remote_path'};
+    my $runflag       = $info->{'runflag'};
+    my $bqs           = $info->{'bqs'};
+    my $job_id        = $info->{'job_id'};
+    my $program       = $info->{'program'};
+    
     
     
 
@@ -384,7 +340,7 @@ sub get_results{
     my @program_name    = split /\./,$program;
     my  $lastone = pop @program_name;
     my $program_name   =   join "\_",@program_name;
-    my $current_remote_path = "$remotePrefix/$program_name/$package";
+    my $current_remote_path = "$remotePrefix/$program_name/$pid";
     
     #print("$remote_path");
     if($current_remote_path ne $remote_path){
@@ -406,19 +362,19 @@ sub get_results{
     }
     
     mkdir "$get_tmp_dir" unless (-d "$get_tmp_dir");
-    mkdir "$get_tmp_dir/$package" unless (-d "$get_tmp_dir/$package");
+    mkdir "$get_tmp_dir/$pid" unless (-d "$get_tmp_dir/$pid");
     
-    my $cmd = "rsync -arvz  $account:${remote_path}/* $get_tmp_dir/$package";
+    my $cmd = "rsync -arvz  $account:${remote_path}/* $get_tmp_dir/$pid";
     &CJ::my_system($cmd,$verbose);
     
     
     # build a CJ confirmation file
-    my $confirm_path = "$get_tmp_dir/$package";
-    &CJ::build_cj_confirmation($package, $confirm_path);
+    my $confirm_path = "$get_tmp_dir/$pid";
+    &CJ::build_cj_confirmation($pid, $confirm_path);
 
     
     
-    &CJ::message("Please see your last results in $get_tmp_dir/$package");
+    &CJ::message("Please see your last results in $get_tmp_dir/$pid");
     
     
     exit 0;
@@ -459,7 +415,7 @@ sub make_parrun_check_script{
     
 my ($info,$res_filename) = @_;
 my $machine    = $info->{'machine'};
-my $package    = $info->{'package'};
+my $pid        = $info->{'pid'};
 my $account    = $info->{'account'};
 my $remote_path = $info->{'remote_path'};
 my $runflag    = $info->{'runflag'};
