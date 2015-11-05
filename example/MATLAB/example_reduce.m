@@ -13,12 +13,13 @@ output.myCharCell = cell(5,5);
 output.myMatrix = zeros(5,5);
 
 
+L = [1,2,3,4,5];
 
-
-for i = 1:5
+for i = 1:length(L);
 for j = 1:5
 
-    mystruct.i = i;
+    l = L(i)
+    mystruct.i = l;
     mystruct.j = j;
 
     output.myMatrix(i,j) = i+j;

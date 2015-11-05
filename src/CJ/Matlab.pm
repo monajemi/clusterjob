@@ -25,9 +25,11 @@ sub check_initialization{
     
     my @vars;
     foreach my $line (@BOT_lines) {
-        if($line =~ /(.*)${pattern}\s*=.*/){
+    
+        if($line =~ /(.*)(${pattern})\s*\={1}/){
             my @tmp = split "\\(|\\{", $line;
             my $var  = $tmp[0];
+            print "$var\n";
             $var =~ s/^\s+|\s+$//g;
             push @vars, $var;
         }
