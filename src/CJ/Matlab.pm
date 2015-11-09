@@ -6,7 +6,8 @@ package CJ::Matlab;
 use strict;
 use warnings;
 use CJ;
-
+use Data::Dumper;
+use feature 'say';
 
 
 
@@ -128,9 +129,10 @@ sub read_matlab_index_set
             if($this_array[1] =~ /\[\s*(.+?)\s*\]/){
             ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
             my $floating_pattern = "[-+]?[0-9]*[\.]?[0-9]+(?:[eE][-+]?[0-9]+)?";
-            my @vals = $numbers =~ /[\;\,]?($floating_pattern)[\;\,]?/g;
-
-
+            my $fractional_pattern = "(?:${floating_pattern}\/)?${floating_pattern}";
+            my @vals = $numbers =~ /[\;\,]?($fractional_pattern)[\;\,]?/g;
+             
+                say Dumper(@vals); die;
             my $high = 1+$#vals;
             my @range = ($low..$high);
             $range = join(',',@range);

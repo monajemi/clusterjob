@@ -820,7 +820,7 @@ sub get_state
             
 
         if((!defined $num) || ($num eq "")){
-            print "\033[32mpid $pid\033[0m\n";
+            print "\033[32mpid $info->{'pid'}\033[0m\n";
             print "remote_account: $account\n";
             foreach my $i (0..$#job_ids)
             {
@@ -837,7 +837,7 @@ sub get_state
             }
         }elsif(&CJ::isnumeric($num) && $num < $#job_ids+1){
             print '-' x 50;print "\n";
-            print "\033[32mpid $pid\033[0m\n";
+            print "\033[32mpid $info->{'pid'}\033[0m\n";
             print "remote_account: $account\n";
             my $tmp = $num -1;
             my $val = $states->{$job_ids[$tmp]};
@@ -863,9 +863,12 @@ sub get_state
             &CJ::err("Unknown batch queueing system");
         }
         
+        if(!$state){
+        $state = "Unknown";
+        }
         
         print "\n";
-        print "\033[32mpid $pid\033[0m\n";
+        print "\033[32mpid $info->{'pid'}\033[0m\n";
         print "remote_account: $account\n";
         print "job_id: $job_id\n";
         print "state: $state\n";
@@ -1267,6 +1270,10 @@ sub remove_extention
 
 sub reexecute_cmd{
     my ($cmd_num,$verbose) = @_;
+    if (!$cmd_num){
+        $cmd_num = `wc -l < $cmd_history_file `; chomp($cmd_num); $cmd_num =~ s/^\s+|\s+$//g;
+    }
+    
     my $cmd= &CJ::get_cmd($cmd_num, 0);
     #print "$cmd\n";
     system("$cmd");
@@ -1276,7 +1283,7 @@ sub reexecute_cmd{
 
 sub get_cmd{
     my ($cmd_num, $is_interactive) = @_;
-    
+
     my $cmd;
     if($is_interactive){
     $cmd=`grep '^\\b$cmd_num\\b' $cmd_history_file | awk \'{\$1=\"\";\$2=\"\";\$3=\"\"; print \$0}\' `;

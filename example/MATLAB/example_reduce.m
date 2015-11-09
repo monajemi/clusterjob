@@ -13,7 +13,7 @@ output.myCharCell = cell(5,5);
 output.myMatrix = zeros(5,5);
 
 
-L = [1,2,3,4,5]
+L = [1/8,2/8,3/8,4,5, 7e-1/8]
 
 for i = 1:length(L)
 for j = 1:5

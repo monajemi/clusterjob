@@ -5,11 +5,13 @@
 use strict;
 use lib '/Users/hatef/github_projects/clusterjob/src';  #for testing
 
+use File::chdir;
 use CJ;          # contains essential functions
 use CJ::CJVars;  # contains global variables of CJ
 use CJ::Matlab;  # Contains Matlab related subs
 use CJ::Get;     # Contains Get related subs
 use Getopt::Declare;
+use Data::Dumper;
 #use Term::ReadKey;
 use Term::ReadLine;
 use JSON::PP;
@@ -128,19 +130,19 @@ my $spec = <<'EOSPEC';
                                               {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$show_tag) }}
      rerun        [<pid> [/] [<counter>...]]	          rerun certain (failed) job [nocase]
                                                {defer{&CJ::add_cmd($cmdline);&CJ::rerun($pid,\@counter,$mem,$runtime,$qsub_extra,$verbose) }}
-     run          <code> <cluster>	                  run code on the cluster [nocase]
+     run          <code> <cluster>	                  run code on the cluster [nocase] [requires: -m]
                                               {my $runflag = "run";
                                                   {defer{&CJ::add_cmd($cmdline); run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
-     deploy       <code> <cluster>	                  deploy code on the cluster [nocase]
+     deploy       <code> <cluster>	                  deploy code on the cluster [nocase] [requires: -m]
                                               {my $runflag = "deploy";
                                                   {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
-     parrun       <code> <cluster>	                  parrun code on the cluster [nocase]
+     parrun       <code> <cluster>	                  parrun code on the cluster [nocase] [requires: -m]
                                               {my $runflag = "parrun";
                                                   {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
-     pardeploy    <code> <cluster>	                  pardeploy code on the cluster [nocase]
+     pardeploy    <code> <cluster>	                  pardeploy code on the cluster [nocase] [requires: -m]
                                               {my $runflag = "pardeploy";
                                                   {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                }
@@ -154,8 +156,10 @@ my $spec = <<'EOSPEC';
                                                   {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
      @<cmd_num:+i>	                                  re-executes a previous command avaiable in command history [nocase]
                                                   {defer{&CJ::reexecute_cmd($cmd_num,$verbose) }}
+     @$	                                          re-executes the last command avaiable in command history [nocase]
+                                                  {defer{&CJ::reexecute_cmd("",$verbose) }}
      <unknown>...	                                  unknown arguments will be send to bash [undocumented]
-                                                  {defer{my $cmd = join(" ",@unknown); system("$cmd")}}
+                                                  {defer{my $cmd = join(" ",@unknown); system($cmd);}}
 
 EOSPEC
 
@@ -203,10 +207,19 @@ sub cj_prompt{
     while (!exists $exithash{my $input = $term->readline($prompt)}) {
         #print WHITE, ON_BLACK $prompt, RESET . " ";
         
+        local $CWD;
+        if ($input =~ m/\bcd\b/){
+            $input =~ s/cd//g;  # later on break at cd, there might be multiple cd's
+            $input =~ s/^\s|\s$//g;
+            $CWD = $input or die "Can't chdir to $input $!";
+        }else{
+        
           my $perl = `which perl`; chomp($perl);
           my $cmd = "$perl $install_dir/CJ.pl" . " $input";
           system($cmd);
-         $term->addhistory($input) if /\S/;
+        }
+            
+        $term->addhistory($input) if /\S/;
         
         
     }
