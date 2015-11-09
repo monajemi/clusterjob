@@ -132,7 +132,6 @@ sub read_matlab_index_set
             my $fractional_pattern = "(?:${floating_pattern}\/)?${floating_pattern}";
             my @vals = $numbers =~ /[\;\,]?($fractional_pattern)[\;\,]?/g;
              
-                say Dumper(@vals); die;
             my $high = 1+$#vals;
             my @range = ($low..$high);
             $range = join(',',@range);
