@@ -777,10 +777,20 @@ sub get_state
         
     }
     
+    my $short_pid = substr($info->{pid},0,8);
+    if($info->{'clean'}){
+        CJ::message("Nothing to show. Package $short_pid has been cleaned on $info->{'clean'}->{'date'}->{datestr}.");
+        exit 0;
+    }
+
+    
+    
+    
     my $account = $info->{'account'};
     my $job_id  = $info->{'job_id'};
     my $bqs     = $info->{'bqs'};
     my $runflag = $info->{'runflag'};
+    
     
     
     
