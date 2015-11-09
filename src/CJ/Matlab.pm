@@ -30,7 +30,7 @@ sub check_initialization{
         if($line =~ /(.*)(${pattern})\s*\={1}/){
             my @tmp = split "\\(|\\{", $line;
             my $var  = $tmp[0];
-            print "$line\n${pattern}:  $var\n";
+            #print "$line\n${pattern}:  $var\n";
             $var =~ s/^\s+|\s+$//g;
             push @vars, $var;
         }
