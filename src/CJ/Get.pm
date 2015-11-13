@@ -359,19 +359,19 @@ sub get_results{
     }
     
     mkdir "$get_tmp_dir" unless (-d "$get_tmp_dir");
-    mkdir "$get_tmp_dir/$pid" unless (-d "$get_tmp_dir/$pid");
+    mkdir "$get_tmp_dir/$info->{pid}" unless (-d "$get_tmp_dir/$info->{pid}");
     
-    my $cmd = "rsync -arvz  $account:${remote_path}/* $get_tmp_dir/$pid";
+    my $cmd = "rsync -arvz  $account:${remote_path}/* $get_tmp_dir/$info->{pid}";
     &CJ::my_system($cmd,$verbose);
     
     
     # build a CJ confirmation file
-    my $confirm_path = "$get_tmp_dir/$pid";
-    &CJ::build_cj_confirmation($pid, $confirm_path);
+    my $confirm_path = "$get_tmp_dir/$info->{pid}";
+    &CJ::build_cj_confirmation($info->{pid}, $confirm_path);
 
     
     
-    &CJ::message("Please see your last results in $get_tmp_dir/$pid");
+    &CJ::message("Please see your last results in $get_tmp_dir/$info->{pid}");
     
     
     exit 0;
