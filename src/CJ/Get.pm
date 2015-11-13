@@ -73,7 +73,7 @@ sub gather_results{
     my @program_name    = split /\./,$program;
     my  $lastone = pop @program_name;
     my $program_name   =   join "\_",@program_name;
-    my $current_remote_path = "$remotePrefix/$program_name/$pid";
+    my $current_remote_path = "$remotePrefix/$program_name/$info->{'pid'}";
     
     #print("$remote_path");
     if($current_remote_path ne $remote_path){
@@ -205,7 +205,7 @@ sub reduce_results{
     my @program_name    = split /\./,$program;
     my  $lastone = pop @program_name;
     my $program_name   =   join "\_",@program_name;
-    my $current_remote_path = "$remotePrefix/$program_name/$pid";
+    my $current_remote_path = "$remotePrefix/$program_name/$info->{pid}";
     
     #print("$remote_path");
     if($current_remote_path ne $remote_path){
@@ -337,7 +337,7 @@ sub get_results{
     my @program_name    = split /\./,$program;
     my  $lastone = pop @program_name;
     my $program_name   =   join "\_",@program_name;
-    my $current_remote_path = "$remotePrefix/$program_name/$pid";
+    my $current_remote_path = "$remotePrefix/$program_name/$info->{pid}";
     
     #print("$remote_path");
     if($current_remote_path ne $remote_path){

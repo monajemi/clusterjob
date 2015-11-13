@@ -156,7 +156,7 @@ my $spec = <<'EOSPEC';
                                                   {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
      @<cmd_num:+i>	                                  re-executes a previous command avaiable in command history [nocase]
                                                   {defer{&CJ::reexecute_cmd($cmd_num,$verbose) }}
-     @$	                                          re-executes the last command avaiable in command history [nocase]
+     @$	                                                  re-executes the last command avaiable in command history [nocase]
                                                   {defer{&CJ::reexecute_cmd("",$verbose) }}
      <unknown>...	                                  unknown arguments will be send to bash [undocumented]
                                                   {defer{my $cmd = join(" ",@unknown); system($cmd);}}
