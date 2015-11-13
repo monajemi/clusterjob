@@ -348,7 +348,7 @@ sub save_results{
         $save_path= $info->{'save_path'};
         &CJ::message("Saving results in ${save_path}");
     }else{
-        $save_path = "$save_dir/$pid";
+        $save_path = "$save_dir/$info->{pid}";
     }
     
     
