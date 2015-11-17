@@ -333,7 +333,7 @@ sub save_results{
     
     my ($pid,$save_dir,$verbose) = @_;
     
-   
+
     
     if(! &CJ::is_valid_pid($pid)){
         &CJ::err("Please enter a valid package name");
@@ -354,12 +354,18 @@ sub save_results{
     
     
     
+    if(! -d "$get_tmp_dir/$info->{'pid'}"){
+        &CJ::warning("You must run 'get' before 'save'!");
+        exit 0 ;
+    }
+    
+    
     if(-d "$save_path"){
         # Ask if it needs to be overwritten
         
-        CJ::message("Directory $save_path already exists. Do you want to overwrite? Y/N");
-        my $yesno =  <STDIN>; chomp($yesno);
-        if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
+        CJ::message("Directory $save_path already exists. What to do: [S]ync, [O]verwrite,[C]ancel?");
+        my $input =  <STDIN>; chomp($input);
+        if(lc($input) eq "o" or lc($input) eq "overwrite"){
             
             my $cmd = "rm -rf $save_path/*";
             &CJ::my_system($cmd,$verbose);
@@ -367,10 +373,13 @@ sub save_results{
             $cmd = "rsync -arz  $get_tmp_dir/$info->{'pid'}/ $save_path/";
             &CJ::my_system($cmd,$verbose);
             
+        }elsif(lc($input) eq "s" or lc($input) eq "sync"){
+            
+            my $cmd = "rsync -arz  $get_tmp_dir/$info->{'pid'}/ $save_path/";
+            &CJ::my_system($cmd,$verbose);
         }else{
-            
-            &CJ::err("Directory $save_path cannot be overwritten!");
-            
+            &CJ::message("Nothing Saved!");
+            exit 0;
         }
         
         
