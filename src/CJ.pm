@@ -440,7 +440,7 @@ sub show_history{
 
    
     if( (!defined $history_argin) || ($history_argin eq "") ){
-        $history_argin= 10;
+        $history_argin= "all";
     }
     
     if(&CJ::is_valid_pid($history_argin)){
