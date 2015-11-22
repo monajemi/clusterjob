@@ -103,6 +103,7 @@ my $gather_bash_script=<<GATHER;
         for file in \$(ls -C1 $pattern );do
             if [ ! -f \$TARGET_DIR/\$file ];then
                 cp \$file \$TARGET_DIR
+                echo "gathered: \$COUNTER: \$file";
             else
             echo "Files are not distinct. Use REDUCE instead of GATEHR"; exit 1;
             fi
@@ -121,7 +122,7 @@ GATHER
     
     
     &CJ::message("Gathering $pattern in $dir_name...");
-    $cmd = "ssh $account 'cd $remote_path; bash -l $gather_name > cj_gather.out'";
+    $cmd = "ssh $account 'cd $remote_path; bash -l $gather_name 2> cj_gather.out'";
     &CJ::my_system($cmd,$verbose);
     
     

@@ -921,7 +921,7 @@ sub get_state
                 $state =~ s/[^A-Za-z]//g;
                 print "$counter     " . "$job_ids[$i]      "  . "$state" . "\n";
             }
-        }elsif(&CJ::isnumeric($num) && $num < $#job_ids+1){
+        }elsif(&CJ::isnumeric($num) && $num <= $#job_ids+1){
             print '-' x 50;print "\n";
             print "\033[32mpid $info->{'pid'}\033[0m\n";
             print "remote_account: $account\n";
@@ -934,7 +934,8 @@ sub get_state
             
             
         }else{
-            &CJ::err("incorrect entry. Input $num >= $#job_ids.")
+            my $lim =1+$#job_ids;
+            &CJ::err("incorrect entry. Input $num >= $lim.")
         }
         
         print '-' x 35;print "\n";
