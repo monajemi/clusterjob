@@ -441,21 +441,47 @@ sub show_cmd_history{
 
 
 
-
-
-
 sub show_history{
+    my ($history_argin) = @_;
+    
+    
+    if( (!defined $history_argin) || ($history_argin eq "") ){
+        $history_argin= "all";
+    }
+    
+   if($history_argin =~ m/^\-?\d*$/){
+        
+        $history_argin =~ s/\D//g;   #remove any non-digit
+        my $info=`tail -n  $history_argin $history_file`;chomp($info);
+        print "$info \n";
+        
+    }elsif($history_argin =~ m/^\-?all$/){
+        my $info=`cat $history_file`;chomp($info);
+        print "$info \n";
+    }else{
+        &CJ::err("Incorrect usage: nothing to show");
+    }
+    
+    exit 0;
+    
+}
+
+
+
+
+sub show_log{
     my ($history_argin) = @_;
 
    
-    if( (!defined $history_argin) || ($history_argin eq "") ){
-        $history_argin= "all";
+    if( (!defined $history_argin) || ($history_argin eq "")  || ($history_argin =~ m/^\-?all$/)){
+        $history_argin= `cat $history_file | wc -l`; chomp($history_argin); $history_argin=~s/^\s+|\s+$//;
+        say $history_argin;
     }
     
     if(&CJ::is_valid_pid($history_argin)){
         
         if(defined(&CJ::read_record($history_argin))){
-            &CJ::print_detailed_history($history_argin)
+            &CJ::print_detailed_log($history_argin)
         }else{
             &CJ::err("No such job found in CJ database");
         }
@@ -464,15 +490,42 @@ sub show_history{
     }elsif($history_argin =~ m/^\-?\d*$/){
         
         $history_argin =~ s/\D//g;   #remove any non-digit
-        my $info=`tail -n  $history_argin $history_file`;chomp($info);
-        print "$info \n";
-       
-    }elsif($history_argin =~ m/^\-?all$/){
-        my $info=`cat $history_file`;chomp($info);
-        print "$info \n";
+        
+        my $pidList=`tail -n $history_argin $history_file | awk \'{print \$3}\' `;
+     
+        
+        my @pidList = $pidList =~ m/\b([0-9a-f]{8,40})\b/g;
+        my @unique_pids = do { my %seen; grep { !$seen{$_}++ } @pidList};
+        #say Dumper(@unique_pids);
+        
+        foreach ( @unique_pids){
+            
+            my $info =  &CJ::retrieve_package_info($_);
+            
+            print "\n";
+            print "\033[32mpid $info->{pid}\033[0m\n";
+            print "date: $info->{date}->{datestr}\n";
+            print "user: $info->{user}\n";
+            #            print "local_host: $info->{local_host} ($info->{local_ip})\n";
+            print "remote: $info->{account}\n";
+            print "script: $info->{program}\n";
+            #print "remote_path: $info->{remote_path}\n";
+            print "initial_flag: $info->{runflag}\n";
+            print "reruned: ",1+$#{$info->{rerun}} . " times \n" if($info->{rerun}) ;
+            print "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
+            print "\n";
+            print ' ' x 10; print "$info->{message}\n";
+            print "\n";
+            
+        }
+
+        
+        
+        
     }else{
         &CJ::err("Incorrect usage: nothing to show");
     }
+    
     
     
     
@@ -482,7 +535,10 @@ sub show_history{
 
 }
 
-sub  print_detailed_history{
+
+
+
+sub  print_detailed_log{
     my ($pid) = @_;
 
 my $record = read_record($pid);

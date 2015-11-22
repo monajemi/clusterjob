@@ -115,9 +115,10 @@ my $spec = <<'EOSPEC';
                                               {$runtime=$r_time}
      -alloc[ate]   <resources>	                          machine specific allocation [nocase]
                                           {$qsub_extra=$resources}
-     log          [<argin>]	                          historical info -n|pid|all [nocase]
+     log          [<argin>]	                          log info -n|all|pid [nocase]
+                                          {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin) }}
+     hist[ory]    [<argin>]	                          history of runs -n|all 
                                           {defer{&CJ::add_cmd($cmdline); &CJ::show_history($argin) }}
-     history      [<argin>]	         [ditto]
      cmd          [<argin>]	                          command history -n|all [nocase]
                                               {defer{ &CJ::show_cmd_history($argin) }}
      clean        [<pid>]		                  clean certain package [nocase]
