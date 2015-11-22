@@ -473,12 +473,14 @@ sub show_log{
     my ($history_argin) = @_;
 
    
-    if( (!defined $history_argin) || ($history_argin eq "") ){
-        $history_argin=10;
-
+  
+    my $num_show=undef;
+    if( (!defined $history_argin) || ($history_argin eq "")) {
+        $num_show = 10;
     }elsif( $history_argin =~ m/^\-?all$/ ){
-        $history_argin= `cat $history_file | wc -l`; chomp($history_argin); $history_argin=~s/^\s+|\s+$//;
-
+        $num_show= `cat $history_file | wc -l`; chomp($num_show); $num_show=~s/^\s+|\s+$//;
+    }elsif($history_argin =~ m/^\-?\d*$/){
+        $num_show = $history_argin =~ s/\D//g; #remove any non-digit
     }
     
     
@@ -491,20 +493,25 @@ sub show_log{
         }
         
     
-    }elsif($history_argin =~ m/^\-?\d*$/){
+    }elsif($num_show){
         
-        $history_argin =~ s/\D//g;   #remove any non-digit
         
-        my $pidList=`tail -n $history_argin $history_file | awk \'{print \$3}\' `;
+        my $pidList=`cat $history_file | awk \'{print \$3}\' `;
      
         
         my @pidList = $pidList =~ m/\b([0-9a-f]{8,40})\b/g;
         my @unique_pids = do { my %seen; grep { !$seen{$_}++ } @pidList};
         #say Dumper(@unique_pids);
         
-        foreach (@unique_pids){
+        
+        my $min = ($num_show-1, $#unique_pids)[$num_show-1 > $#unique_pids];
+        
+     
+        
+        foreach my $i (reverse 0..$min){
             
-            my $info =  &CJ::retrieve_package_info($_);
+            
+            my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$i]);
             
             print "\n";
             print "\033[32mpid $info->{pid}\033[0m\n";
@@ -1049,7 +1056,8 @@ sub retrieve_package_info{
     
     my $info = undef;
     if(defined($this_record)){
-    $info = decode_json $this_record;
+        
+        $info = decode_json $this_record;
     }
 
 return $info;
