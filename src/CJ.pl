@@ -17,7 +17,7 @@ use Term::ReadLine;
 use JSON::PP;
 #use Term::ANSIColor qw(:constants); # for changing terminal text colors
 use Digest::SHA qw(sha1_hex); # generate hexa-decimal SHA1 PID
-use vars qw($message $mem $runtime $dep_folder $verbose $text_header_lines $show_tag $qsub_extra $cmdline);  # options
+use vars qw($message $mem $runtime $dep_folder $verbose $text_header_lines $show_tag $log_tag $qsub_extra $cmdline);  # options
 
 $::VERSION = &CJ::version_info();
 
@@ -80,6 +80,8 @@ $verbose    = 0;	 # default - redirect to CJlog
 $text_header_lines = undef;
 $show_tag          = "program";
 $qsub_extra        = "";
+$log_tag           = "all";
+
 
 
 my $spec = <<'EOSPEC';
@@ -99,10 +101,12 @@ my $spec = <<'EOSPEC';
      -v 	          [ditto] [undocumented]
      --v[erbose]	                                  verbose mode [nocase]
                                              {$verbose=1}
-     --err[or]	                                          error tag [nocase]
+     --err[or]	                                          error tag [nocase] [requires: show]
                                              {$show_tag="error"}
-     --ls      	                                          list tag [nocase]
+     --ls      	                                          list tag [nocase]  [requires: show]
                                              {$show_tag="ls"}
+     --alive      	                                      log only alive [nocase]  [requires: log]
+                                             {$log_tag="alive"}
      --header [=] <num_lines:+i>	                  number of header lines for reducing text files
                                           {$text_header_lines=$num_lines;}
      -dep          <dep_path>		                  dependency folder path [nocase]
@@ -116,7 +120,7 @@ my $spec = <<'EOSPEC';
      -alloc[ate]   <resources>	                          machine specific allocation [nocase]
                                           {$qsub_extra=$resources}
      log          [<argin>]	                          log info -n|all|pid [nocase]
-                                          {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin) }}
+                                          {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin,$log_tag) }}
      hist[ory]    [<argin>]	                          history of runs -n|all 
                                           {defer{&CJ::add_cmd($cmdline); &CJ::show_history($argin) }}
      cmd          [<argin>]	                          command history -n|all [nocase]

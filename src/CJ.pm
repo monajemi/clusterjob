@@ -470,24 +470,27 @@ sub show_history{
 
 
 sub show_log{
-    my ($history_argin) = @_;
+    my ($log_argin, $log_tag) = @_;
 
+    
    
   
     my $num_show=undef;
-    if( (!defined $history_argin) || ($history_argin eq "")) {
+    if( (!defined $log_argin) || ($log_argin eq "")) {
         $num_show = 10;
-    }elsif( $history_argin =~ m/^\-?all$/ ){
+        $log_argin = "";
+        
+    }elsif( $log_argin =~ m/^\-?all$/ ){
         $num_show= `cat $history_file | wc -l`; chomp($num_show); $num_show=~s/^\s+|\s+$//;
-    }elsif($history_argin =~ m/^\-?\d*$/){
-        $num_show = $history_argin =~ s/\D//g; #remove any non-digit
+    }elsif($log_argin =~ m/^\-?\d*$/){
+        $num_show = $log_argin =~ s/\D//g; #remove any non-digit
     }
     
     
-    if(&CJ::is_valid_pid($history_argin)){
+    if(&CJ::is_valid_pid($log_argin)){
         
-        if(defined(&CJ::read_record($history_argin))){
-            &CJ::print_detailed_log($history_argin)
+        if(defined(&CJ::read_record($log_argin))){
+            &CJ::print_detailed_log($log_argin)
         }else{
             &CJ::err("No such job found in CJ database");
         }
@@ -512,7 +515,8 @@ sub show_log{
             
             
             my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$i]);
-            
+            if($log_tag ne "alive" ){
+                
             print "\n";
             print "\033[32mpid $info->{pid}\033[0m\n";
             print "date: $info->{date}->{datestr}\n";
@@ -527,6 +531,28 @@ sub show_log{
             print "\n";
             print ' ' x 10; print "$info->{message}\n";
             print "\n";
+            }else{
+                # only alive
+                if( !$info->{clean}){
+                
+                print "\n";
+                print "\033[32mpid $info->{pid}\033[0m\n";
+                print "date: $info->{date}->{datestr}\n";
+                print "user: $info->{user}\n";
+                #            print "local_host: $info->{local_host} ($info->{local_ip})\n";
+                print "remote: $info->{account}\n";
+                print "script: $info->{program}\n";
+                #print "remote_path: $info->{remote_path}\n";
+                print "initial_flag: $info->{runflag}\n";
+                print "reruned: ",1+$#{$info->{rerun}} . " times \n" if($info->{rerun}) ;
+                print "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
+                print "\n";
+                print ' ' x 10; print "$info->{message}\n";
+                print "\n";
+                }
+                
+            
+            }
             
         }
 
