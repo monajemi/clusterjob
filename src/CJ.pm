@@ -473,10 +473,14 @@ sub show_log{
     my ($history_argin) = @_;
 
    
-    if( (!defined $history_argin) || ($history_argin eq "")  || ($history_argin =~ m/^\-?all$/)){
+    if( (!defined $history_argin) || ($history_argin eq "") ){
+        $history_argin=10;
+
+    }elsif( $history_argin =~ m/^\-?all$/ ){
         $history_argin= `cat $history_file | wc -l`; chomp($history_argin); $history_argin=~s/^\s+|\s+$//;
-        say $history_argin;
+
     }
+    
     
     if(&CJ::is_valid_pid($history_argin)){
         
@@ -498,7 +502,7 @@ sub show_log{
         my @unique_pids = do { my %seen; grep { !$seen{$_}++ } @pidList};
         #say Dumper(@unique_pids);
         
-        foreach ( @unique_pids){
+        foreach (@unique_pids){
             
             my $info =  &CJ::retrieve_package_info($_);
             
