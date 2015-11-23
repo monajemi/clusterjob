@@ -17,7 +17,7 @@ use Term::ReadLine;
 use JSON::PP;
 #use Term::ANSIColor qw(:constants); # for changing terminal text colors
 use Digest::SHA qw(sha1_hex); # generate hexa-decimal SHA1 PID
-use vars qw($message $mem $runtime $dep_folder $verbose $text_header_lines $show_tag $log_tag $qsub_extra $cmdline);  # options
+use vars qw($message $mem $runtime $dep_folder $verbose $log_script $text_header_lines $show_tag $log_tag $qsub_extra $cmdline);  # options
 
 $::VERSION = &CJ::version_info();
 
@@ -81,6 +81,7 @@ $text_header_lines = undef;
 $show_tag          = "program";
 $qsub_extra        = "";
 $log_tag           = "all";
+$log_script        = undef;
 
 
 
@@ -100,71 +101,73 @@ my $spec = <<'EOSPEC';
       Version		  [ditto] [undocumented]
      -v 	          [ditto] [undocumented]
      --v[erbose]	                                  verbose mode [nocase]
-                                             {$verbose=1}
+                                                              {$verbose=1}
      --err[or]	                                          error tag [nocase] [requires: show]
-                                             {$show_tag="error"}
+                                                              {$show_tag="error"}
      --ls      	                                          list tag [nocase]  [requires: show]
-                                             {$show_tag="ls"}
-     --alive      	                                      log only alive [nocase]  [requires: log]
-                                             {$log_tag="alive"}
-     --header [=] <num_lines:+i>	                  number of header lines for reducing text files
-                                          {$text_header_lines=$num_lines;}
+                                                               {$show_tag="ls";}
+     --alive      	                                  log only alive [nocase]  [requires: log]
+                                                               {$log_tag="alive";}
+     --script [=] <pattern>	                          shows log of specific script [requires: log]
+                                                               {$log_script=$pattern;}
+     --header [=] <num_lines:+i>	                  number of header lines for reducing text files [requires: reduce]
+                                                               {$text_header_lines=$num_lines;}
      -dep          <dep_path>		                  dependency folder path [nocase]
-                                              {$dep_folder=$dep_path}
+                                                                {$dep_folder=$dep_path}
      -m            <msg>	                          reminder message
-                                              {$message=$msg}
+                                                                {$message=$msg}
      -mem          <memory>	                          memory requested [nocase]
-                                              {$mem=$memory}
+                                                                {$mem=$memory}
      -runtime      <r_time>	                          run time requested (default=40:00:00) [nocase]
-                                              {$runtime=$r_time}
+                                                                {$runtime=$r_time}
      -alloc[ate]   <resources>	                          machine specific allocation [nocase]
-                                          {$qsub_extra=$resources}
-     log          [<argin>]	                          log info -n|all|pid [nocase]
-                                          {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin,$log_tag) }}
+                                                                {$qsub_extra=$resources}
+     log [<argin>]	                                  log  -n|all|pid [nocase]
+                                                                {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin,$log_tag,$log_script) }}
      hist[ory]    [<argin>]	                          history of runs -n|all 
-                                          {defer{&CJ::add_cmd($cmdline); &CJ::show_history($argin) }}
+                                                                {defer{&CJ::add_cmd($cmdline); &CJ::show_history($argin) }}
      cmd          [<argin>]	                          command history -n|all [nocase]
-                                              {defer{ &CJ::show_cmd_history($argin) }}
+                                                                {defer{ &CJ::show_cmd_history($argin) }}
      clean        [<pid>]		                  clean certain package [nocase]
-                                              {defer{ &CJ::add_cmd($cmdline); &CJ::clean($pid,$verbose); }}
+                                                                {defer{ &CJ::add_cmd($cmdline); &CJ::clean($pid,$verbose); }}
      state        [<pid> [/] [<counter>]]	          state of package [nocase]
-                                              {defer{ &CJ::add_cmd($cmdline);&CJ::get_state($pid,$counter) }}
+                                                                 {defer{ &CJ::add_cmd($cmdline);&CJ::get_state($pid,$counter) }}
      info         [<pid>]	                          info of certain package [nocase]
-                                              {defer{ &CJ::add_cmd($cmdline);&CJ::show_info($pid); }}
+                                                                 {defer{ &CJ::add_cmd($cmdline);&CJ::show_info($pid); }}
      show         [<pid> [/] [<counter>]]	          show program/error of certain package [nocase]
-                                              {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$show_tag) }}
+                                                                 {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$show_tag) }}
      rerun        [<pid> [/] [<counter>...]]	          rerun certain (failed) job [nocase]
-                                               {defer{&CJ::add_cmd($cmdline);&CJ::rerun($pid,\@counter,$mem,$runtime,$qsub_extra,$verbose) }}
+                                                                 {defer{&CJ::add_cmd($cmdline);&CJ::rerun($pid,\@counter,$mem,$runtime,$qsub_extra,$verbose) }}
      run          <code> <cluster>	                  run code on the cluster [nocase] [requires: -m]
-                                              {my $runflag = "run";
-                                                  {defer{&CJ::add_cmd($cmdline); run($cluster,$code,$runflag,$qsub_extra)}}
-                                               }
+                                                                 {my $runflag = "run";
+                                                                 {defer{&CJ::add_cmd($cmdline); run($cluster,$code,$runflag,$qsub_extra)}}
+                                                                 }
      deploy       <code> <cluster>	                  deploy code on the cluster [nocase] [requires: -m]
-                                              {my $runflag = "deploy";
-                                                  {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
-                                               }
+                                                                {my $runflag = "deploy";
+                                                                {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
+                                                                }
      parrun       <code> <cluster>	                  parrun code on the cluster [nocase] [requires: -m]
-                                              {my $runflag = "parrun";
-                                                  {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
-                                               }
+                                                                {my $runflag = "parrun";
+                                                                {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
+                                                                }
      pardeploy    <code> <cluster>	                  pardeploy code on the cluster [nocase] [requires: -m]
-                                              {my $runflag = "pardeploy";
-                                                  {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
-                                               }
+                                                               {my $runflag = "pardeploy";
+                                                                {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
+                                                               }
      reduce       <filename> [<pid>] 	                  reduce results of parrun [nocase]
-                                                  {defer{&CJ::add_cmd($cmdline);&CJ::Get::reduce_results($pid,$filename,$verbose,$text_header_lines)}}
+                                                              {defer{&CJ::add_cmd($cmdline);&CJ::Get::reduce_results($pid,$filename,$verbose,$text_header_lines)}}
      gather       <pattern>  <dir_name> [<pid>]	          gather results of parrun [nocase]
-                                                  {defer{&CJ::add_cmd($cmdline);&CJ::Get::gather_results($pid,$pattern,$dir_name,$verbose)}}
+                                                              {defer{&CJ::add_cmd($cmdline);&CJ::Get::gather_results($pid,$pattern,$dir_name,$verbose)}}
      get          [<pid>]	                          bring results back to local machine [nocase]
-                                                  {defer{&CJ::add_cmd($cmdline);&CJ::Get::get_results($pid,$verbose)}}
+                                                              {defer{&CJ::add_cmd($cmdline);&CJ::Get::get_results($pid,$verbose)}}
      save         <pid> [<path>]	                  save a package in path [nocase]
-                                                  {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
+                                                              {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
      @<cmd_num:+i>	                                  re-executes a previous command avaiable in command history [nocase]
-                                                  {defer{&CJ::reexecute_cmd($cmd_num,$verbose) }}
+                                                               {defer{&CJ::reexecute_cmd($cmd_num,$verbose) }}
      @$	                                                  re-executes the last command avaiable in command history [nocase]
-                                                  {defer{&CJ::reexecute_cmd("",$verbose) }}
+                                                               {defer{&CJ::reexecute_cmd("",$verbose) }}
      <unknown>...	                                  unknown arguments will be send to bash [undocumented]
-                                                  {defer{my $cmd = join(" ",@unknown); system($cmd);}}
+                                                               {defer{my $cmd = join(" ",@unknown); system($cmd);}}
 
 EOSPEC
 

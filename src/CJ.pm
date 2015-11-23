@@ -470,35 +470,35 @@ sub show_history{
 
 
 sub show_log{
-    my ($log_argin, $log_tag) = @_;
+    my ($log_argin, $log_tag, $log_script) = @_;
 
+    my $num_show = undef;
     
-   
-  
-    my $num_show=undef;
-    if( (!defined $log_argin) || ($log_argin eq "")) {
+    if( (! defined $log_argin) || ($log_argin eq "") ) {
         $num_show = 10;
         $log_argin = "";
-        
     }elsif( $log_argin =~ m/^\-?all$/ ){
         $num_show= `cat $history_file | wc -l`; chomp($num_show); $num_show=~s/^\s+|\s+$//;
-    }elsif($log_argin =~ m/^\-?\d*$/){
-        $num_show = $log_argin =~ s/\D//g; #remove any non-digit
-    }
-    
-    
-    if(&CJ::is_valid_pid($log_argin)){
+    }elsif( $log_argin =~ m/^\-?\d*$/ ){
+        $log_argin =~ s/\D//g;     #remove any non-digit
+        $num_show = $log_argin;
+    }elsif(&CJ::is_valid_pid($log_argin)){
         
         if(defined(&CJ::read_record($log_argin))){
-            &CJ::print_detailed_log($log_argin)
+            &CJ::print_detailed_log($log_argin);
+           
         }else{
             &CJ::err("No such job found in CJ database");
         }
         
+        exit 0;
+        
+    }else{
+        &CJ::err("Incorrect usage: nothing to show");
+    }
     
-    }elsif($num_show){
-        
-        
+   
+    
         my $pidList=`cat $history_file | awk \'{print \$3}\' `;
      
         
@@ -507,61 +507,62 @@ sub show_log{
         #say Dumper(@unique_pids);
         
         
-        my $min = ($num_show-1, $#unique_pids)[$num_show-1 > $#unique_pids];
         
-     
+        my  @to_show_idx;
         
-        foreach my $i (reverse 0..$min){
-            
-            
-            my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$i]);
-            if($log_tag ne "alive" ){
-                
-            print "\n";
-            print "\033[32mpid $info->{pid}\033[0m\n";
-            print "date: $info->{date}->{datestr}\n";
-            print "user: $info->{user}\n";
-            #            print "local_host: $info->{local_host} ($info->{local_ip})\n";
-            print "remote: $info->{account}\n";
-            print "script: $info->{program}\n";
-            #print "remote_path: $info->{remote_path}\n";
-            print "initial_flag: $info->{runflag}\n";
-            print "reruned: ",1+$#{$info->{rerun}} . " times \n" if($info->{rerun}) ;
-            print "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
-            print "\n";
-            print ' ' x 10; print "$info->{message}\n";
-            print "\n";
-            }else{
-                # only alive
-                if( !$info->{clean}){
-                
-                print "\n";
-                print "\033[32mpid $info->{pid}\033[0m\n";
-                print "date: $info->{date}->{datestr}\n";
-                print "user: $info->{user}\n";
-                #            print "local_host: $info->{local_host} ($info->{local_ip})\n";
-                print "remote: $info->{account}\n";
-                print "script: $info->{program}\n";
-                #print "remote_path: $info->{remote_path}\n";
-                print "initial_flag: $info->{runflag}\n";
-                print "reruned: ",1+$#{$info->{rerun}} . " times \n" if($info->{rerun}) ;
-                print "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
-                print "\n";
-                print ' ' x 10; print "$info->{message}\n";
-                print "\n";
-                }
-                
-            
-            }
-            
-        }
+        if(!defined($log_script)){
+            #my $min = ($num_show-1, $#unique_pids)[$num_show-1 > $#unique_pids];
+            #foreach my $i (0..$min){
+            my $counter = 0;
+            while( ($counter <= $#unique_pids) & ($#to_show_idx < $num_show-1 )  ){
+                        my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$counter]);
 
+                        if( $log_tag ne "alive" ){
+                            push @to_show_idx, $counter;
+                        }else{
+                            # only alive
+                            push @to_show_idx, $counter if( ! $info->{clean} );
+                        }
+                $counter = $counter +1;
+            }
+        }else{
+            foreach my $i (0..$#unique_pids){
+                my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$i]);
+                if( $log_tag ne "alive" ){
+                push @to_show_idx, $i if( $info->{program} =~ m/$log_script/);
+                }else{
+                push @to_show_idx, $i if( ($info->{program} =~ m/$log_script/) & (! $info->{clean}) );
+                }
+                    
+            }
+        }
+            
         
+    #say Dumper(@to_show_idx);
+    
         
+        foreach my $i (reverse @to_show_idx){
         
-    }else{
-        &CJ::err("Incorrect usage: nothing to show");
-    }
+        my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$i]);
+
+        print "\n";
+        print "\033[32mpid $info->{pid}\033[0m\n";
+        print "date: $info->{date}->{datestr}\n";
+        print "user: $info->{user}\n";
+        #            print "local_host: $info->{local_host} ($info->{local_ip})\n";
+        print "remote: $info->{account}\n";
+        print "script: $info->{program}\n";
+        #print "remote_path: $info->{remote_path}\n";
+        print "initial_flag: $info->{runflag}\n";
+        print "reruned: ",1+$#{$info->{rerun}} . " times \n" if($info->{rerun}) ;
+        print "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
+        print "\n";
+        print ' ' x 10; print "$info->{message}\n";
+        print "\n";
+        }
+    
+  
+        
     
     
     
