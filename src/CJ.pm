@@ -144,7 +144,8 @@ my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
     }else{
         &CJ::message("job-id: $rerun_job_ids->[0]-$rerun_job_ids->[-1]");
         foreach my $i (0..$#{$counter}){
-           $job_id =~ s/$job_ids[$i]/$rerun_job_ids->[$i]/g;
+            my $this = $counter->[$i] - 1;
+           $job_id =~ s/$job_ids[$this]/$rerun_job_ids->[$i]/g;
         }
     }
 
