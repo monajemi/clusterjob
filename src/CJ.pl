@@ -448,7 +448,8 @@ my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
     my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
     my $job_ids = &CJ::read_qsub($local_qsub_info_file);
     $job_id = $job_ids->[0]; # there is only one in this case
-    CJ::message("Job-id: $job_id");
+    my $numJobs = $#{$job_ids}+1;
+    CJ::message("$numJobs job(s) submitted ($job_id)");
     
 #delete the local qsub.info after use
 my $cmd = "rm $local_qsub_info_file";
@@ -854,9 +855,9 @@ if($runflag eq "parrun"){
     my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
     $job_ids = &CJ::read_qsub($local_qsub_info_file);
     $job_id = join(',', @{$job_ids});
+    my $numJobs = $#{$job_ids}+1;
 
-    
-&CJ::message("Job-ids: $job_ids->[0]-$job_ids->[-1]");
+    CJ::message("$numJobs job(s) submitted ($job_ids->[0]-$job_ids->[-1])");
     
 #delete the local qsub.info after use
 my $cmd = "rm $local_qsub_info_file";
