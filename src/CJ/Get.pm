@@ -101,11 +101,11 @@ my $gather_bash_script=<<GATHER;
     for COUNTER in \$(seq $num_res);do
       cd $remote_path/\$COUNTER
         NUMFILES=\$(ls -C1 $pattern | wc -l | tr -d ' ' );
-        echo "gathering: \$COUNTER: [\$NUMFILES] ";
+        echo "Gathering -> \$COUNTER: [\$NUMFILES] ";
         for file in \$(ls -C1 $pattern );do
             if [ ! -f \$TARGET_DIR/\$file ];then
                 cp \$file \$TARGET_DIR
-                echo "      :\$file";
+    #echo "      :\$file";
             else
             echo "Files are not distinct. Use REDUCE instead of GATEHR"; exit 1;
             fi

@@ -986,6 +986,7 @@ date
 cd $DIR
 
 module load MATLAB-R2014b
+unset _JAVA_OPTIONS
 matlab -nosplash -nodisplay <<HERE
 <MATPATH>
 
@@ -1024,6 +1025,7 @@ date
 cd $DIR
 
 module load matlab\/R2014b
+unset _JAVA_OPTIONS
 matlab -nosplash -nodisplay <<HERE
 <MATPATH>
 % make sure each run has different random number stream
@@ -1152,6 +1154,7 @@ date
 cd $DIR
 
 module load MATLAB-R2014b
+unset _JAVA_OPTIONS
 matlab -nosplash -nodisplay <<HERE
 <MATPATH>
 
@@ -1202,6 +1205,7 @@ date
 cd $DIR
 
 module load matlab\/R2014b
+unset _JAVA_OPTIONS
 matlab -nosplash -nodisplay <<HERE
 <MATPATH>
 
