@@ -106,7 +106,7 @@ my $spec = <<'EOSPEC';
                                                               {$show_tag="error"}
      --ls      	                                          list tag [nocase]  [requires: show]
                                                                {$show_tag="ls";}
-     --clean      	                                  log only alive [nocase]  [requires: log]
+     --clean      	                                  show cleaned packages in log [nocase]  [requires: log]
                                                                {$log_tag="showclean";}
      --script [=] <pattern>	                          shows log of specific script [requires: log]
                                                                {$log_script=$pattern;}
