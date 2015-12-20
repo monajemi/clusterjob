@@ -106,8 +106,8 @@ my $spec = <<'EOSPEC';
                                                               {$show_tag="error"}
      --ls      	                                          list tag [nocase]  [requires: show]
                                                                {$show_tag="ls";}
-     --alive      	                                  log only alive [nocase]  [requires: log]
-                                                               {$log_tag="alive";}
+     --clean      	                                  log only alive [nocase]  [requires: log]
+                                                               {$log_tag="showclean";}
      --script [=] <pattern>	                          shows log of specific script [requires: log]
                                                                {$log_script=$pattern;}
      --header [=] <num_lines:+i>	                  number of header lines for reducing text files [requires: reduce]

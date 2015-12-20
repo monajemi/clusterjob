@@ -518,7 +518,7 @@ sub show_log{
             while( ($counter <= $#unique_pids) & ($#to_show_idx < $num_show-1 )  ){
                         my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$counter]);
 
-                        if( $log_tag ne "alive" ){
+                        if( $log_tag eq "showclean" ){
                             push @to_show_idx, $counter;
                         }else{
                             # only alive
@@ -529,7 +529,7 @@ sub show_log{
         }else{
             foreach my $i (0..$#unique_pids){
                 my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$i]);
-                if( $log_tag ne "alive" ){
+                if( $log_tag eq "showclean" ){
                 push @to_show_idx, $i if( $info->{program} =~ m/$log_script/);
                 }else{
                 push @to_show_idx, $i if( ($info->{program} =~ m/$log_script/) & (! $info->{clean}) );

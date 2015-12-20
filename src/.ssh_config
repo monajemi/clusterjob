@@ -17,7 +17,7 @@ MATlib	~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 Host	proclus.stanford.edu
 User	monajemi
 Bqs SGE
-Repo	~/CJRepo_Remote
+Repo	/hsgs/nobackup/monajemi/CJRepo_Remote
 MATlib	~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 [proclus]
 
