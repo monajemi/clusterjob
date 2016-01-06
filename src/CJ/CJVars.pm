@@ -15,6 +15,9 @@ my $sock = IO::Socket::INET->new(
     PeerAddr=> "example.com",
     PeerPort=> 80,
     Proto   => "tcp");
+if (!defined($sock)){
+	print "No internet connection!\n";exit 0;
+}	
 our $localIP = $sock->sockhost; chomp($localIP);
 
 our $localUserName = `id -un`;chomp($localUserName);  # Later on add the CJusername
