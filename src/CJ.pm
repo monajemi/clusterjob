@@ -73,6 +73,9 @@ sub rerun
     
     my @job_ids = split(',',$job_id);
 
+	if(! @$counter){
+	   $counter = [1..$#job_ids];  
+	}
 
     
     my $date = &CJ::date();
@@ -135,7 +138,7 @@ my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
 #=======================================
 # write changes to the run_history file
 #=======================================
-  # - replace the old job_id's by new one
+  # - replace the old job_id's by the new one
     
     if($#job_ids eq 0){
            $job_id =~ s/$job_ids[0]/$rerun_job_ids->[0]/g;
@@ -166,8 +169,8 @@ my $this_rerun = "$date -> $runinfo";
 
 my $type = "Rerun";
 my $change = {new_job_id => $job_id,
-              date       => $date,
-    old_job_id => $runinfo};
+              date       => $date, 
+			  old_job_id => $runinfo};
 &CJ::add_change_to_run_history($pid, $change, $type);
 
 exit 0;
@@ -1302,7 +1305,6 @@ sub add_change_to_run_history
     my ($pid, $change,$type) = @_;
     
     my $this_record = &CJ::read_record($pid);
-    
     my $info = decode_json $this_record;
     
 
