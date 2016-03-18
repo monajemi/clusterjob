@@ -125,16 +125,16 @@ GATHER
     
     &CJ::message("Gathering $pattern in $dir_name...");
     $cmd = "ssh $account 'cd $remote_path; bash -l $gather_name 2> cj_gather.out'";
-    &CJ::my_system($cmd,$verbose);
+    &CJ::my_system($cmd,1);
     
     
     # Get the feedback
     $cmd = "scp  $account:$remote_path/cj_gather.out /tmp/";
     &CJ::my_system($cmd,$verbose);
     
-    
+    my $short_pid = substr($info->{'pid'},0,8);
     if ( ! -s "/tmp/cj_gather.out" ){
-    &CJ::message("Gathering results done! Please use \"CJ get \" to get your results.");
+    &CJ::message("Gathering results done! Please use \"CJ get $short_pid \" to get your results.");
     }else{
     my $error = `cat "/tmp/cj_gather.out"`;
     &CJ::err("$error");
@@ -261,16 +261,40 @@ sub reduce_results{
     &CJ::my_system($cmd,$verbose);
    
     
+	
+	
+   
+	
+	
+    my $short_pid=substr($info->{'pid'},0,8);
+	
     &CJ::message("Reducing results...");
     if($bqs eq "SLURM"){
-    $cmd = "ssh $account 'cd $remote_path; srun bash -l $collect_name'";
+		
+		
+	    CJ::message("Do you want to submit the reduce script to the queue via srun?(recommneded for big jobs) Y/N?");
+	    my $input =  <STDIN>; chomp($input);
+	    if(lc($input) eq "y" or lc($input) eq "yes"){
+	        &CJ::message("Reducing results...");
+	        my $cmd = "ssh $account 'cd $remote_path; srun bash -l $collect_name'";
+	        #my $cmd = "ssh $account 'cd $remote_path; qsub $collect_name'";
+		    &CJ::my_system($cmd,1);
+		    &CJ::message("Reducing results done! Please use \"CJ get $short_pid \" to get your results.");
+		
+	    }elsif(lc($input) eq "n" or lc($input) eq "no"){
+	        my $cmd = "ssh $account 'cd $remote_path; bash -l $collect_name'";
+		    &CJ::my_system($cmd,1);
+		    &CJ::message("Reducing results done! Please use \"CJ get $short_pid \" to get your results.");
+	    }else{
+	        &CJ::message("Reduce Canceled!");
+	        exit 0;
+	    }	
     }else{
-    $cmd = "ssh $account 'cd $remote_path; bash -l $collect_name'";
+    my $cmd = "ssh $account 'cd $remote_path; bash -l $collect_name'";
+    &CJ::my_system($cmd,1);
+    &CJ::message("Reducing results done! Please use \"CJ get $short_pid \" to get your results.");
     }
-    &CJ::my_system($cmd,$verbose);
-    
-    &CJ::message("Reducing results done! Please use \"CJ get \" to get your results.");
-
+   
 }
 
 
@@ -510,7 +534,7 @@ if [ ! -s  $completed_filename ]; then
     else
     # check if collect is complete
     # if yes, then echo results collect fully
-    echo "CJ::Reduce:: Nothing to collect. Possible reasons are: Invalid filename, No new completed job.";
+    echo "     CJ::Reduce:: Nothing to collect. Possible reasons are: Invalid filename, No new completed job.";
     fi
     
 else
