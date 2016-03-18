@@ -76,7 +76,6 @@ sub rerun
 	if(! @$counter){
 	   $counter = [1..$#job_ids];  
 	}
-
     
     my $date = &CJ::date();
     my $master_script;
