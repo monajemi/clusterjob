@@ -74,7 +74,7 @@ sub rerun
     my @job_ids = split(',',$job_id);
 
 	if(! @$counter){
-	   $counter = [1..$#job_ids];  
+	   $counter = [1..($#job_ids+1)];  
 	}
     
     my $date = &CJ::date();
