@@ -158,8 +158,8 @@ my $spec = <<'EOSPEC';
                                                               {defer{&CJ::add_cmd($cmdline);&CJ::Get::reduce_results($pid,$filename,$verbose,$text_header_lines)}}
      gather       <pattern>  <dir_name> [<pid>]	          gather results of parrun [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);&CJ::Get::gather_results($pid,$pattern,$dir_name,$verbose)}}
-     get          [<pid>]	                          bring results back to local machine [nocase]
-                                                              {defer{&CJ::add_cmd($cmdline);&CJ::Get::get_results($pid,$verbose)}}
+     get          [<pid> [/] [<subfolder>]]	          bring results (fully/partially) back to local machine [nocase]
+                                                              {defer{&CJ::add_cmd($cmdline);&CJ::Get::get_results($pid,$subfolder,$verbose)}}
      save         <pid> [<path>]	                  save a package in path [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
      @<cmd_num:+i>	                                  re-executes a previous command avaiable in command history [nocase]

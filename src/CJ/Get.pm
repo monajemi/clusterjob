@@ -310,7 +310,7 @@ sub reduce_results{
 
 
 sub get_results{
-    my ($pid,$res_filename,$verbose) = @_;
+    my ($pid,$subfolder,$verbose) = @_;
    
 
     
@@ -388,7 +388,11 @@ sub get_results{
     mkdir "$get_tmp_dir" unless (-d "$get_tmp_dir");
     mkdir "$get_tmp_dir/$info->{pid}" unless (-d "$get_tmp_dir/$info->{pid}");
     
-    my $cmd = "rsync -arvz  $account:${remote_path}/* $get_tmp_dir/$info->{pid}";
+	# remove the trailing backslash by user if any
+	if($subfolder){
+			$subfolder =~ s/\/*$//;
+	}
+    my $cmd = "rsync -arvz  $account:${remote_path}/$subfolder $get_tmp_dir/$info->{pid}";
     &CJ::my_system($cmd,$verbose);
     
     
@@ -396,8 +400,6 @@ sub get_results{
     my $confirm_path = "$get_tmp_dir/$info->{pid}";
     &CJ::build_cj_confirmation($info->{pid}, $confirm_path);
 
-    
-    
     &CJ::message("Please see your last results in $get_tmp_dir/$info->{pid}");
     
     
