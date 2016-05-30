@@ -102,9 +102,11 @@ my $spec = <<'EOSPEC';
      -v 	          [ditto] [undocumented]
      --v[erbose]	                                  verbose mode [nocase]
                                                               {$verbose=1}
-     --err[or]	                                          error tag [nocase] [requires: show]
+     --err[or]	                                          error tag for show [nocase] [requires: show]
                                                               {$show_tag="error"}
-     --ls      	                                          list tag [nocase]  [requires: show]
+     --less      	                                  less tag for show [nocase]  [requires: show]
+                                                               {$show_tag="less";}
+     --ls      	                                          list tag for show [nocase]  [requires: show]
                                                                {$show_tag="ls";}
      --clean      	                                  show cleaned packages in log [nocase]  [requires: log]
                                                                {$log_tag="showclean";}
@@ -134,8 +136,8 @@ my $spec = <<'EOSPEC';
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::get_state($pid,$counter) }}
      info         [<pid>]	                          info of certain package [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show_info($pid); }}
-     show         [<pid> [/] [<counter>]]	          show program/error of certain package [nocase]
-                                                                 {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$show_tag) }}
+     show         [<pid> [/] [<counter>] [/] <file> ]	  show program/error of certain package [nocase]
+                                                                 {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,$show_tag) }}
      rerun        [<pid> [/] [<counter>...]]	          rerun certain (failed) job [nocase]
                                                                  {defer{&CJ::add_cmd($cmdline);&CJ::rerun($pid,\@counter,$mem,$runtime,$qsub_extra,$verbose) }}
      run          <code> <cluster>	                  run code on the cluster [nocase] [requires: -m]

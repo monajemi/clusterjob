@@ -708,7 +708,7 @@ sub clean
 
 sub show
 {
-    my ($pid, $num, $show_tag) = @_;
+    my ($pid, $num, $file, $show_tag) = @_;
     
     
     my $info;
@@ -766,6 +766,12 @@ sub show
             $script = (`ssh ${account} 'ls -C1 $remote_path/$num/'`) ;chomp($script);
         }else{
             $script = (`ssh ${account} 'ls -C1 $remote_path/'`) ;chomp($script);
+        }
+    }elsif($show_tag eq "less" ){
+        if($num){
+            $script = (`ssh ${account} 'less -C1 $remote_path/$num/$file'`) ;chomp($script);
+        }else{
+            $script = (`ssh ${account} 'less -C1 $remote_path/$file'`) ;chomp($script);
         }
     }
         

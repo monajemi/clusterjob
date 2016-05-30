@@ -126,7 +126,7 @@ sub read_matlab_index_set
             
             
             my $numbers;
-            if($this_array[1] =~ /\[\s*(.+?)\s*\]/){
+            if($this_array[1] =~ /\[\s*([^:]+?)\s*\]/){
             ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
             my $floating_pattern = "[-+]?[0-9]*[\.]?[0-9]+(?:[eE][-+]?[0-9]+)?";
             my $fractional_pattern = "(?:${floating_pattern}\/)?${floating_pattern}";
