@@ -391,6 +391,8 @@ sub get_results{
 	# remove the trailing backslash by user if any
 	if($subfolder){
 			$subfolder =~ s/\/*$//;
+	}else{
+	  	$subfolder="";
 	}
     my $cmd = "rsync -arvz  $account:${remote_path}/$subfolder $get_tmp_dir/$info->{pid}";
     &CJ::my_system($cmd,$verbose);
