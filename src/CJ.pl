@@ -225,7 +225,12 @@ sub cj_prompt{
 		}elsif($input =~ m/\bcd\b/){
 			$input =~ s/cd//g;
 		    $input =~ s/^\s|\s$//g;
-			$CWD = $input or die "Can't chdir to $input $!";
+			if (-d $input){
+			$CWD = $input
+			}else{
+				print "Can't cd to $input: $!\n";
+				next;
+			} 
 		}else{
 	      my $perl = `which perl`; chomp($perl);
 	      my $cmd = "$perl $install_dir/CJ.pl" . " $input";
