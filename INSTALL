@@ -23,13 +23,14 @@ http://perlmaven.com/how-to-change-inc-to-find-perl-modules-in-non-standard-loca
 You will need to update the following file to reflect your own
 server setup.
 
-    /CJ_install/src/.ssh_config
+    /CJ_install/ssh_config
 
 The convention is
 [MACHINE_ALIAS]
 Host [INSERT_TAB] proclus.stanford.edu
 User [INSERT_TAB] monajemi
 Bqs  [INSERT_TAB] SGE|SLURM
+Matlib [INSERT_TAB] matlab/cvx:matlab/asp
 [MACHINE_ALIAS]
 
 

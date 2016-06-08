@@ -34,7 +34,7 @@ $::VERSION = &CJ::version_info();
 
 #=========================================
 # create .info directory if it doesnt exist
-mkdir "$install_dir/.info" unless (-d "$install_dir/.info");
+mkdir "$info_dir" unless (-d "$info_dir");
 
 # create history file if it does not exist
 if( ! -f $history_file ){
@@ -233,7 +233,7 @@ sub cj_prompt{
 			} 
 		}else{
 	      my $perl = `which perl`; chomp($perl);
-	      my $cmd = "$perl $install_dir/CJ.pl" . " $input";
+	      my $cmd = "$perl $src_dir/CJ.pl" . " $input";
 	      system($cmd);
 		}	
 		    
@@ -441,7 +441,7 @@ my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; 
  
 # bring the log file
 my $qsubfilepath="$remote_sep_Dir/qsub.info";
-my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/.info";
+my $cmd = "rsync -avz $account:$qsubfilepath  $info_dir";
 &CJ::my_system($cmd,$verbose) unless ($runflag eq "deploy");
 
     
@@ -452,9 +452,9 @@ my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/.info";
 my $job_id="";
 if($runflag eq "run"){
 # read run info
-my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
+my $local_qsub_info_file = "$info_dir/"."qsub.info";
     
-    my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
+    my $local_qsub_info_file = "$info_dir/"."qsub.info";
     my $job_ids = &CJ::read_qsub($local_qsub_info_file);
     $job_id = $job_ids->[0]; # there is only one in this case
     my $numJobs = $#{$job_ids}+1;
@@ -852,7 +852,7 @@ my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzf ${tarfile} ; c
     
 # bring the log file
 my $qsubfilepath="$remote_sep_Dir/qsub.info";
-my $cmd = "rsync -avz $account:$qsubfilepath  $install_dir/.info/";
+my $cmd = "rsync -avz $account:$qsubfilepath  $info_dir/";
 &CJ::my_system($cmd,$verbose) unless ($runflag eq "pardeploy");
     
 
@@ -861,7 +861,7 @@ my $job_ids;
 my $job_id;
 if($runflag eq "parrun"){
     # read run info
-    my $local_qsub_info_file = "$install_dir/.info/"."qsub.info";
+    my $local_qsub_info_file = "$info_dir/"."qsub.info";
     $job_ids = &CJ::read_qsub($local_qsub_info_file);
     $job_id = join(',', @{$job_ids});
     my $numJobs = $#{$job_ids}+1;
