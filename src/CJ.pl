@@ -84,10 +84,9 @@ $log_tag           = "all";
 $log_script        = undef;
 
 
-
 my $spec = <<'EOSPEC';
       prompt 	    opens CJ prompt command [undocumented]
-                     {defer{cj_prompt()}}
+                     {defer{cj_prompt}}
      -help 	  Show usage information [undocumented]
                     {defer{&CJ::add_cmd($cmdline);$self->usage(0);}}
      help  	 	  [ditto]  [undocumented]
@@ -138,9 +137,9 @@ my $spec = <<'EOSPEC';
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show_info($pid); }}
      show         [<pid> [/] [<counter>] [/] <file> ]	  show program/error of certain package [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,$show_tag) }}
-     ls           [<pid> [/] [<counter>] ]	  	  shortcut for '--ls show' [nocase]
+     -ls          [<pid> [/] [<counter>] ]	  	  shortcut for '--ls show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","ls") }}
-     less         [<pid> [/] [<counter>] [/] <file> ]	  shortcut for '--less show' [nocase]
+     -less        [<pid> [/] [<counter>] [/] <file> ]	  shortcut for '--less show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,"less") }}
      rerun        [<pid> [/] [<counter>...]]	          rerun certain (failed) job [nocase]
                                                                  {defer{&CJ::add_cmd($cmdline);&CJ::rerun($pid,\@counter,$mem,$runtime,$qsub_extra,$verbose) }}
@@ -193,8 +192,8 @@ my $opts = Getopt::Declare->new($spec);
 #   prompt
 #==========================
 sub cj_prompt{
-    
-
+	
+	local $CWD ;     # This is local to prompt. When prompt is quit, we are back to where we were. 
     my $COLOR = "\033[47;30m";
     my $RESET = "\033[0m";
     
@@ -221,22 +220,21 @@ sub cj_prompt{
     while (!exists $exithash{my $input = $term->readline($prompt)}) {
         #print WHITE, ON_BLACK $prompt, RESET . " ";
         
-        local $CWD;
-        if ($input =~ m/\bcd\b/){
-            $input =~ s/cd//g;  # later on break at cd, there might be multiple cd's
-            $input =~ s/^\s|\s$//g;
-            $CWD = $input or die "Can't chdir to $input $!";
-        }else{
+		if($input =~ m/\bprompt\b/){
+			next;
+		}elsif($input =~ m/\bcd\b/){
+			$input =~ s/cd//g;
+		    $input =~ s/^\s|\s$//g;
+			$CWD = $input or die "Can't chdir to $input $!";
+		}else{
+	      my $perl = `which perl`; chomp($perl);
+	      my $cmd = "$perl $install_dir/CJ.pl" . " $input";
+	      system($cmd);
+		}	
+		    
+      
+	}
         
-          my $perl = `which perl`; chomp($perl);
-          my $cmd = "$perl $install_dir/CJ.pl" . " $input";
-          system($cmd);
-        }
-            
-        $term->addhistory($input) if /\S/;
-        
-        
-    }
 }
 
 
