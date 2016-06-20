@@ -131,17 +131,17 @@ my $spec = <<'EOSPEC';
                                                                 {defer{ &CJ::show_cmd_history($argin) }}
      clean        [<pid>]		                  clean certain package [nocase]
                                                                 {defer{ &CJ::add_cmd($cmdline); &CJ::clean($pid,$verbose); }}
-     state        [<pid> [/] [<counter>]]	          state of package [nocase]
+     state        [<pid> [[/] [<counter>]]]	          state of package [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::get_state($pid,$counter) }}
      info         [<pid>]	                          info of certain package [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show_info($pid); }}
-     show         [<pid> [/] [<counter>] [/] <file> ]	  show program/error of certain package [nocase]
+     show         [<pid> [[/] [<counter>] [[/] <file>]] ]	  show program/error of certain package [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,$show_tag) }}
-     -ls          [<pid> [/] [<counter>] ]	  	  shortcut for '--ls show' [nocase]
+     -ls          [<pid> [[/] [<counter>]] ]	  	  shortcut for '--ls show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","ls") }}
-     -less        [<pid> [/] [<counter>] [/] <file> ]	  shortcut for '--less show' [nocase]
+     -less        [<pid> [[/] [<counter>] [[/] <file>]] ]	  shortcut for '--less show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,"less") }}
-     rerun        [<pid> [/] [<counter>...]]	          rerun certain (failed) job [nocase]
+     rerun        [<pid> [[/] [<counter>...]]]	          rerun certain (failed) job [nocase]
                                                                  {defer{&CJ::add_cmd($cmdline);&CJ::rerun($pid,\@counter,$mem,$runtime,$qsub_extra,$verbose) }}
      run          <code> <cluster>	                  run code on the cluster [nocase] [requires: -m]
                                                                  {my $runflag = "run";
