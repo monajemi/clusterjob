@@ -28,7 +28,7 @@ sub check_initialization{
     foreach my $line (@BOT_lines) {
     
         if($line =~ /(.*)(${pattern})\s*\={1}/){
-            my @tmp = split "\\(|\\{", $line;
+            my @tmp  = split "\\(|\\{", $line;
             my $var  = $tmp[0];
             #print "$line\n${pattern}:  $var\n";
             $var =~ s/^\s+|\s+$//g;
@@ -96,7 +96,7 @@ sub read_matlab_index_set
     my $idx_tag = $tag[-1];
     
     
-    
+  
     
     my $range = undef;
     # The right of equal sign
@@ -112,14 +112,16 @@ sub read_matlab_index_set
             &CJ::err("The lower limit of for MUST be numeric for this version of clusterjob\n");
         }
         
-        
+		# remove white space
+        $rightarray[1]=~ s/^\s+|\s+$//g;
+		
+		
         if($rightarray[1] =~ /\s*length\(\s*(.+?)\s*\)/){
             
             #CASE i = 1:length(var);
             # find the variable;
             my ($var) = $rightarray[1] =~ /\s*length\(\s*(.+?)\s*\)/;
             my $this_line = &CJ::grep_var_line($var,$TOP);
-            
             
             #extract the range
             my @this_array    = split(/\s*=\s*/,$this_line);
@@ -140,11 +142,14 @@ sub read_matlab_index_set
             
            
             
-        }elsif($rightarray[1] =~ /\s*(\D+).*/) {
+        }elsif($rightarray[1] =~ /\s*(\D+)\s*/) {
             #print "$rightarray[1]"."\n";
             # CASE i = 1:L
             # find the variable;
-            my($var) = $rightarray[1] =~ /\s*(\D+).*/;
+            
+			
+            my ($var) = $rightarray[1] =~ /\s*(\w+)\s*/;
+			
             my $this_line = &CJ::grep_var_line($var,$TOP);
             
             #extract the range
