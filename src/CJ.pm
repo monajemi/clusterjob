@@ -710,6 +710,8 @@ sub show
 {
     my ($pid, $num, $file, $show_tag) = @_;
     
+	
+	
     my $info;
     if( (!defined $pid) || ($pid eq "") ){
         #read last_instance.info;
@@ -739,6 +741,9 @@ sub show
         CJ::message("Nothing to show. Package $short_pid has been cleaned on $info->{'clean'}->{'date'} at $info->{'clean'}->{'time'}.");
         exit 0;
     }
+
+	
+
    
     my $account     = $info->{'account'};
     my $remote_path = $info->{'remote_path'};
@@ -767,9 +772,17 @@ sub show
             $script = (`ssh ${account} 'ls -C1 $remote_path/'`) ;chomp($script);
         }
     }elsif($show_tag eq "less" ){
+		
+	
+		if(!defined($file)){
+			$file=$num;
+			$num = "";
+		}
+		
         if($num){
             $script = (`ssh ${account} 'less -C1 $remote_path/$num/$file'`) ;chomp($script);
         }else{
+			
             $script = (`ssh ${account} 'less -C1 $remote_path/$file'`) ;chomp($script);
         }
     }
