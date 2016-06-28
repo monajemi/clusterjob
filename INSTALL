@@ -2,17 +2,17 @@
 #Copyright 2015 Hatef Monajemi (monajemi@stanford.edu)
 #
 
-(-) Clone clusterjob to a directory where you would like to install CJ
-	git clone git@github.com:monajemi/clusterjob.git ~/CJ_install 
+(-) Clone clusterjob to a directory where you would like to install CJ (Dropbox folder recommended)
+	git clone git@github.com:monajemi/clusterjob.git ~/Dropbox/CJ_install 
 	
 (-) Set path variables:
 
 To add the path of install directory to @INC, 
 add one of the followings to your ~/.bashrc pr ~./profile
 	
-	export PERL5LIB=~/CJ_install/src
+	export PERL5LIB=~/Dropbox/CJ_install/src
 or
-	export PERLLIB=~/CJ_install/src
+	export PERLLIB=~/Dropbox/CJ_install/src
 
 To read more about setting path variable in perl, please 
 visit: 
@@ -23,7 +23,7 @@ http://perlmaven.com/how-to-change-inc-to-find-perl-modules-in-non-standard-loca
 You will need to update the following file to reflect your own
 server setup.
 
-    /CJ_install/ssh_config
+    ~/Dropbox/CJ_install/ssh_config
 
 The convention is
 [MACHINE_ALIAS]
@@ -36,7 +36,7 @@ Matlib [INSERT_TAB] matlab/cvx:matlab/asp
 
 (-) For easy use, add an alias for calling CJ.pl to your ~/.profile or ~/.bashrc:
 
-	alias cj='perl ~/CJ_install/src/CJ.pl';
+	alias cj='perl /Dropbox/CJ_install/src/CJ.pl';
 
 
 
