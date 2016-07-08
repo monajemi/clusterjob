@@ -166,7 +166,7 @@ my $spec = <<'EOSPEC';
      get          [<pid> [/] [<subfolder>]]	          bring results (fully/partially) back to local machine [nocase]
                                                              {defer{&CJ::add_cmd($cmdline);&CJ::Get::get_results($pid,$subfolder,$verbose)}}
      summary      <cluster>	                          gives a summary of the number of jobs on particlur cluster with their states [nocase]
-                                                              {defer{&cj::add_cmd($cmdline); &cj::get_summary($cluster)}}
+                                                              {defer{&CJ::add_cmd($cmdline); &CJ::get_summary($cluster)}}
      save         <pid> [<path>]	                  save a package in path [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
      @<cmd_num:+i>	                                  re-executes a previous command avaiable in command history [nocase]

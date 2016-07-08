@@ -867,7 +867,56 @@ sub show_info
 
 
 
+sub get_summary
+{
+	my ($machine) = @_;
+	
+	my $ssh      = &CJ::host($machine);
+	my $account  = $ssh->{'account'};
+	my $bqs  = $ssh->{'bqs'};
+	
+	my $user 	 = $ssh->{'user'};
+	
 
+	my 	 $REC_STATES = "";
+    if($bqs eq "SGE"){
+        $REC_STATES = (`ssh ${account} 'qstat -u \\${user}' | awk \'{print \$5}\'`) ;chomp($REC_STATES);
+		
+    }elsif($bqs eq "SLURM"){
+        $REC_STATES = (`ssh ${account} 'sacct -u \\${user}  | grep -v "^[0-9]*\\."' | awk \'{print \$6}\'`) ;chomp($REC_STATES);
+    }else{
+        &CJ::err("Unknown batch queueing system");
+    } 
+	 
+    my @rec_states = "";
+	@rec_states = split('\n',$REC_STATES);
+	my $header1 = shift @rec_states; 
+	my $header2 = shift @rec_states; 
+	 
+	 
+	# Unique States  
+    my @unique_states = "";
+	@unique_states = do { my %seen; grep { !$seen{$_}++ } @rec_states};
+	
+	
+	
+    #print '-' x 35;print "\n";
+    print "\n";
+    print "\033[32m$user\@$machine \033[0m\n";
+    print ' ' x 5; print "Total Jobs:", 1+$#rec_states . "\n";
+    print ' ' x 5;print '-' x 15;print "\n";
+	
+	foreach my $i (0..$#unique_states){
+			my @this_matches = grep { /$unique_states[$i]/ } @rec_states;
+			my $num_this_state = 1+$#this_matches;
+		 	print ' ' x 5; print "$unique_states[$i] : $num_this_state\n";
+	}
+    print "\n";
+    
+    #print '-' x 35;print "\n";
+	
+	
+}
 
 
 
@@ -1084,6 +1133,7 @@ sub host{
     $ssh_config->{'bqs'}             = $bqs;
     $ssh_config->{'remote_repo'}     = $remote_repo;
     $ssh_config->{'matlib'}          = $remote_matlabpath;
+    $ssh_config->{'user'}            = $user;
     
     return $ssh_config;
 }
