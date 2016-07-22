@@ -878,43 +878,88 @@ sub get_summary
 	my $user 	 = $ssh->{'user'};
 	
 
-	my 	 $REC_STATES = "";
+	#my 	 $REC_STATES = "";
+	my 	 $REC_PIDS_STATES = "";
+	
     if($bqs eq "SGE"){
-        $REC_STATES = (`ssh ${account} 'qstat -u \\${user}' | awk \'{print \$5}\'`) ;chomp($REC_STATES);
-		
+       # $REC_STATES = (`ssh ${account} 'qstat -u \\${user}' | awk \'{print \$5}\'`) ;chomp($REC_STATES);
+       # $REC_PIDS_STATES = (`ssh ${account} 'qstat | grep \\${user}' | awk \'{print \$2}\'`) ;chomp($REC_PIDS);
+	  my $expr = "qstat -xml | tr \'\\n\' \' \' | sed \'s#<job_list[^>]*>#\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t";
+      $REC_PIDS_STATES = (`ssh ${account} '$expr' | awk \'{print \$3,\$5}\'`) ;chomp($REC_PIDS_STATES);
+  	
     }elsif($bqs eq "SLURM"){
-        $REC_STATES = (`ssh ${account} 'sacct -u \\${user}  | grep -v "^[0-9]*\\."' | awk \'{print \$6}\'`) ;chomp($REC_STATES);
+       # $REC_STATES = (`ssh ${account} 'sacct --format=state | grep -v "^[0-9]*\\."'`) ;chomp($REC_STATES);
+        $REC_PIDS_STATES = (`ssh ${account} 'sacct --format=jobname%15,state | grep "^CJ.*" | grep -v "^[0-9]*\\."'`);chomp($REC_PIDS_STATES);
+		
     }else{
         &CJ::err("Unknown batch queueing system");
     } 
 	 
-    my @rec_states = "";
-	@rec_states = split('\n',$REC_STATES);
-	my $header1 = shift @rec_states; 
-	my $header2 = shift @rec_states; 
 	 
-	 
-	# Unique States  
-    my @unique_states = "";
+    my @rec_pids_states="";
+	@rec_pids_states = split('\n',$REC_PIDS_STATES);
+	my $header1 = shift @rec_pids_states ;
+	my $header2 = shift @rec_pids_states ;
+	
+    my @rec_pids   = "";
+	my @rec_states = "";
+	foreach my $i (0..$#rec_pids_states){
+		my ($longpid,$state) = split(' ',$rec_pids_states[$i]);
+		$rec_pids[$i] = substr($longpid,3,8); # remove the first 3 (CJ_), and read the firt 8 from the rest
+		$rec_states[$i] = $state ;
+		#print "$rec_pids[$i], $rec_states[$i]" . "\n"; 
+	}
+ 	
+	# Unique PIDS
+    my @unique_pids = "";
+ 	@unique_pids = do { my %seen; grep { !$seen{$_}++ } @rec_pids };
+	
+	# Unique States
+	my @unique_states = "";
 	@unique_states = do { my %seen; grep { !$seen{$_}++ } @rec_states};
 	
+
+	my $print_states = {};
 	
-	
+	foreach my $i (0..$#unique_pids){
+		my $this_pid = $unique_pids[$i];
+		my @matches = grep { /$this_pid/ } @rec_pids_states;
+		
+		
+		my @this_unique_states;
+		foreach my $i (0..$#matches){
+			my ($longpid,$state) = split(' ',$matches[$i]);
+			#$state =~ s/^\s+|\s+$//g ;
+			#print $state ;
+			if( ! grep( /^$state$/, @this_unique_states) ){
+				push @this_unique_states, $state;	
+			}
+			
+		}
+		
+		$print_states->{$this_pid} = join(",",@this_unique_states);
+ 	}
+
+
     #print '-' x 35;print "\n";
     print "\n";
-    print "\033[32m$user\@$machine \033[0m\n";
-    print ' ' x 5; print "Total Jobs:", 1+$#rec_states . "\n";
-    print ' ' x 5;print '-' x 15;print "\n";
-	
+    print "\033[32m$user\@$machine \033[0m\n\n";
+    print ' ' x 5; print "Total Jobs : ", 1+$#rec_states . "\n";
+    print ' ' x 5;print '-' x 17;print "\n";
+
 	foreach my $i (0..$#unique_states){
 			my @this_matches = grep { /$unique_states[$i]/ } @rec_states;
 			my $num_this_state = 1+$#this_matches;
-		 	print ' ' x 5; print "$unique_states[$i] : $num_this_state\n";
+		 	print ' ' x 5; printf "%-10s : %-8i\n", $unique_states[$i],$num_this_state;
 	}
-    print "\n";
-    
-    #print '-' x 35;print "\n";
-	
+
+	 print "\n";
+     print ' ' x 5; print "PIDS:\n";
+    print ' ' x 5; print '-' x 5;print "\n";
+ 	while ( my ($key, $value) = each(%$print_states) ) {
+ 	 	print ' ' x 5; printf "%-10s : (%-s)\n", $key,$value;
+ 	 }
+    print "\n\n";
 	
 }
 
@@ -964,114 +1009,177 @@ sub get_state
     my $bqs     = $info->{'bqs'};
     my $runflag = $info->{'runflag'};
     
+    my $states={};
+if ( $runflag =~ m/^par*/ ){
+    # par case
+    my @job_ids = split(',',$job_id);
+    my $jobs = join('|', @job_ids);
+  
     
-    
-    
-    if($runflag =~ m/^par*/){
+    my $REC_STATES;
+    my $REC_IDS;
+    if($bqs eq "SGE"){
+        $REC_STATES = (`ssh ${account} 'qstat -u \\* | grep -E "$jobs" ' | awk \'{print \$5}\'`) ;chomp($REC_STATES);
+        $REC_IDS = (`ssh ${account} 'qstat -u \\* | grep -E "$jobs" ' | awk \'{print \$1}\'`) ;chomp($REC_IDS);
         
-        # par case
-        my @job_ids = split(',',$job_id);
-        my $jobs = join('|', @job_ids);
-      
+    }elsif($bqs eq "SLURM"){
+        $REC_STATES = (`ssh ${account} 'sacct -n --jobs=$job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$6}\'`) ;chomp($REC_STATES);
+        $REC_IDS =  (`ssh ${account} 'sacct -n --jobs=$job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$1}\'`) ;chomp($REC_IDS);
         
-        my $REC_STATES;
-        my $REC_IDS;
-        if($bqs eq "SGE"){
-            $REC_STATES = (`ssh ${account} 'qstat -u \\* | grep -E "$jobs" ' | awk \'{print \$5}\'`) ;chomp($REC_STATES);
-            $REC_IDS = (`ssh ${account} 'qstat -u \\* | grep -E "$jobs" ' | awk \'{print \$1}\'`) ;chomp($REC_IDS);
-            
-        }elsif($bqs eq "SLURM"){
-            $REC_STATES = (`ssh ${account} 'sacct -n --jobs=$job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$6}\'`) ;chomp($REC_STATES);
-            $REC_IDS =  (`ssh ${account} 'sacct -n --jobs=$job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$1}\'`) ;chomp($REC_IDS);
-            
-            #$states = (`ssh ${account} 'sacct -n --format=state --jobs=$job_id'`) ;chomp($state);
-            
-        }else{
-            &CJ::err("Unknown batch queueing system");
-        }
-        
-        my @rec_states = split('\n',$REC_STATES);
-        my @rec_ids = split('\n',$REC_IDS);
-
-        
-        my $states={};
-        foreach my $i (0..$#rec_ids){
-            my $key = $rec_ids[$i];
-            my $val = $rec_states[$i];
-            $states->{$key} = $val;
-        }
-            
-
-        if((!defined $num) || ($num eq "")){
-            print "\033[32mpid $info->{'pid'}\033[0m\n";
-            print "remote_account: $account\n";
-            foreach my $i (0..$#job_ids)
-            {
-                my $counter = $i+1;
-                my $state;
-                if($states->{$job_ids[$i]}){
-                $state= $states->{$job_ids[$i]}; chomp($state);
-                }else{
-                $state = "Unknown";
-                }
-                #$state = s/^\s+|\s+$/;
-                $state =~ s/[^A-Za-z]//g;
-                print "$counter     " . "$job_ids[$i]      "  . "$state" . "\n";
-            }
-        }elsif(&CJ::isnumeric($num) && $num <= $#job_ids+1){
-            print '-' x 50;print "\n";
-            print "\033[32mpid $info->{'pid'}\033[0m\n";
-            print "remote_account: $account\n";
-            my $tmp = $num -1;
-            my $val = $states->{$job_ids[$tmp]};
-            if (! $val){
-            $val = "unknwon";
-            }
-            print "$num     " . "$job_ids[$tmp]      "  . "$val" . "\n";
-            
-            
-        }else{
-            my $lim =1+$#job_ids;
-            &CJ::err("incorrect entry. Input $num >= $lim.")
-        }
-        
-        print '-' x 35;print "\n";
+        #$states = (`ssh ${account} 'sacct -n --format=state --jobs=$job_id'`) ;chomp($state);
         
     }else{
-        my $state;
-        if($bqs eq "SGE"){
-            $state = (`ssh ${account} 'qstat | grep $job_id' | awk \'{print \$5}\'`) ;chomp($state);
-        }elsif($bqs eq "SLURM"){
-            $state = (`ssh ${account} 'sacct | grep $job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$6}\'`) ;chomp($state);
-        }else{
-            &CJ::err("Unknown batch queueing system");
-        }
-        
-        if(!$state){
-        $state = "Unknown";
-        }
-        
-        print "\n";
-        print "\033[32mpid $info->{'pid'}\033[0m\n";
-        print "remote_account: $account\n";
-        print "job_id: $job_id\n";
-        print "state: $state\n";
-        
-    
+        &CJ::err("Unknown batch queueing system");
     }
     
+    my @rec_states = split('\n',$REC_STATES);
+    my @rec_ids = split('\n',$REC_IDS);
+
+    foreach my $i (0..$#rec_ids){
+        my $key = $rec_ids[$i];
+        my $val = $rec_states[$i];
+        $states->{$key} = $val;
+    }
+	
+}else{
+	    my $state;
+	    if($bqs eq "SGE"){
+	        $state = (`ssh ${account} 'qstat | grep $job_id' | awk \'{print \$5}\'`) ;chomp($state);
+	    }elsif($bqs eq "SLURM"){
+	        $state = (`ssh ${account} 'sacct | grep $job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$6}\'`) ;chomp($state);
+	    }else{
+	        &CJ::err("Unknown batch queueing system");
+	    }
     
+	    if(!$state){
+	    $state = "Unknown";
+	    }
     
-    exit 0;
+        my $key = $job_id;
+        my $val = $state;
+        $states->{$key} = $val;	
+}
+
+    return $states;
+    #exit 0;
+}
+		
+ 
+	
+	
+            
+   
+
+
+
+
+
+sub get_print_state
+{
+	
+    my ($pid,$num) = @_;
+    
+	
+    my $info;
+    if( (!defined $pid) || ($pid eq "") ){
+        #read last_instance.info;
+        $info = &CJ::retrieve_package_info();
+        $pid = $info->{'pid'};
+        
+    }else{
+        if( &CJ::is_valid_pid($pid) ){
+            # read info from $run_history_file
+            $info = &CJ::retrieve_package_info($pid);
+            
+            if (!defined($info)){
+                CJ::err("No such job found in the database");
+            }
+            
+        }else{
+            &CJ::err("incorrect usage: nothing to show");
+        }
+        
+        
+        
+    }
+    
+    my $short_pid = substr($info->{pid},0,8);
+    if($info->{'clean'}){
+        CJ::message("Nothing to show. Package $short_pid has been cleaned on $info->{'clean'}->{'date'}->{datestr}.");
+        exit 0;
+    }
 
     
     
     
+    my $account = $info->{'account'};
+    my $job_id  = $info->{'job_id'};
+    my $bqs     = $info->{'bqs'};
+    my $runflag = $info->{'runflag'};
+	
+	
+	
+	
+	
+	
+	my $states = &CJ::get_state($pid,$num);
+	my $size = scalar keys %$states;
+ 
+if($size eq 1){
+
+	my $job_id = keys %$states; 
+	my $state  = 
+    print "\n";
+    print "\033[32mpid $info->{'pid'}\033[0m\n";
+    print "remote_account: $account\n";
+    print "job_id: $job_id \n";
+    print "state: $state\n";
+
+	
+}else{
+    my @job_ids = split(',',$job_id);
+	
+	
+    if((!defined $num) || ($num eq "")){
+        print "\033[32mpid $info->{'pid'}\033[0m\n";
+        print "remote_account: $account\n";
+        foreach my $i (0..$#job_ids)
+        {
+            my $counter = $i+1;
+            my $state;
+            if($states->{$job_ids[$i]}){
+            $state= $states->{$job_ids[$i]}; chomp($state);
+            }else{
+            $state = "Unknown";
+            }
+            #$state = s/^\s+|\s+$/;
+            $state =~ s/[^A-Za-z]//g;
+            print "$counter     " . "$job_ids[$i]      "  . "$state" . "\n";
+        }
+    }elsif(&CJ::isnumeric($num) && $num <= $#job_ids+1){
+        print '-' x 50;print "\n";
+        print "\033[32mpid $info->{'pid'}\033[0m\n";
+        print "remote_account: $account\n";
+        my $tmp = $num -1;
+        my $val = $states->{$job_ids[$tmp]};
+        if (! $val){
+        $val = "unknwon";
+        }
+        print "$num     " . "$job_ids[$tmp]      "  . "$val" . "\n";
+        
+        
+    }else{
+        my $lim =1+$#job_ids;
+        &CJ::err("incorrect entry. Input $num >= $lim.")
+    }
+    
+    print '-' x 35;print "\n";
+    
+}	
     
 
 }
-
-
+	
 
 
 
