@@ -887,6 +887,9 @@ sub get_summary
 	  my $expr = "qstat -xml | tr \'\\n\' \' \' | sed \'s#<job_list[^>]*>#\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t";
       $REC_PIDS_STATES = (`ssh ${account} '$expr' | awk \'{print \$3,\$5}\'`) ;chomp($REC_PIDS_STATES);
   	
+	  ######### THIS IS NOT TESTED FOR SGE;
+	
+	
     }elsif($bqs eq "SLURM"){
        # $REC_STATES = (`ssh ${account} 'sacct --format=state | grep -v "^[0-9]*\\."'`) ;chomp($REC_STATES);
         $REC_PIDS_STATES = (`ssh ${account} 'sacct --format=jobname%15,state | grep "^CJ.*" | grep -v "^[0-9]*\\."'`);chomp($REC_PIDS_STATES);
