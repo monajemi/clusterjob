@@ -892,7 +892,7 @@ sub get_summary
 	
     }elsif($bqs eq "SLURM"){
        # $REC_STATES = (`ssh ${account} 'sacct --format=state | grep -v "^[0-9]*\\."'`) ;chomp($REC_STATES);
-        $REC_PIDS_STATES = (`ssh ${account} 'sacct -n --format=jobname%15,state | grep "^CJ.*" | grep -v "^[0-9]*\\."'`);chomp($REC_PIDS_STATES);
+        $REC_PIDS_STATES = (`ssh ${account} 'sacct -n --format=jobname%15,state | grep -v "^[0-9]*\\."'`);chomp($REC_PIDS_STATES);
 		
     }else{
         &CJ::err("Unknown batch queueing system");
@@ -901,41 +901,53 @@ sub get_summary
 	 
     my @rec_pids_states="";
 	@rec_pids_states = split('\n',$REC_PIDS_STATES);
-	my @rec_pids   = "";
-	my @rec_states = "";
+	
+    my @rec_pids;
+	my @rec_states;
 	foreach my $i (0..$#rec_pids_states){
 		my ($longpid,$state) = split(' ',$rec_pids_states[$i]);
-		$rec_pids[$i] = substr($longpid,3,8); # remove the first 3 (CJ_), and read the firt 8 from the rest
-		$rec_states[$i] = $state ;
-		#print "$rec_pids[$i], $rec_states[$i]" . "\n"; 
+		#print $longpid . "\n";
+		if ( $longpid =~ m/^CJ\_.*/){
+		push @rec_pids, substr($longpid,3,8); # remove the first 3 (CJ_), and read the firt 8 from the rest
+		push @rec_states, $state;
+	}
 	}
  	
 	# Unique PIDS
     my @unique_pids = "";
  	@unique_pids = do { my %seen; grep { !$seen{$_}++ } @rec_pids };
 	
+	
+	
 	# Unique States
+    #print Dumper(@rec_states);	
+	
 	my @unique_states = "";
 	@unique_states = do { my %seen; grep { !$seen{$_}++ } @rec_states};
-	
 
 	my $print_states = {};
 	
 	foreach my $i (0..$#unique_pids){
 		my $this_pid = $unique_pids[$i];
-		my @matches = grep { /$this_pid/ } @rec_pids_states;
+		#my @matches = grep { /$this_pid/ } @rec_pids_states;
+		
+		my $this_states = &CJ::get_state($this_pid);
+		my @this_states = values  %$this_states;
+		my @this_unique_states = do { my %seen; grep { !$seen{$_}++ } @this_states};
 		
 		
-		my @this_unique_states;
-		foreach my $i (0..$#matches){
-			my ($longpid,$state) = split(' ',$matches[$i]);
-			#$state =~ s/^\s+|\s+$//g ;
-			#print $state ;
-			if( ! grep( /^$state$/, @this_unique_states) ){
-				push @this_unique_states, $state;	
-			}
-			
-		}
+		
+		#print $this_unique_states[0] . "\n"; 
+		#my @this_unique_states;
+		# foreach my $i (0..$#matches){
+# 			my ($longpid,$state) = split(' ',$matches[$i]);
+# 			#$state =~ s/^\s+|\s+$//g ;
+# 			#print $state ;
+# 			if( ! grep( /^$state$/, @this_unique_states) ){
+# 				push @this_unique_states, $state;
+# 			}
+#
+# 		}
 		
 		$print_states->{$this_pid} = join(",",@this_unique_states);
  	}
@@ -955,8 +967,8 @@ sub get_summary
 
 	 print "\n";
      print ' ' x 5; print "PIDS:\n";
-    print ' ' x 5; print '-' x 5;print "\n";
- 	while ( my ($key, $value) = each(%$print_states) ) {
+     print ' ' x 5; print '-' x 5;print "\n";
+ 	 while ( my ($key, $value) = each(%$print_states) ) {
  	 	print ' ' x 5; printf "%-10s : (%-s)\n", $key,$value;
  	 }
     print "\n\n";
@@ -1038,7 +1050,7 @@ if ( $runflag =~ m/^par*/ ){
     foreach my $i (0..$#rec_ids){
         my $key = $rec_ids[$i];
         my $val = $rec_states[$i];
-        $states->{$key} = $val;
+        $states->{$key} = $val;		
     }
 	
 }else{
