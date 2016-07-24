@@ -892,7 +892,7 @@ sub get_summary
 	
     }elsif($bqs eq "SLURM"){
        # $REC_STATES = (`ssh ${account} 'sacct --format=state | grep -v "^[0-9]*\\."'`) ;chomp($REC_STATES);
-        $REC_PIDS_STATES = (`ssh ${account} 'sacct --format=jobname%15,state | grep "^CJ.*" | grep -v "^[0-9]*\\."'`);chomp($REC_PIDS_STATES);
+        $REC_PIDS_STATES = (`ssh ${account} 'sacct -n --format=jobname%15,state | grep "^CJ.*" | grep -v "^[0-9]*\\."'`);chomp($REC_PIDS_STATES);
 		
     }else{
         &CJ::err("Unknown batch queueing system");
@@ -901,10 +901,7 @@ sub get_summary
 	 
     my @rec_pids_states="";
 	@rec_pids_states = split('\n',$REC_PIDS_STATES);
-	my $header1 = shift @rec_pids_states ;
-	my $header2 = shift @rec_pids_states ;
-	
-    my @rec_pids   = "";
+	my @rec_pids   = "";
 	my @rec_states = "";
 	foreach my $i (0..$#rec_pids_states){
 		my ($longpid,$state) = split(' ',$rec_pids_states[$i]);
