@@ -840,7 +840,7 @@ my $cmd="cd $localDir; tar --exclude '.git' --exclude '*~' --exclude '*.pdf' -cz
 my $cmd = "ssh $account 'echo `$outText` '  ";
 &CJ::my_system($cmd,$verbose);
 
-&CJ::message("Sending package");
+&CJ::message("Sending package \033[32m$short_pid\033[0m");
 # copy tar.gz file to remoteDir
 my $cmd = "rsync -arvz  ${localDir}/${tarfile} ${account}:$remoteDir/";
 &CJ::my_system($cmd,$verbose);
