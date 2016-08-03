@@ -502,11 +502,8 @@ sub show_log{
     
    
     
-        my $pidList=`cat $history_file | awk \'{print \$3}\' `;
-     
-        
-        my @pidList = $pidList =~ m/\b([0-9a-f]{8,40})\b/g;
-        my @unique_pids = do { my %seen; grep { !$seen{$_}++ } @pidList};
+	my @unique_pids = CJ::avail_pids();
+      
         #say Dumper(@unique_pids);
         
         
@@ -922,20 +919,27 @@ sub get_summary
 	# Unique States
     #print Dumper(@rec_states);	
 	
-	my @unique_states = "";
-	@unique_states = do { my %seen; grep { !$seen{$_}++ } @rec_states};
+	my @unique_states;
+	#@unique_states = do { my %seen; grep { !$seen{$_}++ } @rec_states};
 
 	my $print_states = {};
 	
+	my @available_pids = CJ::avail_pids();
+	
 	foreach my $i (0..$#unique_pids){
 		my $this_pid = $unique_pids[$i];
-		#my @matches = grep { /$this_pid/ } @rec_pids_states;
+		#print "$this_pid\n";
+		
+		
+		if( ! grep { /$this_pid/ } @available_pids ){
+			next;
+		}
 		
 		my $this_states = &CJ::get_state($this_pid);
 		my @this_states = values  %$this_states;
 		my @this_unique_states = do { my %seen; grep { !$seen{$_}++ } @this_states};
 		
-		
+		push @unique_states, @this_unique_states;
 		
 		#print $this_unique_states[0] . "\n"; 
 		#my @this_unique_states;
@@ -948,10 +952,14 @@ sub get_summary
 # 			}
 #
 # 		}
-		
+
+
 		$print_states->{$this_pid} = join(",",@this_unique_states);
  	}
 
+
+	@unique_states = do { my %seen; grep { !$seen{$_}++ } @unique_states};
+	
 
     #print '-' x 35;print "\n";
     print "\n";
@@ -984,6 +992,8 @@ sub get_state
 {
     my ($pid,$num) = @_;
     
+	#print "$pid\n";
+	
     my $info;
     if( (!defined $pid) || ($pid eq "") ){
         #read last_instance.info;
@@ -1266,6 +1276,7 @@ sub retrieve_package_info{
     
     my ($pid) = @_;
     
+	
     if(!$pid){
         $pid    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($pid);
     }
@@ -1273,9 +1284,12 @@ sub retrieve_package_info{
     
     my $this_record       = read_record($pid);
     
+	
+	#print "OK:$pid\n";
+	#print "$this_record\n"; 
+	
     my $info = undef;
     if(defined($this_record)){
-        
         $info = decode_json $this_record;
     }
 
@@ -1600,6 +1614,13 @@ sub get_cmd{
 }
 
 
+
+sub avail_pids{
+    my $pidList=`cat $history_file | awk \'{print \$3}\' `;
+    my @pidList = $pidList =~ m/\b([0-9a-f]{8,40})\b/g;
+    my @unique_pids = do { my %seen; grep { !$seen{$_}++ } @pidList};
+	return @unique_pids;
+}
 sub add_cmd{
     my ($cmdline) = @_;
     
