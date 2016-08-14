@@ -1,0 +1,49 @@
+Revision history for Perl module Ouch 
+
+0.0409 2015-01-27
+ - Added support for Travis. Thanks to Zshawn Syed.
+
+0.0408 2013-09-24
+ - Reformatted the Changes file according to the spec in CPAN::Changes::Spec. Thanks to sergeyromanov who is working on a quest to improve CPAN: http://questhub.io/realm/perl/quest/51f0337718ba7d3959000086
+
+0.0407 2013-09-23
+ - Catch subclasses of Ouch as well Thanks to Graham Knop.
+
+0.0406 2013-09-13
+ - Ouch doesn't need 5.12 afterall. Just needed to include the correct prereqs for the pragmas. Thanks to MidLifeXis and Ether.
+
+0.0405 2013-08-19
+ - worr submitted a patch fixing some a POD error
+
+0.0404 2013-08-19
+ - Made Ouch explicitly require Perl 5.12 due to use of "use overload" and "use parent".
+
+0.0403 2013-07-11
+ - Fixed documentation misspellings. @richdouglasevans
+
+0.0402 2013-06-18
+ - Fixed missing documentation for "barf".
+ - Depricated :traditional in favor of Try::Tiny.
+ - Documented rethrowing Ouches. 
+ - Added more docs for the :trytiny aliases
+
+0.0401 2011-04-30
+ - beppu pointed out there was no $VERSION. Told Dist::Zilla to add that.
+
+0.0400 2011-04-30
+ - Merged barf() from William Orr.
+ - Added an export called ":trytiny" which exports throw(), caught(), and caught_all().
+
+0.0300 2011-04-14
+ - Added hug() as a catch all.
+
+ By popular demand: http://blogs.perl.org/users/jt_smith/2011/04/ouch---exceptions-that-dont-hurt.html#comments
+ - Codes can now be strings.
+ - Added an export called 'traditional' which gives you more traditional names like try(), catch(), throw(), and catch_all().
+
+0.0200 2011-04-14
+ - Added 'bleep'.
+
+0.0100 2011-04-13
+ - Initial public release.
+

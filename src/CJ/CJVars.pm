@@ -24,10 +24,10 @@ our $localUserName = `id -un`;chomp($localUserName);  # Later on add the CJusern
 our $localHostName = `uname -n`;chomp($localHostName);
 
 
-my  $CJ_dir = File::Basename::dirname(File::Spec->rel2abs(__FILE__));
-my  @CJ_dir_array = split '/',$CJ_dir;
-my  $lastone = pop @CJ_dir_array;
-our $src_dir  = join '/', @CJ_dir_array;
+my  $CJ_dir			 = File::Basename::dirname(File::Spec->rel2abs(__FILE__));
+my  @CJ_dir_array    = split '/',$CJ_dir;
+my  $lastone 		 = pop @CJ_dir_array;
+our $src_dir  		 = join '/', @CJ_dir_array;
 
 
 my  $second2last  = pop @CJ_dir_array;

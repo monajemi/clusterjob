@@ -5,6 +5,7 @@ Bqs	SLURM
 Repo	/scratch/users/monajemi/CJRepo_Remote
 MATlib	~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 [sherlock]
+
 [solomon]
 Host	solomon.stanford.edu
 User	monajemi
@@ -28,7 +29,3 @@ Bqs	none
 Repo	~/CJRepo_local
 MATlib	~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 [myMac]
-
-
-
- 
