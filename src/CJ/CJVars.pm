@@ -47,10 +47,10 @@ our $cmd_history_file   = "$info_dir/cmd_history.info";
 our $run_history_file   = "$info_dir/run_history.info";
 our $save_info_file     = "$info_dir/save.info";
 our $ssh_config_file    = "$install_dir/ssh_config";
-
+our $fb_secret          = "4lp5BkZFh0bEpbpoPQGChJcGCeRfq8gLDxP65E7S";  # Clusterjob Secret on Firebase
 
 # Export global variables
-our @EXPORT = qw($info_dir $src_dir $install_dir $remotePrefix $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $CJlog $localIP $localHostName $localUserName);
+our @EXPORT = qw( $fb_secret $info_dir $src_dir $install_dir $remotePrefix $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $CJlog $localIP $localHostName $localUserName);
 
 
 

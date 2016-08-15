@@ -41,8 +41,15 @@ has agent => (
 
 sub get {
     my ($self, $path, $params) = @_;
-    my $uri = $self->create_uri($path, $params);
-    return $self->process_request( GET $uri );
+    my $uri = $self->create_uri($path);
+	
+	my $req  = $uri->as_string;
+	if(defined($params)){
+		$req .= "\&".$params;
+	}
+	print "$req\n"; 
+	my $request = GET($req);
+	return $self->process_request($request);
 }
 
 sub delete {
@@ -81,10 +88,12 @@ sub post {
 }
 
 sub create_uri {
-    my ($self, $path) = @_;
+    my ($self, $path,$param) = @_;
     my $url = 'https://'.$self->firebase.'.firebaseio.com/'.$path.'.json';
     $url .= '?auth='.$self->authobj->create_token if $self->has_authobj || $self->has_auth;
-    return URI->new($url);
+	my $uri = URI->new($url);
+	 
+    return $uri;
 }
 
 sub process_request {

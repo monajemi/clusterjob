@@ -170,7 +170,14 @@ my $type = "Rerun";
 my $change = {new_job_id => $job_id,
               date       => $date, 
 			  old_job_id => $runinfo};
-&CJ::add_change_to_run_history($pid, $change, $type);
+my $newinfo = &CJ::add_change_to_run_history($pid, $change, $type);
+
+# write runinfo to FB as well
+my $firebase = Firebase->new(firebase => 'clusterjob-78552', auth => {secret=>$fb_secret, data => {uid => ${localUserName}}, admin => \1} );
+
+my $pid_head = substr($info->{'pid'},0,8);  #short_pid
+my $pid_tail = substr($info->{'pid'},8,32);
+my $result   = $firebase->patch("${localUserName}/runinfo/${pid_head}/${pid_tail}", $newinfo);
 
 exit 0;
 }
@@ -689,8 +696,16 @@ sub clean
 #    TIME -> $time
 #TEXT
         my $change={date => $date};
-&CJ::add_change_to_run_history($pid, $change, "clean");
-        
+my $newinfo = &CJ::add_change_to_run_history($pid, $change, "clean");
+
+
+# write runinfo to FB as well
+my $firebase = Firebase->new(firebase => 'clusterjob-78552', auth => {secret=>$fb_secret, data => {uid => ${localUserName}}, admin => \1} );
+
+my $pid_head = substr($info->{'pid'},0,8);  #short_pid
+my $pid_tail = substr($info->{'pid'},8,32);
+my $result   = $firebase->patch("${localUserName}/runinfo/${pid_head}/${pid_tail}", $newinfo);
+	    
 }
     
     exit 0;
@@ -1276,24 +1291,65 @@ sub retrieve_package_info{
     
     my ($pid) = @_;
     
-	
+    # read runinfo from Firebase 
+    my $firebase = Firebase->new(firebase => 'clusterjob-78552', auth => {secret=>$fb_secret, data => {uid => ${localUserName}}, admin => \1} );
+    
     if(!$pid){
-        $pid    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($pid);
+    
+		my $fb_response  = $firebase->get("${localUserName}/last_instance");
+		if(! defined($fb_response) ){
+        	$pid    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($pid);
+		}else{
+			$pid    =  $fb_response->{'pid'};chomp($pid);
+		}
     }
     
-    
-    my $this_record       = read_record($pid);
-    
 	
-	#print "OK:$pid\n";
-	#print "$this_record\n"; 
-	
-    my $info = undef;
-    if(defined($this_record)){
-        $info = decode_json $this_record;
-    }
 
-return $info;
+   #my $results     = $firebase->get("${localUserName}/runinfo", "orderBy=\"\$key\"\&startAt=\"${pid}\"");
+   my $fb_result;
+   my $info;
+   if(length($pid) eq 40){
+   	   my $pid_head = substr($pid,0,8);  #short_pid
+   	   my $pid_tail = substr($pid,8,32);
+       $fb_result = $firebase->get("${localUserName}/runinfo/$pid_head/$pid_tail") ;
+	   $info      = 	$fb_result;   
+	}elsif(is_valid_pid($pid)){
+    	   my $pid_head = substr($pid,0,8);  #short_pid
+	       $fb_result = $firebase->get("${localUserName}/runinfo/$pid_head")  ;
+	   	   if(! keys(%$fb_result) eq 1){
+	    	   &CJ::err('Multiple PIDs detected for $pid_head. Use full PID instead (40 Char)')
+	       }
+			   
+		my ($key) = keys %$fb_result;
+		$info = $fb_result->{$key}	 ;  
+		say Dumper($info); 
+		
+   }else{
+	   CJ::err("No valid pid dectected");
+   }
+   
+   
+  
+   #print "size of hash:  " . keys( %$fb_result ) . ".\n";
+  
+    
+  	#say Dumper($info) . "\n" ; 	
+	
+   if( !defined($info)){
+	   CJ::message("Reading metadata from local files...");
+	   # try local info
+       my $this_record       = read_record($pid);
+   	#print "OK:$pid\n";
+   	#print "$this_record\n"; 
+	
+       my $info = undef;
+       if(defined($this_record)){
+           $info = decode_json $this_record;
+       }	
+   }
+
+   return $info;
 }
 
 
@@ -1534,6 +1590,8 @@ if(lc($type) eq "clean"){
 }
     
     &CJ::update_record($pid,$info);
+	
+	return $info;
 }
 
 

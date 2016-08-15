@@ -3,7 +3,13 @@
 # Copyright (c) 2015 Hatef Monajemi (monajemi@stanford.edu)
 
 use strict;
+
 use lib '/Users/hatef/github_projects/clusterjob/src';  #for testing
+use lib '/Users/hatef/github_projects/clusterjob/src/external/firebase/lib';  
+use lib '/Users/hatef/github_projects/clusterjob/src/external/ouch/lib'; 
+use Firebase; 
+use Ouch;
+
 
 use File::chdir;
 use CJ;          # contains essential functions
@@ -509,14 +515,21 @@ message       => $message,
     
 my $runinfo_json = encode_json $runinfo;
 &CJ::add_to_run_history($runinfo_json);
-
-    
 my $last_instance=$pid;
 #$last_instance.=`cat $BASE/$program`;
 &CJ::writeFile($last_instance_file, $last_instance);
+  
 
-    
-    
+
+# write runinfo to FB as well
+my $firebase = Firebase->new(firebase => 'clusterjob-78552', auth => {secret=>$fb_secret, data => {uid => ${localUserName}}, admin => \1} );
+
+my $result   = $firebase->patch("${localUserName}/last_instance", {"pid" => $pid} );
+
+my $pid_head = substr($pid,0,8);  #short_pid
+my $pid_tail = substr($pid,8,32);
+$result   = $firebase->patch("${localUserName}/runinfo/${pid_head}/${pid_tail}", $runinfo);
+
     
 }elsif($runflag eq "parrun"  || $runflag eq "pardeploy"){
 #==========================================
@@ -919,6 +932,16 @@ my $runinfo_json = encode_json $runinfo;
 my $last_instance=${pid};
 &CJ::writeFile($last_instance_file, $last_instance);
     
+	
+
+
+# write runinfo to FB as well
+my $firebase = Firebase->new(firebase => 'clusterjob-78552', auth => {secret=>$fb_secret, data => {uid => ${localUserName}}, admin => \1} );
+my $result   = $firebase->patch("${localUserName}/last_instance", {"pid" => $pid} );
+
+my $pid_head = substr($pid,0,8);  #short_pid
+my $pid_tail = substr($pid,8,32);
+$result   = $firebase->patch("${localUserName}/runinfo/${pid_head}/${pid_tail}", $runinfo);
 
 }else{
 &CJ::err("Runflag $runflag was not recognized");
