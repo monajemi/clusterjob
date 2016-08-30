@@ -520,15 +520,8 @@ my $last_instance=$pid;
 &CJ::writeFile($last_instance_file, $last_instance);
   
 
-
-# write runinfo to FB as well
-my $firebase = Firebase->new(firebase => 'clusterjob-78552', auth => {secret=>$fb_secret, data => {uid => ${localUserName}}, admin => \1} );
-
-my $result   = $firebase->patch("${localUserName}/last_instance", {"pid" => $pid} );
-
-my $pid_head = substr($pid,0,8);  #short_pid
-my $pid_tail = substr($pid,8,32);
-$result   = $firebase->patch("${localUserName}/runinfo/${pid_head}/${pid_tail}", $runinfo);
+# write runinfo to FireBaee as well
+&CJ::write2firebase($pid,$runinfo);
 
     
 }elsif($runflag eq "parrun"  || $runflag eq "pardeploy"){
@@ -932,16 +925,9 @@ my $runinfo_json = encode_json $runinfo;
 my $last_instance=${pid};
 &CJ::writeFile($last_instance_file, $last_instance);
     
-	
-
 
 # write runinfo to FB as well
-my $firebase = Firebase->new(firebase => 'clusterjob-78552', auth => {secret=>$fb_secret, data => {uid => ${localUserName}}, admin => \1} );
-my $result   = $firebase->patch("${localUserName}/last_instance", {"pid" => $pid} );
-
-my $pid_head = substr($pid,0,8);  #short_pid
-my $pid_tail = substr($pid,8,32);
-$result   = $firebase->patch("${localUserName}/runinfo/${pid_head}/${pid_tail}", $runinfo);
+&CJ::write2firebase($pid,$runinfo);
 
 }else{
 &CJ::err("Runflag $runflag was not recognized");

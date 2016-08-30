@@ -47,7 +47,7 @@ sub get {
 	if(defined($params)){
 		$req .= "\&".$params;
 	}
-	print "$req\n"; 
+	#print "$req\n"; 
 	my $request = GET($req);
 	return $self->process_request($request);
 }

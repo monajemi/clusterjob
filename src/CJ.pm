@@ -23,6 +23,16 @@ $version_script .=  "\n          https://github.com/monajemi/clusterjob";
 
 
 
+sub write2firebase
+{
+	my ($pid, $runinfo) = @_;
+	
+	my $firebase = Firebase->new(firebase => 'clusterjob-78552', auth => {secret=>$fb_secret, data => {uid => ${localUserName}}, admin => \1} );
+	my $result   = $firebase->patch("${localUserName}/last_instance", {"pid" => $pid} );
+	my $pid_head = substr($pid,0,8);  #short_pid
+	my $pid_tail = substr($pid,8,32);
+	$result   = $firebase->patch("${localUserName}/runinfo/${pid_head}/${pid_tail}", $runinfo);	
+}
 
 
 
@@ -173,11 +183,8 @@ my $change = {new_job_id => $job_id,
 my $newinfo = &CJ::add_change_to_run_history($pid, $change, $type);
 
 # write runinfo to FB as well
-my $firebase = Firebase->new(firebase => 'clusterjob-78552', auth => {secret=>$fb_secret, data => {uid => ${localUserName}}, admin => \1} );
+&CJ::write2firebase($info->{'pid'},$newinfo);
 
-my $pid_head = substr($info->{'pid'},0,8);  #short_pid
-my $pid_tail = substr($info->{'pid'},8,32);
-my $result   = $firebase->patch("${localUserName}/runinfo/${pid_head}/${pid_tail}", $newinfo);
 
 exit 0;
 }
@@ -586,8 +593,24 @@ sub show_log{
 sub  print_detailed_log{
     my ($pid) = @_;
 
-my $record = read_record($pid);
-my $info = decode_json $record;
+my $info = undef;
+    if((!defined $pid)  || ($pid eq "") ){
+        #read the first lines of last_instance.info;
+        $info =  &CJ::retrieve_package_info();
+        $pid = $info->{'pid'};
+    }else{
+        
+        if(&CJ::is_valid_pid($pid)){
+            # read info from $run_history_file
+            $info =  &CJ::retrieve_package_info($pid);
+            if(!defined($info)){ &CJ::err("No such job found in CJ database.")};
+            
+        }else{
+            &CJ::err("incorrect usage: nothing to show");
+        }
+        
+        
+    }
 
 $Data::Dumper::Sortkeys = 1;
 $Data::Dumper::Terse = 1;
@@ -700,11 +723,7 @@ my $newinfo = &CJ::add_change_to_run_history($pid, $change, "clean");
 
 
 # write runinfo to FB as well
-my $firebase = Firebase->new(firebase => 'clusterjob-78552', auth => {secret=>$fb_secret, data => {uid => ${localUserName}}, admin => \1} );
-
-my $pid_head = substr($info->{'pid'},0,8);  #short_pid
-my $pid_tail = substr($info->{'pid'},8,32);
-my $result   = $firebase->patch("${localUserName}/runinfo/${pid_head}/${pid_tail}", $newinfo);
+&CJ::write2firebase($info->{'pid'},$newinfo);
 	    
 }
     
@@ -1308,7 +1327,7 @@ sub retrieve_package_info{
 
    #my $results     = $firebase->get("${localUserName}/runinfo", "orderBy=\"\$key\"\&startAt=\"${pid}\"");
    my $fb_result;
-   my $info;
+   my $info=undef;
    if(length($pid) eq 40){
    	   my $pid_head = substr($pid,0,8);  #short_pid
    	   my $pid_tail = substr($pid,8,32);
@@ -1317,14 +1336,18 @@ sub retrieve_package_info{
 	}elsif(is_valid_pid($pid)){
     	   my $pid_head = substr($pid,0,8);  #short_pid
 	       $fb_result = $firebase->get("${localUserName}/runinfo/$pid_head")  ;
-	   	   if(! keys(%$fb_result) eq 1){
-	    	   &CJ::err('Multiple PIDs detected for $pid_head. Use full PID instead (40 Char)')
-	       }
-			   
-		my ($key) = keys %$fb_result;
-		$info = $fb_result->{$key}	 ;  
-		say Dumper($info); 
-		
+		   
+		   if( defined($fb_result) ){
+			   	if(!keys(%$fb_result) eq 1){
+	    	    	&CJ::err('Multiple PIDs detected for $pid_head. Use full PID instead (40 Char)');
+		   		}else{
+			   		my ($key) = keys %$fb_result;
+			   		$info = $fb_result->{$key}	 ;  
+			   		#say Dumper($info); 
+					
+		   		}
+		   }
+		   
    }else{
 	   CJ::err("No valid pid dectected");
    }
@@ -1336,17 +1359,19 @@ sub retrieve_package_info{
     
   	#say Dumper($info) . "\n" ; 	
 	
-   if( !defined($info)){
-	   CJ::message("Reading metadata from local files...");
+   if(! defined($info)){
+	   CJ::message("Can't fetch metadata from DB, Trying local files...");
 	   # try local info
        my $this_record       = read_record($pid);
-   	#print "OK:$pid\n";
-   	#print "$this_record\n"; 
-	
-       my $info = undef;
-       if(defined($this_record)){
+   	 	#print "OK:$pid\n";
+   		#print "$this_record\n";  die;
+		if(defined($this_record)){
            $info = decode_json $this_record;
-       }	
+		  # patching the data to database if it exists locally 
+		   &CJ::write2firebase($info->{pid},$info);
+       	}else{
+       			&CJ::err('No such job in CJ database');	
+       	}	
    }
 
    return $info;
@@ -1655,7 +1680,6 @@ sub reexecute_cmd{
     #print "$cmd\n";
     system("$cmd");
 }
-
 
 
 sub get_cmd{
