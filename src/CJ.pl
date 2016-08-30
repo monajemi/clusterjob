@@ -45,7 +45,8 @@ mkdir "$info_dir" unless (-d "$info_dir");
 # create history file if it does not exist
 if( ! -f $history_file ){
     &CJ::touch($history_file);
-    my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%-30s", "count", "date", "pid", "action", "machine", "job_id", "message");
+    #my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%-30s", "count", "date", "pid", "action", "machine", "job_id", "message");
+    my $header = sprintf("%-15s%-15s%-45s%-10s%-30s", "count", "date", "pid", "action", "machine","message");
     &CJ::add_to_history($header);
 }
 
@@ -481,7 +482,7 @@ my $cmd = "rm $local_qsub_info_file";
 my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
 my $hist_date = (split('\s', $date->{datestr}))[0];
 my $short_message = substr($message, 0, 30);
-my $history .= sprintf("%-15u%-15s%-21s%-10s%-15s%-20s%-30s",$lastnum+1, $hist_date, $short_pid, $runflag, $machine, $job_id, $short_message);
+my $history = sprintf("%-15u%-15s%-45s%-10s%-15s%-30s",$lastnum+1, $hist_date,$pid, $runflag, $machine, $short_message);
 &CJ::add_to_history($history);
 #=================================
 # store tarfile info for deletion
@@ -891,7 +892,9 @@ $job_id = "";
 my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
 my $hist_date = (split('\s', $date->{datestr}))[0];
 my $short_message = substr($message, 0, 30);
-my $history .= sprintf("%-15u%-15s%-21s%-10s%-15s%-20s%-30s",$lastnum+1, $hist_date, $short_pid, $runflag, $machine, "$job_ids->[0]-$job_ids->[-1]", $short_message);
+#my $history .= sprintf("%-15u%-15s%-21s%-10s%-15s%-20s%-30s",$lastnum+1, $hist_date, $short_pid, $runflag, $machine, "$job_ids->[0]-$job_ids->[-1]", $short_message);
+my $history = sprintf("%-15u%-15s%-45s%-10s%-15s%-30s",$lastnum+1, $hist_date,$pid, $runflag, $machine, $short_message);
+
 &CJ::add_to_history($history);
     
 

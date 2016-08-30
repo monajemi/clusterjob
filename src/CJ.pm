@@ -6,6 +6,7 @@ use warnings;
 use CJ::CJVars;
 use Term::ReadLine;
 use Time::Local;
+use Time::Piece;
 use JSON::PP;
 use Data::Dumper;
 use feature 'say';
@@ -418,8 +419,10 @@ sub save_results{
     my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
     my $hist_date = (split('\s', $date->{datestr}))[0];
     my $flag = "save";
-    my $history = sprintf("%-15u%-15s%-21s%-10s",$lastnum+1, $hist_date,substr($pid,0,8), $flag);
-    # ADD THIS SAVE TO HISTRY
+    #my $history = sprintf("%-15u%-15s%-21s%-10s",$lastnum+1, $hist_date,substr($pid,0,8), $flag);
+    my $history = sprintf("%-15u%-15s%-45s%-10s",$lastnum+1, $hist_date,$info->{pid}, $flag);
+	
+	# ADD THIS SAVE TO HISTRY
     &CJ::add_to_history($history);
 
     exit 0;
@@ -516,12 +519,11 @@ sub show_log{
     
    
     
-	my @unique_pids = CJ::avail_pids();
-      
+	my ($fb_pids, $fb_response) = CJ::avail_pids();
+	
+	my @unique_pids = @$fb_pids;
         #say Dumper(@unique_pids);
-        
-        
-        
+                
         my  @to_show_idx;
         
         if(!defined($log_script)){
@@ -529,8 +531,13 @@ sub show_log{
             #foreach my $i (0..$min){
             my $counter = 0;
             while( ($counter <= $#unique_pids) & ($#to_show_idx < $num_show-1 )  ){
-                        my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$counter]);
-
+                        #my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$counter]);			
+		 			   my $this_pid = $unique_pids[$#unique_pids-$counter];
+		 	    	   my $pid_head = substr($this_pid,0,8);  #short_pid
+		 	    	   my $pid_tail = substr($this_pid,8,32);
+		 			   my $info =   $fb_response->{$pid_head}->{$pid_tail};
+						
+						
                         if( $log_tag eq "showclean" ){
                             push @to_show_idx, $counter;
                         }else{
@@ -541,8 +548,14 @@ sub show_log{
             }
         }else{
             foreach my $i (0..$#unique_pids){
-                my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$i]);
-                if( $log_tag eq "showclean" ){
+                #my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$i]);
+                
+ 			   my $this_pid = $unique_pids[$#unique_pids-$i];
+ 	    	   my $pid_head = substr($this_pid,0,8);  #short_pid
+ 	    	   my $pid_tail = substr($this_pid,8,32);
+ 			   my $info =   $fb_response->{$pid_head}->{$pid_tail};
+				
+				if( $log_tag eq "showclean" ){
                 push @to_show_idx, $i if( $info->{program} =~ m/$log_script/);
                 }else{
                 push @to_show_idx, $i if( ($info->{program} =~ m/$log_script/) & (! $info->{clean}) );
@@ -556,8 +569,12 @@ sub show_log{
     
         
         foreach my $i (reverse @to_show_idx){
-        
-        my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$i]);
+			   my $this_pid = $unique_pids[$#unique_pids-$i];
+	    	   my $pid_head = substr($this_pid,0,8);  #short_pid
+	    	   my $pid_tail = substr($this_pid,8,32);
+			   my $info =   $fb_response->{$pid_head}->{$pid_tail};
+			   
+        	   #my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$i]);
 
         print "\n";
         print "\033[32mpid $info->{pid}\033[0m\n";
@@ -707,7 +724,7 @@ sub clean
     my $hist_date = (split('\s', $date->{datestr}))[0];
     my $flag = "clean";
     # ADD THIS CLEAN TO HISTRY
-    my $history = sprintf("%-15u%-15s%-21s%-10s",$lastnum+1, $hist_date,substr($pid,0,8), $flag);
+    my $history = sprintf("%-15u%-15s%-45s%-10s",$lastnum+1, $hist_date,$info->{pid}, $flag);
     &CJ::add_to_history($history);
         
         
@@ -1393,21 +1410,36 @@ sub retrieve_package_info{
 
 
 sub date{
-my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
-$year 	+= 1900;
+
+
+my $t = &Time::Piece::localtime;
+#print $t->epoch . "\n";die;
+
 my @month_abbr = qw( Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec );
 my @day_abbr = qw( Sun Mon Tue Wed Thu Fri Sat );
+	
+my $sec = $t->sec;
+my $min = $t->min;
+my $hour= $t->hour;
+my $mday= $t->mday;
+my $mon = $t->_mon;  #Jan=0
+my $year= $t->year;
+my $epoch=$t->epoch;
+#print $t->tzoffset . "\n";
 
-my @t = localtime(time);
-my $gmt_offset_in_seconds = timegm(@t) - timelocal(@t);
-    my $abs_offset;
-    my $sign="";
-    if($gmt_offset_in_seconds<0){
-        $abs_offset = $gmt_offset_in_seconds * (-1);
-        $sign = "-";
-    }else{
+#my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+#$year 	+= 1900;
+#my @t = localtime(time);
+#my $gmt_offset_in_seconds = timegm(@t) - timelocal(@t);
+my $gmt_offset_in_seconds = $t->tzoffset;    
+my $abs_offset;
+my $sign="";
+if($gmt_offset_in_seconds<0){
+      $abs_offset = $gmt_offset_in_seconds * (-1);
+	  $sign = "-";
+}else{
         $abs_offset = $gmt_offset_in_seconds ;
-    }
+}
     
 my ($gmt_offset_hour, $remainder_in_second) = (int($abs_offset/3600), $abs_offset%3600);
 (my $gmt_offset_min, $remainder_in_second) = (int($remainder_in_second/60), $remainder_in_second%60);
@@ -1416,16 +1448,16 @@ my $offset = sprintf("%s%02d:%02d:%02d", $sign,$gmt_offset_hour,$gmt_offset_min,
 my $datestr = sprintf ("%04d-%03s-%02d  %02d:%02d:%02d  \(GMT %s\)", $year, $month_abbr[$mon], $mday, $hour,$min, $sec, $offset);
 
 my $date = {
-        year    => $year,
-        month   => $month_abbr[$mon],
-        day     => $mday,
-        hour    => $hour,
-        min     => $min,
-        sec     => $sec,
-        gmt_offset => $offset,
-        datestr  => $datestr
+        year    	=> $t->year,
+        month   	=> $month_abbr[$mon],
+        day     	=> $mday,
+        hour    	=> $hour,
+        min     	=> $min,
+        sec     	=> $sec,
+        gmt_offset 	=> $offset,
+        datestr  	=> $datestr,
+		epoch    	=> $epoch       # This needs to be 64 bit after 2038 (Unix time problem)  
 };
-    
     
     return $date;
 }
@@ -1698,11 +1730,41 @@ sub get_cmd{
 
 
 sub avail_pids{
-    my $pidList=`cat $history_file | awk \'{print \$3}\' `;
-    my @pidList = $pidList =~ m/\b([0-9a-f]{8,40})\b/g;
-    my @unique_pids = do { my %seen; grep { !$seen{$_}++ } @pidList};
-	return @unique_pids;
+
+     my @sorted_pidList;
+	# locally stored pids
+    #my $pidList=`cat $history_file | awk \'{print \$3}\' `;
+    #my @pidList = $pidList =~ m/\b([0-9a-f]{8,40})\b/g;
+    # fetch pids available on the server
+    my $firebase 	 = Firebase->new(firebase => 'clusterjob-78552', auth => {secret=>$fb_secret, data => {uid => ${localUserName}}, admin => \1} );
+	my $fb_response  = $firebase->get("${localUserName}/runinfo");
+	
+	my %fetched_pids;
+	if(defined($fb_response)){
+		       # Get unsorted PIDS and epochs
+				while (my ($pid_head, $remainder) = each %$fb_response) {
+						while ( my ($pid_tail, $info) = each %$remainder) {
+							my $pid = $pid_head . $pid_tail;
+							 $fetched_pids{$pid} = $info->{date}->{epoch};
+						}
+						
+			    }
+				
+		    # Sort PIDs by epoch		
+				foreach my $pid (sort { $fetched_pids{$a} <=> $fetched_pids{$b} } keys %fetched_pids) {
+				    #printf "%-8s %s\n", $pid, $fetched_pids{$pid};
+					push(@sorted_pidList, $pid);
+				}
+				
+	}
+	
+    #my @unique_pids = do { my %seen; grep { !$seen{$_}++ } @pidList};
+	#return @unique_pids;
+	
+	return (\@sorted_pidList,$fb_response);
 }
+
+
 sub add_cmd{
     my ($cmdline) = @_;
     
