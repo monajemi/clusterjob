@@ -1763,7 +1763,7 @@ sub avail_pids{
 	 
 	# comprare the two
 	if( $fb_epoch lt $local_epoch ){ # Some data are missing from FB
-		print $fb_epoch, "\n";
+		
 		&CJ::message("Transfering local metadata to cloud...Please be patient");
 			# Patch all data that are available locally 
 			# but missing on FB
@@ -1771,7 +1771,12 @@ sub avail_pids{
 			my $string = &CJ::readFile($run_history_file);
 			
 			my $missing_json;
-			my $last_fb_pid = $fb_last->{pid};
+			
+			my $last_fb_pid="";
+			if(defined($fb_last->{pid})){
+			$last_fb_pid = $fb_last->{pid};
+			}
+			
 			if( ! $string =~ /\b$last_fb_pid\b/){
 			$missing_json = `awk 'BEGIN{ found=0} /$last_fb_pid/{found=1;next} {if (found) print}' $run_history_file`;
 			}else{
