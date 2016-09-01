@@ -735,7 +735,7 @@ sub clean
 #    DATE -> $hist_date
 #    TIME -> $time
 #TEXT
-        my $change={date => $date};
+my $change={date => $date};
 my $newinfo = &CJ::add_change_to_run_history($pid, $change, "clean");
 
 
@@ -975,7 +975,9 @@ sub get_summary
 
 	my $print_states = {};
 	
-	my @available_pids = CJ::avail_pids();
+	my ($fb_pids, $fb_response) = CJ::avail_pids();
+	
+	my @available_pids = @$fb_pids;
 	
 	foreach my $i (0..$#unique_pids){
 		my $this_pid = $unique_pids[$i];
@@ -1067,15 +1069,9 @@ sub get_state
         
         
     }
-    
+   
+	
     my $short_pid = substr($info->{pid},0,8);
-    if($info->{'clean'}){
-        CJ::message("Nothing to show. Package $short_pid has been cleaned on $info->{'clean'}->{'date'}->{datestr}.");
-        exit 0;
-    }
-
-    
-    
     
     my $account = $info->{'account'};
     my $job_id  = $info->{'job_id'};
@@ -1083,6 +1079,7 @@ sub get_state
     my $runflag = $info->{'runflag'};
     
     my $states={};
+	
 if ( $runflag =~ m/^par*/ ){
     # par case
     my @job_ids = split(',',$job_id);
@@ -1127,7 +1124,6 @@ if ( $runflag =~ m/^par*/ ){
 	    if(!$state){
 	    $state = "Unknown";
 	    }
-    
         my $key = $job_id;
         my $val = $state;
         $states->{$key} = $val;	
@@ -1153,6 +1149,8 @@ sub get_print_state
     my ($pid,$num) = @_;
     
 	
+	
+	
     my $info;
     if( (!defined $pid) || ($pid eq "") ){
         #read last_instance.info;
@@ -1176,6 +1174,7 @@ sub get_print_state
         
     }
     
+	
     my $short_pid = substr($info->{pid},0,8);
     if($info->{'clean'}){
         CJ::message("Nothing to show. Package $short_pid has been cleaned on $info->{'clean'}->{'date'}->{datestr}.");
@@ -1200,8 +1199,8 @@ sub get_print_state
  
 if($size eq 1){
 
-	my $job_id = keys %$states; 
-	my $state  = 
+	my ($job_id) = keys %$states; 	
+	my $state  = $states->{$job_id};chomp($state);
     print "\n";
     print "\033[32mpid $info->{'pid'}\033[0m\n";
     print "remote_account: $account\n";
@@ -1376,7 +1375,7 @@ sub retrieve_package_info{
     
   	#say Dumper($info) . "\n" ; 	
 	
-   if(! defined($info)){
+   if(!defined($info)){
 	   CJ::message("Can't fetch metadata from DB, Trying local files...");
 	   # try local info
        my $this_record       = read_record($pid);
@@ -1731,27 +1730,90 @@ sub get_cmd{
 
 sub avail_pids{
 
-     my @sorted_pidList;
+	# Check the last local instance 
+	# and if it not the same as firebase
+	# and if its Epoch is larger than
+	# the last instance of firebase, 
+	# then do partial syncing to include 
+	# the runs that are not available on FireBase
+    my $firebase 	 	  = Firebase->new(firebase => 'clusterjob-78552', auth => {secret=>$fb_secret, data => {uid => ${localUserName}}, admin => \1} );
+	my $fb_last = $firebase->get("${localUserName}/last_instance");
+	
+	my $fb_epoch;
+	if(defined($fb_last)){
+		my $info  = &CJ::retrieve_package_info($fb_last->{pid});
+		$fb_epoch = $info->{date}->{epoch};
+	}else{
+		$fb_epoch = 0;
+	}
+	
+	# look at local files
+	my $local_last_pid    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($local_last_pid);
+    my $local_record       = read_record($local_last_pid);
+	
+	my $local_epoch;
+	if(defined($local_record)){
+       my $info = decode_json $local_record;
+	   $local_epoch=$info->{date}->{epoch};
+	}else{	
+		$local_epoch = 0
+	}  
+	  
+	 
+	 
+	# comprare the two
+	if( $fb_epoch lt $local_epoch ){ # Some data are missing from FB
+		print $fb_epoch, "\n";
+		&CJ::message("Transfering local metadata to cloud...Please be patient");
+			# Patch all data that are available locally 
+			# but missing on FB
+			
+			my $string = &CJ::readFile($run_history_file);
+			
+			my $missing_json;
+			my $last_fb_pid = $fb_last->{pid};
+			if( ! $string =~ /\b$last_fb_pid\b/){
+			$missing_json = `awk 'BEGIN{ found=0} /$last_fb_pid/{found=1;next} {if (found) print}' $run_history_file`;
+			}else{
+			$missing_json = `cat $run_history_file`; 
+			}
+			#print $missing_json, "\n";
+			
+		  my @records = split(/\n\n/,$missing_json);  
+		  foreach my $record (@records){
+			  my $info = decode_json($record);
+				  # patching the data to database if it exists locally   
+	  		  &CJ::write2firebase($info->{pid},$info);	
+		  }	
+		  
+		  	  
+  		  
+	}elsif(!$local_epoch & !$local_epoch){
+		 &CJ::message("NO PID is available on DB");exit 0;
+	}
+	
+	
+
+    my @sorted_pidList;
 	# locally stored pids
     #my $pidList=`cat $history_file | awk \'{print \$3}\' `;
     #my @pidList = $pidList =~ m/\b([0-9a-f]{8,40})\b/g;
     # fetch pids available on the server
-    my $firebase 	 = Firebase->new(firebase => 'clusterjob-78552', auth => {secret=>$fb_secret, data => {uid => ${localUserName}}, admin => \1} );
 	my $fb_response  = $firebase->get("${localUserName}/runinfo");
 	
-	my %fetched_pids;
+	my $fetched_pids={};
 	if(defined($fb_response)){
 		       # Get unsorted PIDS and epochs
 				while (my ($pid_head, $remainder) = each %$fb_response) {
 						while ( my ($pid_tail, $info) = each %$remainder) {
-							my $pid = $pid_head . $pid_tail;
-							 $fetched_pids{$pid} = $info->{date}->{epoch};
+							 my $pid = $pid_head . $pid_tail;
+							 $fetched_pids->{$pid} = $info->{date}->{epoch};
 						}
 						
 			    }
 				
 		    # Sort PIDs by epoch		
-				foreach my $pid (sort { $fetched_pids{$a} <=> $fetched_pids{$b} } keys %fetched_pids) {
+				foreach my $pid (sort { $fetched_pids->{"$a"} <=> $fetched_pids->{"$b"} } keys %$fetched_pids) {
 				    #printf "%-8s %s\n", $pid, $fetched_pids{$pid};
 					push(@sorted_pidList, $pid);
 				}

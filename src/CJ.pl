@@ -553,7 +553,6 @@ while(<$fh>){
 close $fh;
     
     # this includes fors on one line
-    
 my @lines = split('\n|;\s*(?=for)', $script_lines);
 
 my @forlines_idx_set;
