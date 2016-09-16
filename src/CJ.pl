@@ -28,42 +28,6 @@ use vars qw($message $mem $runtime $dep_folder $verbose $log_script $text_header
 $::VERSION = &CJ::version_info();
 
 
-
-
-
-#=========================================
-# refresh CJlog before declaring options.
-# it keeps updated for each new run
-&CJ::my_system("rm $CJlog");
-#=========================================
-
-
-#=========================================
-# create .info directory if it doesnt exist
-mkdir "$info_dir" unless (-d "$info_dir");
-
-# create history file if it does not exist
-if( ! -f $history_file ){
-    &CJ::touch($history_file);
-    #my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%-30s", "count", "date", "pid", "action", "machine", "job_id", "message");
-    my $header = sprintf("%-15s%-15s%-45s%-10s%-30s", "count", "date", "pid", "action", "machine","message");
-    &CJ::add_to_history($header);
-}
-
-if( ! -f $cmd_history_file ){
-    &CJ::touch($cmd_history_file);
-}
-
-
-
-# create run_history file if it does not exit
-# this file contains more information about a run
-# such as where it is saved, etc.
-
-&CJ::touch($run_history_file) unless (-f $run_history_file);
-#=========================================
-
-
 #==========================================
 #    Get the command line history
 #==========================================
@@ -74,7 +38,41 @@ foreach ( @ARGV ) {
     $cmdline .= /\s/ ?   " \"" . $_ . "\"":     " "   . $_;
 }
 
+my $cjcmd0 = $cmd[2];chomp($cjcmd0);
 
+
+ 
+# Send error if the agent isn't initialized
+if( (! -d "$info_dir") & ($cjcmd0 ne "init") ){
+	&CJ::err(" This CJ agent is not initialized. Please initiate it by issuing 'cj init'");
+}
+
+if(-d "$info_dir"){
+#=========================================
+# refresh CJlog before declaring options.
+# it keeps updated for each new run
+&CJ::my_system("rm $CJlog") unless (! -f $CJlog);
+#=========================================
+
+# create history file if it does not exist
+if( ! -f $history_file ){
+ &CJ::touch($history_file);
+    #my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%-30s", "count", "date", "pid", "action", "machine", "job_id", "message");
+  my $header = sprintf("%-15s%-15s%-45s%-10s%-30s", "count", "date", "pid", "action", "machine","message");
+  &CJ::add_to_history($header);
+}
+
+if( ! -f $cmd_history_file ){
+    &CJ::touch($cmd_history_file);
+}
+
+# create run_history file if it does not exit
+# this file contains more information about a run
+# such as where it is saved, etc.
+
+&CJ::touch($run_history_file) unless ( -f $run_history_file);
+#=========================================	
+}
 
 #====================================
 #         READ FLAGS
@@ -92,6 +90,8 @@ $log_script        = undef;
 
 
 my $spec = <<'EOSPEC';
+	  init 	    initiates CJ installation [undocumented]
+               {defer{CJ::init}}
       prompt 	    opens CJ prompt command [undocumented]
                      {defer{cj_prompt}}
      -help 	  Show usage information [undocumented]
@@ -290,7 +290,7 @@ my $date = &CJ::date();
 
     
 # TO BE IMPLEMENTED
-my $sha_expr = "$localUserName:$localHostName:$program:$account:$date->{datestr}";
+my $sha_expr = "$CJID:$localHostName:$program:$account:$date->{datestr}";
 my $pid  = sha1_hex("$sha_expr");
 my $short_pid = substr($pid, 0, 8);  # we use an 8 character abbrviation
 
@@ -495,7 +495,8 @@ my $history = sprintf("%-15u%-15s%-45s%-10s%-15s%-30s",$lastnum+1, $hist_date,$p
     
 my $runinfo={
 pid           => ${pid},
-user          => ${localUserName},  # will be changed to CJusername later
+agent		  => ${AgentID},
+user          => ${CJID}, 
 local_ip      => ${localIP},
 local_host    => ${localHostName},
 date          => ${date},
@@ -902,7 +903,8 @@ my $history = sprintf("%-15u%-15s%-45s%-10s%-15s%-30s",$lastnum+1, $hist_date,$p
     
 my $runinfo={
 pid           => ${pid},
-user          => ${localUserName},  # will be changed to CJusername later
+user          => ${CJID},  # will be changed to CJusername later
+agent		  => ${AgentID},
 local_ip      => ${localIP},
 local_host    => ${localHostName},
 date          => ${date},

@@ -8,6 +8,8 @@ use Ouch;
 use JSON;
 use URI;
 
+
+
 has firebase => (
     is          => 'ro',
     required    => 1,
@@ -16,6 +18,11 @@ has firebase => (
 has auth => (
     is          => 'ro',
     predicate   => 'has_auth',
+);
+
+has auth_token => (
+    is          => 'ro',
+    predicate   => 'has_token',
 );
 
 has authobj        => (
@@ -89,8 +96,13 @@ sub post {
 
 sub create_uri {
     my ($self, $path,$param) = @_;
+	
+	my $token;
+	$token = $self->authobj->create_token if $self->has_authobj || $self->has_auth;
+	$token = $self->auth_token  if $self->has_token;
+		
     my $url = 'https://'.$self->firebase.'.firebaseio.com/'.$path.'.json';
-    $url .= '?auth='.$self->authobj->create_token if $self->has_authobj || $self->has_auth;
+    $url .= '?auth='. $token;
 	my $uri = URI->new($url);
 	 
     return $uri;

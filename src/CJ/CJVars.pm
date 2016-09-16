@@ -20,10 +20,10 @@ if (!defined($sock)){
 }	
 our $localIP = $sock->sockhost; chomp($localIP);
 
+
+
+
 our $localUserName = `id -un`;chomp($localUserName);  # Later on add the CJusername
-our $localHostName = `uname -n`;chomp($localHostName);
-
-
 my  $CJ_dir			 = File::Basename::dirname(File::Spec->rel2abs(__FILE__));
 my  @CJ_dir_array    = split '/',$CJ_dir;
 my  $lastone 		 = pop @CJ_dir_array;
@@ -40,6 +40,7 @@ our $savePrefix      = "$HOME/Dropbox/clusterjob_saveRepo/";
 
 our $last_instance_file = "$install_dir/.info/last_instance.info";
 our $CJlog              = "$install_dir/.info/CJcall.log";
+our $AgentIDPATH	 	= "$install_dir/.info/agent_id";  # The UUID of installation
 
 our $get_tmp_dir        = "$install_dir/../CJ_get_tmp";
 our $history_file       = "$info_dir/history.info";
@@ -47,11 +48,43 @@ our $cmd_history_file   = "$info_dir/cmd_history.info";
 our $run_history_file   = "$info_dir/run_history.info";
 our $save_info_file     = "$info_dir/save.info";
 our $ssh_config_file    = "$install_dir/ssh_config";
-our $fb_secret          = "4lp5BkZFh0bEpbpoPQGChJcGCeRfq8gLDxP65E7S";  # Clusterjob Secret on Firebase
+our $remote_config_file = "$install_dir/cj_config";
+
+# Read AgentID, CJID and CJKEY upon init
+our $AgentID= "DED5EBF2-7BA4-11E6-845A-87D99F369383";  #"<<AgentID>>";
+
+
+
+
+# Make sure CJID and CJKEY are there and obtain them.
+our $CJID =undef;
+our $CJKEY=undef;
+my $lines;
+open(my $FILE, $remote_config_file) or  die "could not open $remote_config_file: $!";
+local $/ = undef;
+$lines = <$FILE>;
+close ($FILE);
+
+my ($ID) = $lines =~ /^CJID(.*)/im;  if($ID){$ID =~ s/^\s+|\s+$//g};
+my ($KEY) = $lines =~/^CJKEY(.*)/im; if($KEY) {$KEY=~ s/^\s+|\s+$//g};
+
+if($ID){
+	$CJID = $ID;
+}else{
+    die(' ' x 5 . "CJerr::Please provide your CJ ID in $remote_config_file\n");
+}
+
+if($KEY){
+	$CJKEY=$KEY;
+}
+
+
+
+
+
 
 # Export global variables
-our @EXPORT = qw( $fb_secret $info_dir $src_dir $install_dir $remotePrefix $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $CJlog $localIP $localHostName $localUserName);
-
+our @EXPORT = qw($AgentIDPATH $AgentID $CJID $CJKEY $info_dir $src_dir $install_dir $remotePrefix $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $remote_config_file $CJlog $localIP $localHostName $localUserName);
 
 
 
