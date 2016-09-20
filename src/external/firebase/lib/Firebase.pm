@@ -125,7 +125,7 @@ sub process_response {
         else {
             my $result = eval { from_json($response->decoded_content) }; 
             if ($@) {
-                warn $response->decoded_content;
+ 				warn $response->decoded_content;
                 ouch 500, 'Server returned unparsable content.';#, { error => $@, content => $response->decoded_content };
             }
             return $result;

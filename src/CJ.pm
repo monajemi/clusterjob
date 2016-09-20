@@ -47,55 +47,283 @@ sub init{
 	
 	my $agent_line= "our \$AgentID= \"$AgentID\";  #\"<<AgentID>>\";";
     my $cmd="sed -i '' 's|.*<<AgentID>>.*|$agent_line|'  $CJVars_file";
-    &CJ::my_system($cmd,0);
+    system($cmd);
 
 	mkdir "$info_dir";
 	&CJ::writeFile($AgentIDPATH, $AgentID);  # write it to a file for the record. 
 	
 	if(defined($CJKEY)){
 		# Add this agent to the the list of agents
-		my $firebase = Firebase->new(firebase => 'clusterjob-78552', auth_token => $CJKEY);
-		my $result   = $firebase->patch("${CJID}/agents/$AgentID/todo", { "0" => "0"} ); 
-		# when change happens it would be pid => agentID (the agent who made the change);
+		&CJ::add_agent_to_remote($AgentID);
 	}
 
 
 }
+
+
+sub check_hash {
+   my( $hash, $keys ) = @_;
+
+   return unless @$keys;
+
+   foreach my $key ( @$keys ) {
+       return unless eval { exists $hash->{$key} };
+       $hash = $hash->{$key};
+       }
+
+   return 1;
+   }
+
+
 sub write2firebase
 {
 	my ($pid, $runinfo) = @_;
 	
-	my $epoch = $runinfo->{date}->{epoch};
-	my $firebase = Firebase->new(firebase => 'clusterjob-78552', auth_token => $CJKEY);
-	my $result   = $firebase->patch("${CJID}/last_instance", {"pid" => $pid, "epoch"=> $epoch} );
-	my $pid_head = substr($pid,0,8);  #short_pid
-	my $pid_tail = substr($pid,8,32);
-		
-	$result   = $firebase->patch("${CJID}/pid-epoch-map", {${pid}=>${epoch}});	
-	$result   = $firebase->patch("${CJID}/runinfo/${pid_head}/${pid_tail}", $runinfo);	
+	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
+	# Check to see if this agent is defined in the agents 
+	# if not add it.
+	my $fb_get;
+	$fb_get    = $firebase->get("${CJID}/agents/$AgentID");
+	&CJ::add_agent_to_remote($AgentID) unless defined($fb_get);
 	
+	
+	my $exists = $firebase->get("${CJID}/pid_list/${pid}");
+	
+	my $epoch = $runinfo->{date}->{epoch};
+	my $pid_head = substr($pid,0,8);  #short_pid
+	
+	
+	if(! defined($exists)){
+		# this is a new run -- hence will be our last (run) instance
+		my $result   = $firebase->patch("${CJID}/last_instance", {"pid" => $pid, "epoch"=> $epoch} );
+		
+		# Add last instance for this agent. 
+	    $result = $firebase->patch("${CJID}/agents/$AgentID", {"last_instance" => {"pid" => $pid, "epoch"=> $epoch}, "push_timestamp"=> $epoch} ); 		
+	
+		$result   = $firebase->patch("${CJID}/pid_list/${pid}",{"timestamp" => $epoch, "short_pid" => $pid_head , "info" => $runinfo});
+		# Timestamp is the last change to this pid	
+	
+	}else{
+		my $result   = $firebase->patch("${CJID}/pid_list/${pid}",{"timestamp" => $epoch, "short_pid" => $pid_head , "info" => $runinfo});
+	
+		# change the local timestamp (for changes). 
+	    $result = $firebase->patch("${CJID}/agents/$AgentID", {"push_timestamp"=> $epoch} ); 
+			
+		# Inform All other agents of this change (SyncReq) 
+		&CJ::informOtherAgents($pid, $epoch);				
+	}
+	
+
+}
+
+
+
+sub add_agent_to_remote{
+	my ($agent) = @_;
+	# This is the first time agent is added.
+	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);	
+	my $agentHash = {"SyncReq" => "null", "last_instance" => "null", "push_timestamp" =>0  ,"pull_timestamp" => 0}; 
+    my $result = $firebase->patch("${CJID}/agents/$agent",  $agentHash); 	
 }
 
 sub informOtherAgents{
-	my ($pid) = @_;
+	my ($pid,$timestamp) = @_;
 	
-	my $firebase = Firebase->new(firebase => 'clusterjob-78552', auth_token => $CJKEY);
+	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
 	# Get Agent List
-	my $fb_get = $firebase->get("${CJID}/agents");
+	my $fb_get;
+	return unless eval {$fb_get = $firebase->get("${CJID}/agents")};
 	
 	my @agents= keys %$fb_get;
+	return unless @agents;
 	
-	
-	my $updated_agents_hashref ={};
 	foreach my $agent (@agents){
-		$updated_agents_hashref->{$agent}->{$pid} = $AgentID;
-	}
+	 		
+		if($agent ne $AgentID)	{
+			
+				my $todo={};
+		 
+				# If prior values exist
+		 		if( &CJ::check_hash($fb_get->{$agent}, ["SyncReq"]) )
+		 	   	{	 
+						my $hash = $fb_get->{$agent}->{SyncReq};
+						$todo =  $hash unless ($hash eq "null") ;	
+		 		}
+				$todo->{$pid} = $timestamp ;
+				my $result = $firebase->patch("${CJID}/agents/$agent", {"SyncReq" => $todo} ); 	
+			}
+		
+	  }	
 	
-	#say Dumper($updated_agents_hashref);
-	my $result   = $firebase->patch("${CJID}/agents", $updated_agents_hashref);
+
+
+
 }
 
 
+
+
+sub SyncAgentBySyncReq{
+# Current agent should get info from 
+# $fb_get->{$agent}->{SyncReq}; and if the value is not
+# null,  it should update the corresponding PIDs (keys of the hashref);
+# once all updates are done the agent changes the value of todo to null
+# to indicateall updates are done. 
+
+my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
+# Get todo list
+
+my $fb_get = $firebase->get("${CJID}/agents/$AgentID") ;
+return unless defined($fb_get);
+my $fb_todo = $fb_get->{SyncReq};
+return if ($fb_todo eq "null");
+
+print "OK\n";
+
+my @pids = keys %$fb_todo;
+return unless @pids;
+			
+		&CJ::message("Sync request imposed...");
+			
+			foreach my $pid (@pids){
+			
+		           my $newinfo = $firebase->get("${CJID}/pid_list/$pid/info") ;
+				   my $pid_head = 	substr($pid,0,8);			   
+				   my $rec = read_record($pid);
+				   if(defined($rec)){
+			       		&CJ::update_record($pid,$newinfo);
+					}else{
+					    &CJ::add_to_run_history($newinfo);
+				   	}   
+				   # If other agent cleaned the package, and if we are 
+				   # on local machine that originated that package, clean
+				   # local repo.	   
+				   if( defined($newinfo->{clean}) &  ($newinfo->{agent} eq $AgentID) ){
+					  
+					   		&CJ::message("--- Cleaning local dir for $pid_head");
+							my $local_path = $newinfo->{'local_path'};
+					        my $save_path = $newinfo->{'save_path'};
+						   
+						   	my $local_clean     = "$local_path\*";
+					       	my $save_clean      = "$save_path\*";
+    
+					        my $cmd = "rm -rf $local_clean;rm -rf $save_clean;" ;
+							my $verbose = 0;
+					        &CJ::my_system($cmd,$verbose);
+				   }
+				   
+			
+			} # Update all the PIDs	
+		
+           my $result = $firebase->patch("${CJID}/agents/$AgentID", {"SyncReq" => "null"} ) ;	
+}
+
+
+
+sub SyncAgentByTime{    #Incomplete
+	
+	# Check the local epoch against the  
+	# Remote Epoch 
+	
+	# Get Remote Epoch 
+	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
+	my $fb_last  = $firebase->get("${CJID}/last_instance");
+	my $fb_epoch = &CJ::check_hash($fb_last, ["epoch"]) ? $fb_last->{epoch} : 0 ;  
+	
+	# Get local epoch
+	my $local_last_pid    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($local_last_pid);
+    my $local_record      =   read_record($local_last_pid);	
+	my $local_epoch;
+	if(defined($local_record)){
+       my $info = decode_json $local_record;
+	   $local_epoch=$info->{date}->{epoch};
+	}else{	
+		$local_epoch = 0;
+	}  
+	 
+	if($local_epoch eq $fb_epoch){
+		return 1;	
+	}elsif($local_epoch  lt $fb_epoch){
+	    #bring new information from remote to local 		
+		my $fb_last  = $firebase->get("${CJID}/runinfo");	
+			
+	}  
+	 
+	 
+	# comprare the two
+	if( $fb_epoch lt $local_epoch ){ # Some data are missing from Firebase
+		
+		&CJ::message("Transfering local metadata to cloud...Please be patient");
+			# Patch all data that are available locally 
+			# but missing on FB
+			
+			my $string = &CJ::readFile($run_history_file);
+			
+			my $missing_json;
+			
+			my $last_fb_pid="";
+			if(defined($fb_last->{pid})){
+			   $last_fb_pid = $fb_last->{pid};
+			}
+			
+			if( ! $string =~ /\b$last_fb_pid\b/){
+			$missing_json = `awk 'BEGIN{ found=0} /$last_fb_pid/{found=1;next} {if (found) print}' $run_history_file`;
+			}else{
+			$missing_json = `cat $run_history_file`; 
+			}
+			#print $missing_json, "\n";
+			
+		  my @records = split(/\n\n/,$missing_json);  
+		  foreach my $record (@records){
+			  my $info = decode_json($record);
+				  # patching the data to database if it exists locally   
+	  		  &CJ::write2firebase($info->{pid},$info);	
+		  }	
+		  
+		  	  
+  		  
+	}elsif( !$fb_epoch & !$local_epoch){
+		 &CJ::message("NO PID is available in DB"); exit 0;
+	}
+	
+	
+
+    my @sorted_pidList;
+	# locally stored pids
+    #my $pidList=`cat $history_file | awk \'{print \$3}\' `;
+    #my @pidList = $pidList =~ m/\b([0-9a-f]{8,40})\b/g;
+    # fetch pids available on the server
+	
+	
+    # Get unsorted PIDS and epochs
+	my $fetched_pids = $firebase->get("${CJID}/pid-epoch-map");
+	if(defined($fetched_pids)){
+							
+		    # Sort PIDs by epoch		
+			foreach my $pid (sort { $fetched_pids->{"$a"} <=> $fetched_pids->{"$b"} } keys %$fetched_pids) {
+				    #printf "%-8s %s\n", $pid, $fetched_pids{$pid};
+			push(@sorted_pidList, $pid);
+		 	}
+				
+	}
+	
+    #my @unique_pids = do { my %seen; grep { !$seen{$_}++ } @pidList};
+	#return @unique_pids;
+	my $fb_response  = $firebase->get("${CJID}/runinfo");   #Later add order by value of Epoch and only 10 of them!
+	return (\@sorted_pidList,$fb_response);
+	
+	
+	
+	
+}
+
+
+sub SyncAgent{
+	&CJ::SyncAgentBySyncReq();   # Sync changes that are requested by other agents
+	#&CJ::SyncAgentByTime();   # This will bring in PIDs that are newer than local epoch time run by other agents
+#TODO: There should be a sync for when the local has more info than remote. This will check the epoch of last instance
+# for individual agents. 
+}
 
 
 
@@ -247,7 +475,6 @@ my $newinfo = &CJ::add_change_to_run_history($pid, $change, $type);
 
 # write runinfo to FB as well
 &CJ::write2firebase($info->{'pid'},$newinfo);
-
 
 exit 0;
 }
@@ -796,15 +1023,13 @@ sub clean
 #    TIME -> $time
 #TEXT
 
-my $change={date => $date};
+my $change={date => $date, agent=>$AgentID};
 my $newinfo = &CJ::add_change_to_run_history($pid, $change, "clean");
 
 
 # write runinfo to FB as well
 &CJ::write2firebase($info->{'pid'},$newinfo);
 
-# Inform All other agents of this change 
-&CJ::informOtherAgents($info->{'pid'});
 	    
 }
     
@@ -1421,7 +1646,7 @@ sub retrieve_package_info{
     my ($pid) = @_;
     
     # read runinfo from Firebase 
-	my $firebase = Firebase->new(firebase => 'clusterjob-78552', auth_token => $CJKEY);
+	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
     
     if(!$pid){
     
@@ -1459,7 +1684,7 @@ sub retrieve_package_info{
 		   }
 		   
    }else{
-	   CJ::err("No valid pid dectected");
+	   CJ::err("No valid pid detected");
    }
    
    
@@ -1477,8 +1702,8 @@ sub retrieve_package_info{
    		#print "$this_record\n";  die;
 		if(defined($this_record)){
            $info = decode_json $this_record;
-		  # patching the data to database if it exists locally 
-		   &CJ::write2firebase($info->{pid},$info);
+		  	# patching the data to database if it exists locally 
+		    &CJ::write2firebase($info->{pid},$info);
        	}else{
        			&CJ::err('No such job in CJ database');	
        	}	
@@ -1633,6 +1858,7 @@ sub my_system
         system("$cmd");
         
     }else{
+		system("touch $CJlog") unless (-f $CJlog);
         system("$cmd >> $CJlog  2>&1") ;#Error messages get sent to same place as standard output.
     }
 
@@ -1694,7 +1920,8 @@ sub add_to_history
 
 sub add_to_run_history
 {
-    my ($runinfo_json) = @_;
+my ($runinfo) = @_;
+my $runinfo_json = encode_json $runinfo;
 my $text=<<TEXT;
 $runinfo_json
 TEXT
@@ -1711,13 +1938,17 @@ sub add_change_to_run_history
 {
     my ($pid, $change,$type) = @_;
     
+	
+	# This needs to be comuunicating with remote.
+	
     my $this_record = &CJ::read_record($pid);
     my $info = decode_json $this_record;
     
 
 if(lc($type) eq "clean"){
-    $info->{clean}->{date} = $change->{date};
-    say Dumper($info);
+    $info->{clean}->{date}  =  $change->{date};
+	$info->{clean}->{agent} =  $change->{agent};
+    #say Dumper($info);
  	
 }elsif(lc($type) eq "rerun"){
     
@@ -1830,7 +2061,7 @@ sub avail_pids{
 	# the last instance of firebase, 
 	# then do partial syncing to include 
 	# the runs that are not available on FireBase
-	my $firebase = Firebase->new(firebase => 'clusterjob-78552', auth_token => $CJKEY);
+	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
 	my $fb_last = $firebase->get("${CJID}/last_instance");
 	
 	my $fb_epoch;
@@ -1842,7 +2073,7 @@ sub avail_pids{
 	
 	# look at local files
 	my $local_last_pid    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($local_last_pid);
-    my $local_record       = read_record($local_last_pid);
+    my $local_record      = read_record($local_last_pid);
 	
 	my $local_epoch;
 	if(defined($local_record)){
@@ -1867,7 +2098,7 @@ sub avail_pids{
 			
 			my $last_fb_pid="";
 			if(defined($fb_last->{pid})){
-			$last_fb_pid = $fb_last->{pid};
+			   $last_fb_pid = $fb_last->{pid};
 			}
 			
 			if( ! $string =~ /\b$last_fb_pid\b/){
@@ -1880,14 +2111,14 @@ sub avail_pids{
 		  my @records = split(/\n\n/,$missing_json);  
 		  foreach my $record (@records){
 			  my $info = decode_json($record);
-				  # patching the data to database if it exists locally   
+				  # patching the data to database if it exists locally  
 	  		  &CJ::write2firebase($info->{pid},$info);	
 		  }	
 		  
 		  	  
   		  
-	}elsif(!$local_epoch & !$local_epoch){
-		 &CJ::message("NO PID is available on DB");exit 0;
+	}elsif( !$fb_epoch & !$local_epoch){
+		 &CJ::message("NO PID is available in DB"); exit 0;
 	}
 	
 	

@@ -70,8 +70,22 @@ if( ! -f $cmd_history_file ){
 # this file contains more information about a run
 # such as where it is saved, etc.
 
+# TODO: This History file should check to see if there
+# is any info avilable from other agnets online if CJkey defined. If there
+# is it needs to Sync 
 &CJ::touch($run_history_file) unless ( -f $run_history_file);
 #=========================================	
+
+
+
+if($CJKEY){
+	# Sync Agent for changes made by other agnets.
+	&CJ::SyncAgent();
+	# TO BE DONE: Sync Agent for PIDs that are beyond its current Epoch 
+}
+
+
+
 }
 
 #====================================
@@ -515,8 +529,7 @@ program       => $program,
 message       => $message,
 };
     
-my $runinfo_json = encode_json $runinfo;
-&CJ::add_to_run_history($runinfo_json);
+&CJ::add_to_run_history($runinfo);
 my $last_instance=$pid;
 #$last_instance.=`cat $BASE/$program`;
 &CJ::writeFile($last_instance_file, $last_instance);
@@ -923,8 +936,7 @@ program       => $program,
 message       => $message,
 };
     
-my $runinfo_json = encode_json $runinfo;
-&CJ::add_to_run_history($runinfo_json);
+&CJ::add_to_run_history($runinfo);
     
 my $last_instance=${pid};
 &CJ::writeFile($last_instance_file, $last_instance);
