@@ -47,12 +47,15 @@ has agent => (
 );
 
 sub get {
-    my ($self, $path, $params) = @_;
+    my ($self, $path, $param_hash) = @_;
     my $uri = $self->create_uri($path);
 	
 	my $req  = $uri->as_string;
-	if(defined($params)){
-		$req .= "\&".$params;
+	
+	if(defined($param_hash)){
+		while(my ($key, $value) = each (%$param_hash)){
+			$req .= "\&".$key."=$value";
+		}
 	}
 	#print "$req\n"; 
 	my $request = GET($req);

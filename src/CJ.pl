@@ -55,16 +55,16 @@ if(-d "$info_dir"){
 #=========================================
 
 # create history file if it does not exist
-if( ! -f $history_file ){
- &CJ::touch($history_file);
-    #my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%-30s", "count", "date", "pid", "action", "machine", "job_id", "message");
-  my $header = sprintf("%-15s%-15s%-45s%-10s%-30s", "count", "date", "pid", "action", "machine","message");
-  &CJ::add_to_history($header);
-}
+#if( ! -f $history_file ){
+# &CJ::touch($history_file);
+#    #my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%-30s", "count", "date", "pid", "action", "machine", "job_id", "message");
+#  my $header = sprintf("%-15s%-15s%-45s%-10s%-30s", "count", "date", "pid", "action", "machine","message");
+#  &CJ::add_to_history($header);
+#}
 
-if( ! -f $cmd_history_file ){
-    &CJ::touch($cmd_history_file);
-}
+#if( ! -f $cmd_history_file ){
+#    &CJ::touch($cmd_history_file);
+#}
 
 # create run_history file if it does not exit
 # this file contains more information about a run
@@ -73,7 +73,7 @@ if( ! -f $cmd_history_file ){
 # TODO: This History file should check to see if there
 # is any info avilable from other agnets online if CJkey defined. If there
 # is it needs to Sync 
-&CJ::touch($run_history_file) unless ( -f $run_history_file);
+#&CJ::touch($run_history_file) unless ( -f $run_history_file);
 #=========================================	
 
 

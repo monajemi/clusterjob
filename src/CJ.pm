@@ -38,12 +38,15 @@ sub init{
 
 	# Generate a uuid for this installation 
 	my $ug    = Data::UUID->new;
-	my $AgentID = $ug->create_str();   # This will be the Unique ID for this installation
+	my $UUID = $ug->create_str();   # This will be the Unique ID for this installation
 	
 	my  $src_dir = File::Basename::dirname(File::Spec->rel2abs(__FILE__));
 	my  $CJVars_file= "$src_dir/CJ/CJVars.pm";
 	
 	# AgentID in CJVar.pm
+	
+	# Set the global variable to this UUID; (important to rewrite the CJVars exported ID)
+	$AgentID = $UUID; 
 	
 	my $agent_line= "our \$AgentID= \"$AgentID\";  #\"<<AgentID>>\";";
     my $cmd="sed -i '' 's|.*<<AgentID>>.*|$agent_line|'  $CJVars_file";
@@ -51,10 +54,13 @@ sub init{
 
 	mkdir "$info_dir";
 	&CJ::writeFile($AgentIDPATH, $AgentID);  # write it to a file for the record. 
+	&CJ::create_info_files();
+	
 	
 	if(defined($CJKEY)){
 		# Add this agent to the the list of agents
-		&CJ::add_agent_to_remote($AgentID);
+		&CJ::add_agent_to_remote();
+		&CJ::SyncAgent();
 	}
 
 
@@ -119,11 +125,10 @@ sub write2firebase
 
 
 sub add_agent_to_remote{
-	my ($agent) = @_;
 	# This is the first time agent is added.
 	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);	
 	my $agentHash = {"SyncReq" => "null", "last_instance" => "null", "push_timestamp" =>0  ,"pull_timestamp" => 0}; 
-    my $result = $firebase->patch("${CJID}/agents/$agent",  $agentHash); 	
+    my $result = $firebase->patch("${CJID}/agents/$AgentID",  $agentHash); 	
 }
 
 sub informOtherAgents{
@@ -183,7 +188,7 @@ print "OK\n";
 my @pids = keys %$fb_todo;
 return unless @pids;
 			
-		&CJ::message("Sync request imposed...");
+		&CJ::message("Sync request...");
 			
 			foreach my $pid (@pids){
 			
@@ -218,6 +223,50 @@ return unless @pids;
            my $result = $firebase->patch("${CJID}/agents/$AgentID", {"SyncReq" => "null"} ) ;	
 }
 
+
+sub SyncAgentByTimeStamp{
+# This type of sync is a pull sync. It checkes the pull_timestamp 
+# of the agent, and pulls every pid in pid_list that has a bigger 
+# timestamp. This is efficient due to firebase indexing.
+my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
+my $fb_get = $firebase->get("${CJID}/agents/$AgentID");
+return unless defined($fb_get);
+my $pull_timestamp = $fb_get->{pull_timestamp};
+return unless defined($pull_timestamp);
+
+# get everything bigger than the $pull_timestamp  (Efficient use of Firebase indexing)
+my $param_hash  = {"orderBy"=>"\"timestamp\"", "startAt"=>$pull_timestamp};
+my $pid_hash = $firebase->get("${CJID}/pid_list", $param_hash) ;
+
+
+# pull and write them locally
+my $updated_pull_timestamp = $pull_timestamp;
+while( my ($pid, $hash) = each(%$pid_hash) ){
+	# startAt is inclusive. The pull_timestamp must be removed since 
+	# we already have it.
+	my  $timestamp  = $hash->{timestamp};
+	
+	if( $timestamp ne $pull_timestamp ){
+		    $updated_pull_timestamp = $timestamp unless ($timestamp lt $updated_pull_timestamp);
+	    	my $info = $hash->{info};
+	    	my $pid_head = 	substr($pid,0,8);			   
+			my $rec = &CJ::read_record($pid);
+	    	if( defined($rec) ){
+			# This step is not really needed. This is a sanity check really
+			# This wont happen if everything goes well. If an interuption happens
+			# between now and updating pull_timestap, we prevent duplicate this way.
+	     	&CJ::update_record($pid,$info);			
+	    	}else{
+	 	    &CJ::add_to_run_history($info);
+	    	}   	
+	}
+	
+} #while
+
+# Update the pull_timestamp
+my $result = $firebase->patch("${CJID}/agents/$AgentID", {"pull_timestamp" => $updated_pull_timestamp} ) ;	
+
+}
 
 
 sub SyncAgentByTime{    #Incomplete
@@ -320,6 +369,7 @@ sub SyncAgentByTime{    #Incomplete
 
 sub SyncAgent{
 	&CJ::SyncAgentBySyncReq();   # Sync changes that are requested by other agents
+	&CJ::SyncAgentByTimeStamp(); # Sync based on pull_timestamp
 	#&CJ::SyncAgentByTime();   # This will bring in PIDs that are newer than local epoch time run by other agents
 #TODO: There should be a sync for when the local has more info than remote. This will check the epoch of last instance
 # for individual agents. 
@@ -1909,6 +1959,9 @@ sub readFile
 sub add_to_history
 {
     my ($text) = @_;
+	# create if it doesnt exist;
+	&CJ::create_history_file();
+		
     # ADD THIS SAVE TO HISTRY
     open (my $FILE , '>>', $history_file) or die("could not open file '$history_file' $!");
     print $FILE "$text\n";
@@ -1921,10 +1974,15 @@ sub add_to_history
 sub add_to_run_history
 {
 my ($runinfo) = @_;
+
+# create the file if it doesnt exist.	
+&CJ::create_run_history_file();
+
 my $runinfo_json = encode_json $runinfo;
 my $text=<<TEXT;
 $runinfo_json
 TEXT
+
     
 # ADD THIS SAVE TO HISTRY
 open (my $FILE , '>>', $run_history_file) or die("could not open file '$run_history_file' $!");
@@ -1990,7 +2048,12 @@ sub update_record{
 sub read_record{
     my ($pid) = @_;
     my $record = `grep -A 1 $pid $run_history_file` ; chomp($record);
-    return $record;
+	if(!defined($record) || $record eq ""){
+   	 return undef;
+	}else{
+		return $record;
+	}
+	
 }
 
 
@@ -2152,6 +2215,8 @@ sub avail_pids{
 sub add_cmd{
     my ($cmdline) = @_;
     
+	&CJ::create_cmd_file();	# create if there is none;
+	
     my $lastnum=`grep "." $cmd_history_file | tail -1  | awk \'{print \$1}\' `;
     if(! $lastnum){
         $lastnum = 0;
@@ -2173,6 +2238,29 @@ sub add_cmd{
     system($cmd);
     
 }
+
+sub create_info_files{
+	&CJ::create_history_file();
+	&CJ::create_cmd_file();	
+	&CJ::create_run_history_file();
+}
+
+sub create_history_file{	
+if( ! -f $history_file ){
+	 &CJ::touch($history_file);
+#my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%-30s", "count", "date", "pid", "action", "machine", "job_id", "message");
+	  my $header = sprintf("%-15s%-15s%-45s%-10s%-30s", "count", "date", "pid", "action", "machine","message");
+	  &CJ::add_to_history($header);
+}
+	
+}
+sub create_cmd_file{
+		&CJ::touch($cmd_history_file) unless (-f $cmd_history_file) ;	
+}
+sub create_run_history_file{
+&CJ::touch($run_history_file) unless ( -f $run_history_file);
+}
+
 
 
 
