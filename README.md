@@ -7,6 +7,7 @@ In the future versions, we hope to include other heavily used programming langua
 such as Python, and R. 
 
 You can read more about CJ on http://clusterjob.org
+
 You can find CJ book project at https://github.com/monajemi/CJ-book  
 
 Copyright 2015 Hatef Monajemi (monajemi@stanford.edu)
