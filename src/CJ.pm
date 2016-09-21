@@ -191,10 +191,16 @@ my @pids = keys %$fb_todo;
 return unless @pids;
 			
 		&CJ::message("Sync request...");
-			
+		
+		my $timestamp_hashref = {};
+		 
 			foreach my $pid (@pids){
-			
-		           my $newinfo = $firebase->get("${CJID}/pid_list/$pid/info") ;
+	          
+			  	 my $fb_get = $firebase->get("${CJID}/pid_list/$pid") ;
+			   		
+				  $timestamp_hashref->{$pid} = $fb_get->{timestamp};
+						
+		           my $newinfo = $fb_get->{info};
 				   my $pid_head = 	substr($pid,0,8);			   
 				   my $rec = read_record($pid);
 				   if(defined($rec)){
@@ -221,7 +227,8 @@ return unless @pids;
 				   
 			
 			} # Update all the PIDs	
-		
+		   #update  timestamp file;	
+		   &CJ::add_to_timestamp($timestamp_hashref) if defined($timestamp_hashref);		
            my $result = $firebase->patch("${CJID}/agents/$AgentID", {"SyncReq" => "null"} ) ;	
 }
 
@@ -245,8 +252,11 @@ my $last_instance = $firebase->get("${CJID}/last_instance");
 my $param_hash  = {"orderBy"=>"\"timestamp\"", "startAt"=>$pull_timestamp};
 my $pid_hash = $firebase->get("${CJID}/pid_list", $param_hash) ;
 
+
+
 # pull and write them locally
 my $updated_pull_timestamp = $pull_timestamp;
+my $timestamp_hashref = {};
 while( my ($pid, $hash) = each(%$pid_hash) ){
 	# startAt is inclusive. The pull_timestamp must be removed since 
 	# we already have it.
@@ -255,6 +265,9 @@ while( my ($pid, $hash) = each(%$pid_hash) ){
 	if( ($timestamp ne $pull_timestamp) ){
 		    $updated_pull_timestamp = $timestamp unless ($timestamp lt $updated_pull_timestamp);
 			if ($hash->{info}{agent} ne $AgentID){ # Write locally only if this job doesnt belong to this agent.
+		  		
+				$timestamp_hashref->{$pid} = $timestamp;
+				
 				my $info = $hash->{info};
 	    		my $pid_head = 	substr($pid,0,8);			   
 				my $rec = &CJ::read_record($pid);
@@ -262,7 +275,7 @@ while( my ($pid, $hash) = each(%$pid_hash) ){
 					# This step is not really needed. This is a sanity check really
 					# This wont happen if everything goes well. If an interuption happens
 					# between now and updating pull_timestap, we prevent duplicate this way.
-	     			&CJ::update_record($pid,$info);			
+	     			&CJ::update_record($pid,$info);	
 	    		}else{
 	 	    		&CJ::add_to_run_history($info);
 	    		}	   
@@ -270,6 +283,8 @@ while( my ($pid, $hash) = each(%$pid_hash) ){
 	}
 	
 } #while
+# update timestamp
+&CJ::add_to_timestamp($timestamp_hashref) if defined($timestamp_hashref);		
 
 # Update the pull_timestamp
 my $result = $firebase->patch("${CJID}/agents/$AgentID", {"pull_timestamp" => $updated_pull_timestamp} ) ;	
@@ -1663,14 +1678,14 @@ sub add_record{
 	my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
 	my $hist_date = (split('\s', $info->{date}{datestr}))[0];
 	my $short_message = substr($info->{message}, 0, 30);
-	my $history = sprintf("%-15u%-15s%-45s%-10s%-15s%-30s",$lastnum+1, $hist_date,$info->{pid}, $info->{runflag}, $info->{machine}, $short_message);
+	my $counter = ($lastnum =~ m/\d+/) ? $lastnum+1 : 1;
+	my $history = sprintf("%-15u%-15s%-45s%-10s%-15s%-30s",$counter, $hist_date,$info->{pid}, $info->{runflag}, $info->{machine}, $short_message);
 	&CJ::add_to_history($history);
 	&CJ::add_to_run_history($info);
-	my $last_instance=$info->{'pid'};
-	#$last_instance.=`cat $BASE/$program`;
-	&CJ::writeFile($last_instance_file, $last_instance);
-	
+	&CJ::add_to_timestamp( { $info->{pid} => $info->{date}{epoch} }  );
+	&CJ::writeFile($last_instance_file, $info->{'pid'});
 }
+
 
 sub host{
     my ($machine_name) = @_;
@@ -1733,6 +1748,40 @@ sub retrieve_package_info{
        		&CJ::err('No such job in CJ database');	
        	}	
 }
+
+
+
+
+
+sub add_to_timestamp
+{
+my ($timestamp_hashref) = @_;
+
+# create the file if it doesnt exist.	
+&CJ::create_timestamp_file();
+
+
+# read file
+my $contents = &CJ::readFile($timestamp_file);
+my $hash;
+$hash = decode_json $contents  if defined($contents);
+
+# add this timestamp
+while (my ($pid, $timestamp) = each (%$timestamp_hashref)){
+	$hash->{$pid} = $timestamp;
+	
+}
+
+# encode to json
+$contents = encode_json $hash if defined($hash);
+
+# write it to a file
+&CJ::writeFile($timestamp_file, $contents) if defined($contents);
+
+}
+
+
+
 
 
 
@@ -1922,7 +1971,15 @@ sub readFile
     }
     close($fh);
     
-    return $content;
+	
+	if(!defined($content) || $content eq ""){
+   	    return undef;
+	}else{
+	    return $content;
+	}
+	
+	
+	
 }
 
 
@@ -1940,6 +1997,14 @@ sub add_to_history
     close $FILE;
     
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -2219,6 +2284,7 @@ sub create_info_files{
 	&CJ::create_history_file();
 	&CJ::create_cmd_file();	
 	&CJ::create_run_history_file();
+	&CJ::create_timestamp_file();
 }
 
 sub create_history_file{	
@@ -2232,6 +2298,9 @@ if( ! -f $history_file ){
 }
 sub create_cmd_file{
 		&CJ::touch($cmd_history_file) unless (-f $cmd_history_file) ;	
+}
+sub create_timestamp_file{
+		&CJ::touch($timestamp_file) unless (-f $timestamp_file) ;	
 }
 sub create_run_history_file{
 &CJ::touch($run_history_file) unless ( -f $run_history_file);

@@ -46,12 +46,13 @@ our $get_tmp_dir        = "$install_dir/../CJ_get_tmp";
 our $history_file       = "$info_dir/history.info";
 our $cmd_history_file   = "$info_dir/cmd_history.info";
 our $run_history_file   = "$info_dir/run_history.info";
+our $timestamp_file     = "$info_dir/timestamp.info";
 our $save_info_file     = "$info_dir/save.info";
 our $ssh_config_file    = "$install_dir/ssh_config";
 our $remote_config_file = "$install_dir/cj_config";
 our $firebase_name		= "clusterjob-78552";     
 # Read AgentID, CJID and CJKEY upon init
-our $AgentID= "DA8899C8-7F9B-11E6-8525-54725C8A0BAC";  #"<<AgentID>>";
+our $AgentID= "0CAE6F64-7FE6-11E6-8496-38B25C8A0BAC";  #"<<AgentID>>";
 
 
 
@@ -83,7 +84,7 @@ if($KEY){
 
 
 # Export global variables
-our @EXPORT = qw( $firebase_name $AgentIDPATH $AgentID $CJID $CJKEY $info_dir $src_dir $install_dir $remotePrefix $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $remote_config_file $CJlog $localIP $localHostName $localUserName);
+our @EXPORT = qw( $timestamp_file $firebase_name $AgentIDPATH $AgentID $CJID $CJKEY $info_dir $src_dir $install_dir $remotePrefix $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $remote_config_file $CJlog $localIP $localHostName $localUserName);
 
 
 
