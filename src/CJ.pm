@@ -183,7 +183,7 @@ return unless defined($fb_get);
 my $fb_todo = $fb_get->{SyncReq};
 return if ($fb_todo eq "null");
 
-print "OK\n";
+#print "OK\n";
 
 my @pids = keys %$fb_todo;
 return unless @pids;
@@ -246,19 +246,21 @@ while( my ($pid, $hash) = each(%$pid_hash) ){
 	# we already have it.
 	my  $timestamp  = $hash->{timestamp};
 	
-	if( $timestamp ne $pull_timestamp ){
+	if( ($timestamp ne $pull_timestamp) ){
 		    $updated_pull_timestamp = $timestamp unless ($timestamp lt $updated_pull_timestamp);
-	    	my $info = $hash->{info};
-	    	my $pid_head = 	substr($pid,0,8);			   
-			my $rec = &CJ::read_record($pid);
-	    	if( defined($rec) ){
-			# This step is not really needed. This is a sanity check really
-			# This wont happen if everything goes well. If an interuption happens
-			# between now and updating pull_timestap, we prevent duplicate this way.
-	     	&CJ::update_record($pid,$info);			
-	    	}else{
-	 	    &CJ::add_to_run_history($info);
-	    	}   	
+			if ($hash->{info}{agent} ne $AgentID){ # Write locally only if this job doesnt belong to this agent.
+				my $info = $hash->{info};
+	    		my $pid_head = 	substr($pid,0,8);			   
+				my $rec = &CJ::read_record($pid);
+	    		if( defined($rec) ){
+					# This step is not really needed. This is a sanity check really
+					# This wont happen if everything goes well. If an interuption happens
+					# between now and updating pull_timestap, we prevent duplicate this way.
+	     			&CJ::update_record($pid,$info);			
+	    		}else{
+	 	    		&CJ::add_to_run_history($info);
+	    		}	   
+			}	
 	}
 	
 } #while

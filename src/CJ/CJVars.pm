@@ -51,7 +51,7 @@ our $ssh_config_file    = "$install_dir/ssh_config";
 our $remote_config_file = "$install_dir/cj_config";
 our $firebase_name		= "clusterjob-78552";     
 # Read AgentID, CJID and CJKEY upon init
-our $AgentID= "9BEC3348-7EF9-11E6-A28D-03695C8A0BAC";  #"<<AgentID>>";
+our $AgentID= "DA8899C8-7F9B-11E6-8525-54725C8A0BAC";  #"<<AgentID>>";
 
 
 
