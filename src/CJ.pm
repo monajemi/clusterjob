@@ -123,6 +123,7 @@ sub write2firebase
 		
 		# change the local timestamp (for changes). 
 	    $result = $firebase->patch("${CJID}/agents/$AgentID", {"push_timestamp"=> $timestamp} ); 
+		
 					
 	}
 
