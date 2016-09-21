@@ -1055,7 +1055,9 @@ sub clean
     
     my $short_pid = substr($pid,0,8);
 
-    if(defined($info->{'clean'})){
+
+
+    if( defined($info->{'clean'})){
         CJ::message("Nothing to clean. Package $short_pid has been cleaned on $info->{'clean'}->{'date'}->{'datestr'}.");
         exit 0;
     }
