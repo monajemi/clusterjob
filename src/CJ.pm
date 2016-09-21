@@ -83,7 +83,7 @@ sub check_hash {
 
 sub write2firebase
 {
-	my ($pid, $runinfo) = @_;
+	my ($pid, $runinfo, $timestamp) = @_;
 	
 	return if not defined($CJKEY);	
 	
@@ -103,24 +103,31 @@ sub write2firebase
 	
 	if(! defined($exists)){
 		# this is a new run -- hence will be our last (run) instance
-		my $result   = $firebase->patch("${CJID}/last_instance", {"pid" => $pid, "epoch"=> $epoch} );
+		CJ::err('Timestamp is different than Epoch for a new run.') unless ($timestamp eq $epoch);
 		
+		my $result   = $firebase->patch("${CJID}/last_instance", {"pid" => $pid, "epoch"=> $epoch} );	
 		# Add last instance for this agent. 
 	    $result = $firebase->patch("${CJID}/agents/$AgentID", {"last_instance" => {"pid" => $pid, "epoch"=> $epoch}, "push_timestamp"=> $epoch} ); 		
 	
-		$result   = $firebase->patch("${CJID}/pid_list/${pid}",{"timestamp" => $epoch, "short_pid" => $pid_head , "info" => $runinfo});
+		$result   = $firebase->patch("${CJID}/pid_list/${pid}",{"timestamp" => $timestamp, "short_pid" => $pid_head , "info" => $runinfo});
 		# Timestamp is the last change to this pid	
 	
 	}else{
-		my $result   = $firebase->patch("${CJID}/pid_list/${pid}",{"timestamp" => $epoch, "short_pid" => $pid_head , "info" => $runinfo});
-	
-		# change the local timestamp (for changes). 
-	    $result = $firebase->patch("${CJID}/agents/$AgentID", {"push_timestamp"=> $epoch} ); 
-			
+		# here timestamp may be different than epoch; 
+		# for example when we clean $timestamp is going 
+		# to be the time of cleaning
+		my $result   = $firebase->patch("${CJID}/pid_list/${pid}",{"timestamp" => $timestamp, "short_pid" => $pid_head , "info" => $runinfo});
+		
 		# Inform All other agents of this change (SyncReq) 
-		&CJ::informOtherAgents($pid, $epoch);				
+		&CJ::informOtherAgents($pid, $timestamp);	
+		
+		# change the local timestamp (for changes). 
+	    $result = $firebase->patch("${CJID}/agents/$AgentID", {"push_timestamp"=> $timestamp} ); 
+					
 	}
-	
+
+
+&CJ::update_local_push_timestamp($timestamp);	
 
 }
 
@@ -543,11 +550,14 @@ my $this_rerun = "$date -> $runinfo";
 my $type = "Rerun";
 my $change = {new_job_id => $job_id,
               date       => $date, 
-			  old_job_id => $runinfo};
+			  old_job_id => $runinfo
+		     };
+			  
 my $newinfo = &CJ::add_change_to_run_history($pid, $change, $type);
 
 # write runinfo to FB as well
-&CJ::write2firebase($info->{'pid'},$newinfo);
+my $timestamp  = $date->{epoch};    
+&CJ::write2firebase($info->{'pid'},$newinfo, $timestamp);
 
 exit 0;
 }
@@ -1099,10 +1109,9 @@ sub clean
 my $change={date => $date, agent=>$AgentID};
 my $newinfo = &CJ::add_change_to_run_history($pid, $change, "clean");
 
-
+my $timestamp = $date->{epoch};
 # Write runinfo to FB as well
-&CJ::write2firebase($info->{'pid'},$newinfo);
-
+&CJ::write2firebase($info->{'pid'},$newinfo, $timestamp);
 	    
 }
     
@@ -1683,7 +1692,8 @@ sub add_record{
 	&CJ::add_to_history($history);
 	&CJ::add_to_run_history($info);
 	&CJ::add_to_timestamp( { $info->{pid} => $info->{date}{epoch} }  );
-	&CJ::writeFile($last_instance_file, $info->{'pid'});
+	&CJ::update_local_push_timestamp($info->{date}{epoch});
+	&CJ::update_last_instance($info->{'pid'});
 }
 
 
@@ -1751,6 +1761,18 @@ sub retrieve_package_info{
 
 
 
+sub update_last_instance
+{
+	my ($pid) = @_;
+	&CJ::writeFile($last_instance_file, $pid);
+}
+
+sub update_local_push_timestamp
+{
+	my ($timestamp) = @_;
+# create the file if it doesnt exist.	
+&CJ::writeFile($local_push_timestamp_file, $timestamp)	
+}
 
 
 sub add_to_timestamp
@@ -1758,11 +1780,11 @@ sub add_to_timestamp
 my ($timestamp_hashref) = @_;
 
 # create the file if it doesnt exist.	
-&CJ::create_timestamp_file();
+&CJ::create_pid_timestamp_file();
 
 
 # read file
-my $contents = &CJ::readFile($timestamp_file);
+my $contents = &CJ::readFile($pid_timestamp_file);
 my $hash;
 $hash = decode_json $contents  if defined($contents);
 
@@ -1776,7 +1798,7 @@ while (my ($pid, $timestamp) = each (%$timestamp_hashref)){
 $contents = encode_json $hash if defined($hash);
 
 # write it to a file
-&CJ::writeFile($timestamp_file, $contents) if defined($contents);
+&CJ::writeFile($pid_timestamp_file, $contents) if defined($contents);
 
 }
 
@@ -2284,7 +2306,9 @@ sub create_info_files{
 	&CJ::create_history_file();
 	&CJ::create_cmd_file();	
 	&CJ::create_run_history_file();
-	&CJ::create_timestamp_file();
+	&CJ::create_pid_timestamp_file();
+	&CJ::create_local_push_timestamp_file();
+	
 }
 
 sub create_history_file{	
@@ -2296,11 +2320,16 @@ if( ! -f $history_file ){
 }
 	
 }
+
+sub create_local_push_timestamp_file{
+		&CJ::touch($local_push_timestamp_file) unless (-f $local_push_timestamp_file) ;	
+}
+
 sub create_cmd_file{
 		&CJ::touch($cmd_history_file) unless (-f $cmd_history_file) ;	
 }
-sub create_timestamp_file{
-		&CJ::touch($timestamp_file) unless (-f $timestamp_file) ;	
+sub create_pid_timestamp_file{
+		&CJ::touch($pid_timestamp_file) unless (-f $pid_timestamp_file) ;	
 }
 sub create_run_history_file{
 &CJ::touch($run_history_file) unless ( -f $run_history_file);

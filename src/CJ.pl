@@ -518,7 +518,7 @@ message       => $message,
 &CJ::add_record($runinfo);
 
 # write runinfo to FireBaee as well
-&CJ::write2firebase($pid,$runinfo);
+&CJ::write2firebase($pid,$runinfo,$date->{epoch});
 
     
 }elsif($runflag eq "parrun"  || $runflag eq "pardeploy"){
@@ -910,7 +910,7 @@ message       => $message,
 &CJ::add_record($runinfo);
     
 # write runinfo to FB as well
-&CJ::write2firebase($pid,$runinfo);
+&CJ::write2firebase($pid,$runinfo, $date->{epoch});
 
 }else{
 &CJ::err("Runflag $runflag was not recognized");
