@@ -85,6 +85,8 @@ sub write2firebase
 {
 	my ($pid, $runinfo) = @_;
 	
+	return if not defined($CJKEY);	
+	
 	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
 	# Check to see if this agent is defined in the agents 
 	# if not add it.
@@ -234,10 +236,14 @@ return unless defined($fb_get);
 my $pull_timestamp = $fb_get->{pull_timestamp};
 return unless defined($pull_timestamp);
 
+# update the last instance.
+my $last_instance = $firebase->get("${CJID}/last_instance");
+&CJ::writeFile($last_instance_file, $last_instance->{'pid'}) unless not defined($last_instance->{'pid'});
+
+
 # get everything bigger than the $pull_timestamp  (Efficient use of Firebase indexing)
 my $param_hash  = {"orderBy"=>"\"timestamp\"", "startAt"=>$pull_timestamp};
 my $pid_hash = $firebase->get("${CJID}/pid_list", $param_hash) ;
-
 
 # pull and write them locally
 my $updated_pull_timestamp = $pull_timestamp;
@@ -1079,7 +1085,7 @@ my $change={date => $date, agent=>$AgentID};
 my $newinfo = &CJ::add_change_to_run_history($pid, $change, "clean");
 
 
-# write runinfo to FB as well
+# Write runinfo to FB as well
 &CJ::write2firebase($info->{'pid'},$newinfo);
 
 	    
@@ -1650,7 +1656,21 @@ sub grep_var_line
 # }
 
 
-
+sub add_record{
+	my ($info) = @_;
+    
+	# Find the last number
+	my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
+	my $hist_date = (split('\s', $info->{date}{datestr}))[0];
+	my $short_message = substr($info->{message}, 0, 30);
+	my $history = sprintf("%-15u%-15s%-45s%-10s%-15s%-30s",$lastnum+1, $hist_date,$info->{pid}, $info->{runflag}, $info->{machine}, $short_message);
+	&CJ::add_to_history($history);
+	&CJ::add_to_run_history($info);
+	my $last_instance=$info->{'pid'};
+	#$last_instance.=`cat $BASE/$program`;
+	&CJ::writeFile($last_instance_file, $last_instance);
+	
+}
 
 sub host{
     my ($machine_name) = @_;
@@ -1696,72 +1716,22 @@ sub host{
 sub retrieve_package_info{
     
     my ($pid) = @_;
-    
-    # read runinfo from Firebase 
-	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
-    
-    if(!$pid){
-    
-		my $fb_response  = $firebase->get("${CJID}/last_instance");
-		if(! defined($fb_response) ){
-        	$pid    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($pid);
-		}else{
-			$pid    =  $fb_response->{'pid'};chomp($pid);
-		}
-    }
-    
+    #### EVERY THING IS DONE LOCALLY NOW. 
+	# From commit 87ec10b
 	
-
-   #my $results     = $firebase->get("${CJID}/runinfo", "orderBy=\"\$key\"\&startAt=\"${pid}\"");
-   my $fb_result;
-   my $info=undef;
-   if(length($pid) eq 40){
-   	   my $pid_head = substr($pid,0,8);  #short_pid
-   	   my $pid_tail = substr($pid,8,32);
-       $fb_result = $firebase->get("${CJID}/runinfo/$pid_head/$pid_tail") ;
-	   $info      = 	$fb_result;   
-	}elsif(is_valid_pid($pid)){
-    	   my $pid_head = substr($pid,0,8);  #short_pid
-	       $fb_result = $firebase->get("${CJID}/runinfo/$pid_head")  ;
-		   
-		   if( defined($fb_result) ){
-			   	if(!keys(%$fb_result) eq 1){
-	    	    	&CJ::err('Multiple PIDs detected for $pid_head. Use full PID instead (40 Char)');
-		   		}else{
-			   		my ($key) = keys %$fb_result;
-			   		$info = $fb_result->{$key}	 ;  
-			   		#say Dumper($info); 
-					
-		   		}
-		   }
-		   
-   }else{
-	   CJ::err("No valid pid detected");
-   }
-   
-   
-  
-   #print "size of hash:  " . keys( %$fb_result ) . ".\n";
-  
-    
-  	#say Dumper($info) . "\n" ; 	
+	if(!$pid){
+		$pid =`sed -n '1{p;q;}' $last_instance_file`; chomp($pid);
+	}
 	
-   if(!defined($info)){
-	   CJ::message("Can't fetch metadata from DB, Trying local files...");
-	   # try local info
+	&CJ::err("No valid PID detected")  unless &CJ::is_valid_pid($pid);
+	
        my $this_record       = read_record($pid);
-   	 	#print "OK:$pid\n";
-   		#print "$this_record\n";  die;
 		if(defined($this_record)){
-           $info = decode_json $this_record;
-		  	# patching the data to database if it exists locally 
-		    &CJ::write2firebase($info->{pid},$info);
+           my $info = decode_json $this_record;
+		   return $info;
        	}else{
-       			&CJ::err('No such job in CJ database');	
+       		&CJ::err('No such job in CJ database');	
        	}	
-   }
-
-   return $info;
 }
 
 
@@ -2119,6 +2089,10 @@ sub get_cmd{
 
 
 sub avail_pids{
+
+	#### There should be a local (pid-timestamp file);
+	# from which we can then acquire all available PIDs.
+
 
 	# Check the last local instance 
 	# and if it not the same as firebase

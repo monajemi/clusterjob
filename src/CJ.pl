@@ -490,21 +490,6 @@ my $cmd = "rm $local_qsub_info_file";
         $job_id ="";
 }
     
-
-    
-# Find the last number
-my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
-my $hist_date = (split('\s', $date->{datestr}))[0];
-my $short_message = substr($message, 0, 30);
-my $history = sprintf("%-15u%-15s%-45s%-10s%-15s%-30s",$lastnum+1, $hist_date,$pid, $runflag, $machine, $short_message);
-&CJ::add_to_history($history);
-#=================================
-# store tarfile info for deletion
-# when needed
-#=================================
-
-    
-
     
     
 my $runinfo={
@@ -527,13 +512,10 @@ save_path     => "${saveDir}/${pid}",
 runflag       => $runflag,
 program       => $program,
 message       => $message,
-};
-    
-&CJ::add_to_run_history($runinfo);
-my $last_instance=$pid;
-#$last_instance.=`cat $BASE/$program`;
-&CJ::writeFile($last_instance_file, $last_instance);
-  
+};	
+
+
+&CJ::add_record($runinfo);
 
 # write runinfo to FireBaee as well
 &CJ::write2firebase($pid,$runinfo);
@@ -900,18 +882,6 @@ $job_id = "";
 }
     
 
-    
-# Find the last number
-my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
-my $hist_date = (split('\s', $date->{datestr}))[0];
-my $short_message = substr($message, 0, 30);
-#my $history .= sprintf("%-15u%-15s%-21s%-10s%-15s%-20s%-30s",$lastnum+1, $hist_date, $short_pid, $runflag, $machine, "$job_ids->[0]-$job_ids->[-1]", $short_message);
-my $history = sprintf("%-15u%-15s%-45s%-10s%-15s%-30s",$lastnum+1, $hist_date,$pid, $runflag, $machine, $short_message);
-
-&CJ::add_to_history($history);
-    
-
-
 
     
 my $runinfo={
@@ -935,13 +905,10 @@ runflag       => $runflag,
 program       => $program,
 message       => $message,
 };
-    
-&CJ::add_to_run_history($runinfo);
-    
-my $last_instance=${pid};
-&CJ::writeFile($last_instance_file, $last_instance);
-    
+    	
 
+&CJ::add_record($runinfo);
+    
 # write runinfo to FB as well
 &CJ::write2firebase($pid,$runinfo);
 
@@ -950,10 +917,7 @@ my $last_instance=${pid};
 }
 
 
-
-
-    
-    exit 0;
+exit 0;
     
     
 }
