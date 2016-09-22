@@ -241,7 +241,7 @@ return unless @pids;
 }
 
 
-sub SyncAgentByTimeStamp{
+sub SyncAgentByPullTimeStamp{
 # This type of sync is a pull sync. It checkes the pull_timestamp 
 # of the agent, and pulls every pid in pid_list that has a bigger 
 # timestamp. This is efficient due to firebase indexing.
@@ -299,99 +299,52 @@ my $result = $firebase->patch("${CJID}/agents/$AgentID", {"pull_timestamp" => $u
 
 }
 
-
-sub SyncAgentByTime{    #Incomplete
-	
-	# Check the local epoch against the  
-	# Remote Epoch 
-	
-	# Get Remote Epoch 
-	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
-	my $fb_last  = $firebase->get("${CJID}/last_instance");
-	my $fb_epoch = &CJ::check_hash($fb_last, ["epoch"]) ? $fb_last->{epoch} : 0 ;  
-	
+sub GetLocalPushTimeStamp
+{
 	# Get local epoch
-	my $local_last_pid    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($local_last_pid);
-    my $local_record      =   read_record($local_last_pid);	
-	my $local_epoch;
-	if(defined($local_record)){
-       my $info = decode_json $local_record;
-	   $local_epoch=$info->{date}->{epoch};
-	}else{	
-		$local_epoch = 0;
-	}  
-	 
-	if($local_epoch eq $fb_epoch){
-		return 1;	
-	}elsif($local_epoch  lt $fb_epoch){
-	    #bring new information from remote to local 		
-		my $fb_last  = $firebase->get("${CJID}/runinfo");	
-			
-	}  
-	 
-	 
+	my $local_push_timestamp   =   `sed -n '1{p;q;}' $local_push_timestamp_file`;chomp($local_push_timestamp);
+	
+	if( (not defined $local_push_timestamp) || ($local_push_timestamp eq "") ){
+		return undef;
+	}else{
+		return $local_push_timestamp;
+	}
+	
+}
+
+sub SyncAgentByPushTimeStamp{    #Incomplete
+	
+# This type of sync is a push sync. It checkes the push_timestamp 
+# of the agent, and if the local push_timestamp is bigger 
+# than the remote counterpart, it sends to the server the local info that hasnt been pushed.
+my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
+my $fb_get = $firebase->get("${CJID}/agents/$AgentID");
+return unless defined($fb_get);
+my $remote_push_timestamp = $fb_get->{push_timestamp};
+return unless defined($remote_push_timestamp);
+
+my $local_push_timestamp = &CJ::GetLocalPushTimeStamp(); 
+return unless defined($local_push_timestamp);
+	
+return if ($remote_push_timestamp eq $local_push_timestamp);	
+CJ::warning("CJ is in awe! Push TimeStamp:: remote is bigger than local") if ($remote_push_timestamp gt $local_push_timestamp);	 
+
+
 	# comprare the two
-	if( $fb_epoch lt $local_epoch ){ # Some data are missing from Firebase
+	if( $remote_push_timestamp lt $local_push_timestamp ){ # Some data are missing from Firebase
 		
-		&CJ::message("Transfering local metadata to cloud...Please be patient");
+		&CJ::message("Syncing data missing from the cloud. Please be patient...");
 			# Patch all data that are available locally 
 			# but missing on FB
 			
-			my $string = &CJ::readFile($run_history_file);
 			
-			my $missing_json;
+			my $pid_timestamp = &CJ::read_pid_timestamp();
+			my @filtered_pids = grep { $_ > $remote_push_timestamp } keys %$pid_timestamp;
+			my $info = retrieve_package_info(@filtered_pids);
+	  		&CJ::write2firebase($info->{pid},$info);	
 			
-			my $last_fb_pid="";
-			if(defined($fb_last->{pid})){
-			   $last_fb_pid = $fb_last->{pid};
-			}
 			
-			if( ! $string =~ /\b$last_fb_pid\b/){
-			$missing_json = `awk 'BEGIN{ found=0} /$last_fb_pid/{found=1;next} {if (found) print}' $run_history_file`;
-			}else{
-			$missing_json = `cat $run_history_file`; 
-			}
-			#print $missing_json, "\n";
-			
-		  my @records = split(/\n\n/,$missing_json);  
-		  foreach my $record (@records){
-			  my $info = decode_json($record);
-				  # patching the data to database if it exists locally   
-	  		  &CJ::write2firebase($info->{pid},$info);	
-		  }	
-		  
-		  	  
-  		  
-	}elsif( !$fb_epoch & !$local_epoch){
-		 &CJ::message("NO PID is available in DB"); exit 0;
-	}
-	
-	
-
-    my @sorted_pidList;
-	# locally stored pids
-    #my $pidList=`cat $history_file | awk \'{print \$3}\' `;
-    #my @pidList = $pidList =~ m/\b([0-9a-f]{8,40})\b/g;
-    # fetch pids available on the server
-	
-	
-    # Get unsorted PIDS and epochs
-	my $fetched_pids = $firebase->get("${CJID}/pid-epoch-map");
-	if(defined($fetched_pids)){
-							
-		    # Sort PIDs by epoch		
-			foreach my $pid (sort { $fetched_pids->{"$a"} <=> $fetched_pids->{"$b"} } keys %$fetched_pids) {
-				    #printf "%-8s %s\n", $pid, $fetched_pids{$pid};
-			push(@sorted_pidList, $pid);
-		 	}
-				
-	}
-	
-    #my @unique_pids = do { my %seen; grep { !$seen{$_}++ } @pidList};
-	#return @unique_pids;
-	my $fb_response  = $firebase->get("${CJID}/runinfo");   #Later add order by value of Epoch and only 10 of them!
-	return (\@sorted_pidList,$fb_response);
-	
+	  }
 	
 	
 	
@@ -399,11 +352,10 @@ sub SyncAgentByTime{    #Incomplete
 
 
 sub SyncAgent{
+	&CJ::message("Syncing...");
 	&CJ::SyncAgentBySyncReq();   # Sync changes that are requested by other agents
-	&CJ::SyncAgentByTimeStamp(); # Sync based on pull_timestamp
-	#&CJ::SyncAgentByTime();   # This will bring in PIDs that are newer than local epoch time run by other agents
-#TODO: There should be a sync for when the local has more info than remote. This will check the epoch of last instance
-# for individual agents. 
+	&CJ::SyncAgentByPullTimeStamp(); # Sync based on pull_timestamp
+	&CJ::SyncAgentByPushTimeStamp(); # Sync based on pull_timestamp
 }
 
 
@@ -1061,8 +1013,6 @@ sub clean
         CJ::message("Nothing to clean. Package $short_pid has been cleaned on $info->{'clean'}->{'date'}->{'datestr'}.");
         exit 0;
     }
-    
-    
     
     
     
@@ -1753,12 +1703,12 @@ sub retrieve_package_info{
 	
 	&CJ::err("No valid PID detected")  unless &CJ::is_valid_pid($pid);
 	
-       my $this_record       = read_record($pid);
+       my $this_record = read_record($pid);
 		if(defined($this_record)){
            my $info = decode_json $this_record;
 		   return $info;
        	}else{
-       		&CJ::err('No such job in CJ database');	
+       		&CJ::err("No such job in CJ database");	
        	}	
 }
 
@@ -1778,6 +1728,16 @@ sub update_local_push_timestamp
 }
 
 
+sub read_pid_timestamp
+{
+
+	# read file
+	my $contents = &CJ::readFile($pid_timestamp_file);
+	my $hash;
+	$hash = decode_json $contents  if defined($contents);
+	return $hash;
+}
+
 sub add_to_timestamp
 {
 my ($timestamp_hashref) = @_;
@@ -1786,10 +1746,7 @@ my ($timestamp_hashref) = @_;
 &CJ::create_pid_timestamp_file();
 
 
-# read file
-my $contents = &CJ::readFile($pid_timestamp_file);
-my $hash;
-$hash = decode_json $contents  if defined($contents);
+my $hash = &CJ::read_pid_timestamp();
 
 # add this timestamp
 while (my ($pid, $timestamp) = each (%$timestamp_hashref)){
@@ -1798,8 +1755,7 @@ while (my ($pid, $timestamp) = each (%$timestamp_hashref)){
 }
 
 # encode to json
-$contents = encode_json $hash if defined($hash);
-
+my $contents = encode_json $hash if defined($hash);
 # write it to a file
 &CJ::writeFile($pid_timestamp_file, $contents) if defined($contents);
 
@@ -2109,12 +2065,47 @@ sub update_record{
 
 sub read_record{
     my ($pid) = @_;
-    my $record = `grep -A 1 $pid $run_history_file` ; chomp($record);
-	if(!defined($record) || $record eq ""){
-   	 return undef;
-	}else{
-		return $record;
-	}
+	
+	
+	# my $record = `grep -A 1 $pid $run_history_file` ; chomp($record);
+	
+	my $is_scalar = is_valid_pid($pid) ? 1 : 0;
+ 		$pid = [$pid] if $is_scalar;  #change the single pid to be a array ref
+		 
+		# Do it in perl 
+		my $contents = &CJ::readFile($run_history_file);
+	    my @records = split(/\n\n/,$contents);  
+  	
+		my $regex = "(";
+		$regex .= join "|", @{$pid};
+		$regex .= ")";
+		
+		#print $regex . "\n";
+		
+	    my $remaining  = scalar @{ $pid };		
+		my $record_hash;
+		# a reverse loop over the file.
+		my $i=$#records;
+		while ($i ge 0 & $remaining gt 0 ) {
+			my $record  = $records[$i];
+		  	#print $record . "\n";
+		  	if ($record =~ m/$regex/){
+		  		my $matched_pid = $1;
+	  		    $record_hash->{$matched_pid} = $record;  # $1 is the captured PID
+	  		    # delete this PID from the array
+	  		    @{$pid} = grep $_ ne $matched_pid, @{$pid};
+			    $remaining  = scalar @{ $pid };
+			    # print "\n$remaining\n";
+		  	}
+			
+		  $i--;  # reverse loop. The older ones are at the end of the file and usually people inqure about the older ones.	
+		}
+		
+		if ($is_scalar & defined($record_hash)){
+			 my $key = (keys %$record_hash)[0];
+			 $record_hash = $record_hash->{$key}  ; # scalar-case;
+		}
+	 return defined($record_hash) ? $record_hash : undef;
 	
 }
 
@@ -2236,7 +2227,7 @@ sub avail_pids{
 			$missing_json = `cat $run_history_file`; 
 			}
 			#print $missing_json, "\n";
-			
+		
 		  my @records = split(/\n\n/,$missing_json);  
 		  foreach my $record (@records){
 			  my $info = decode_json($record);
