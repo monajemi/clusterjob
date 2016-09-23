@@ -768,7 +768,6 @@ sub show_log{
        foreach my $i (reverse @to_show_idx){
 			  my $this_pid = $sorted_pids->[$maxIdx-$i];
 	    	  my $info =  $info_hash->{$this_pid};			
-
         print "\n";
         print "\033[32mpid $info->{pid}\033[0m\n";
         print "date: $info->{date}->{datestr}\n";
@@ -778,7 +777,7 @@ sub show_log{
         print "script: $info->{program}\n";
         #print "remote_path: $info->{remote_path}\n";
         print "initial_flag: $info->{runflag}\n";
-        print "reruned: ",1+$#{$info->{rerun}} . " times \n" if($info->{rerun}) ;
+        print "reruned: ", (keys $info->{rerun}) . " times \n" if($info->{rerun}) ;
         print "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
         print "\n";
         print ' ' x 10; print "$info->{message}\n";
