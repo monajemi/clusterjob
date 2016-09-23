@@ -4,7 +4,7 @@ CJ produces 'reporoducible' computational packages for academic
 publications at no-cost. CJ project started in 2013 at Stanford University by Hatef Monajemi and his PhD advisor David L. Donoho with the goal of encouraging  more efficient and reproducible research paradigm. 
 CJ is currently under development. Current implementation allows submission of MATLAB jobs. 
 In the future versions, we hope to include other heavily used programming languages 
-such as Python, and R. 
+such as Python and R. 
 
 You can read more about CJ on http://clusterjob.org
 
