@@ -182,9 +182,11 @@ sub informOtherAgents{
 
 sub sync_forced
 {
+	my ($status) = @_;		
+	return if $status;   #if AutoSync has been done, don't sync it again.
 	my $sync = CJ::Sync->new($AgentID);
 	&CJ::sync($sync);
-	&CJ::message("All up to date.");
+	&CJ::message("All up-to-date.");
 }
 
 sub  sync
@@ -208,6 +210,7 @@ sub AutoSync{
 	#print $interval;
 	return if( $diff <= $interval); 
 	&CJ::sync($sync);
+	return 1;
 }
 
 sub updateLastSync
@@ -768,8 +771,8 @@ sub show_log{
         print "\033[32mpid $info->{pid}\033[0m\n";
         print "date: $info->{date}->{datestr}\n";
         print "user: $info->{user}\n";
-        #            print "local_host: $info->{local_host} ($info->{local_ip})\n";
-        print "remote: $info->{account}\n";
+        print "agent: $info->{agent}\n";
+        print "account: $info->{account}\n";
         print "script: $info->{program}\n";
         #print "remote_path: $info->{remote_path}\n";
         print "initial_flag: $info->{runflag}\n";
@@ -1069,8 +1072,8 @@ sub show_info
     print "\033[32mpid $info->{pid}\033[0m\n";
     print "date: $info->{date}->{datestr}\n";
     print "user: $info->{user}\n";
-    print "local_host: $info->{local_host} ($info->{local_ip})\n";
-    print "remote_account: $info->{account}\n";
+    print "agent: $info->{agent}\n";
+    print "account: $info->{account}\n";
     print "script: $info->{program}\n";
     print "remote_path: $info->{remote_path}\n";
     print "initial_flag: $info->{runflag}\n";

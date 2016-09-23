@@ -23,7 +23,7 @@ use Term::ReadLine;
 use JSON::PP;
 #use Term::ANSIColor qw(:constants); # for changing terminal text colors
 use Digest::SHA qw(sha1_hex); # generate hexa-decimal SHA1 PID
-use vars qw($message $mem $runtime $dep_folder $verbose $log_script $text_header_lines $show_tag $log_tag $qsub_extra $cmdline);  # options
+use vars qw( $sync_status $message $mem $runtime $dep_folder $verbose $log_script $text_header_lines $show_tag $log_tag $qsub_extra $cmdline);  # options
 
 $::VERSION = &CJ::version_info();
 
@@ -47,22 +47,10 @@ if( (! -d "$info_dir") & ($cjcmd0 ne "init") ){
 	&CJ::err(" This CJ agent is not initialized. Please initiate it by issuing 'cj init'");
 }
 
-if(-d "$info_dir"){
-#=========================================
-# refresh CJlog before declaring options.
-# it keeps updated for each new run
-&CJ::my_system("rm $CJlog") unless (! -f $CJlog);
-#=========================================
 
-if($CJKEY){	
-	&CJ::AutoSync();
-	# TO BE DONE: Sync Agent for PIDs that are beyond its current Epoch 
-}
-
-}
 
 #====================================
-#         READ FLAGS
+#         INITIALIZE VARIABLEs
 #====================================
 $dep_folder = ".";
 $mem        = "8G";      # default memeory
@@ -74,12 +62,30 @@ $show_tag          = "program";
 $qsub_extra        = "";
 $log_tag           = "all";
 $log_script        = undef;
+$sync_status 	   = 0;
+
+
+
+if(-d "$info_dir"){
+#=========================================
+# refresh CJlog before declaring options.
+# it keeps updated for each new run
+&CJ::my_system("rm $CJlog") unless (! -f $CJlog);
+#=========================================
+
+if($CJKEY){	
+		$sync_status = &CJ::AutoSync();
+}
+
+}
+
+
 
 my $spec = <<'EOSPEC';
 	  init 	    initiates CJ installation [nocase]
                {defer{CJ::init}}
 	  sync 	    force sync [nocase]
-		                {defer{CJ::sync_forced}}
+		                {defer{CJ::sync_forced($sync_status)}}
       prompt 	    opens CJ prompt command [undocumented]
                      {defer{cj_prompt}}
      -help 	  Show usage information [undocumented]
@@ -96,7 +102,7 @@ my $spec = <<'EOSPEC';
      -v 	          [ditto] [undocumented]
      --v[erbose]	                                  verbose mode [nocase]
                                                               {$verbose=1}
-     --err[or]	                                          error tag for show [nocase] [requires: show]
+     --err[or]	                                      error tag for show [nocase] [requires: show]
                                                               {$show_tag="error"}
      --less      	                                  less tag for show [nocase]  [requires: show]
                                                                {$show_tag="less";}
