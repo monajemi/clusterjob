@@ -86,13 +86,12 @@ return unless @pids;
 			foreach my $pid (@pids){
 	          
 			  	 my $fb_get = $firebase->get("${CJID}/pid_list/$pid") ;
-			   		
-				  $timestamp_hashref->{$pid} = $fb_get->{timestamp};
-						
+				 next if not defined($fb_get);  # if somehow the entry doesnt exist.
+				 
+				  $timestamp_hashref->{$pid} = $fb_get->{timestamp};			
 		           my $newinfo = $fb_get->{info};
 				   my $pid_head = 	substr($pid,0,8);			   
-				   my $rec_info = retrieve_package_info($pid);
-				   if(defined($rec_info)){
+				   if(defined(&CJ::read_record($pid))){
 			       		&CJ::update_record($pid,$newinfo);
 					}else{
 					    &CJ::add_to_run_history($newinfo);
@@ -222,7 +221,7 @@ CJ::warning("CJ is in awe! Push TimeStamp:: remote is bigger than local") if ($r
 			while ( my ($pid,$info) = each (%$info_hash)){
 				my $timestamp = $info->{date}{epoch};
 				my $inform    = 1;
-		  		&CJ::write2firebase($pid,$info,$timestamp, $inform);	
+		  		&CJ::write2firebase($pid,$info,$timestamp, $inform) unless ($info->{agent} ne $AgentID); # not responsible for other agnets mess. The agent might have been already deleted, etc. We only push our own!	
 			}
 	  				
 	  }

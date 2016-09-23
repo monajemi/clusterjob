@@ -42,23 +42,23 @@ sub init{
 		&CJ::message("Initializing agent $UUID");
 	}
 	
-	# Set the global variable to this UUID; (important to rewrite the CJVars exported ID)
+	# Set the global variable to this UUID;
+	CJ::err("There exist agent with ID $AgentID") if defined($AgentID);
 	$AgentID = $UUID; #!important
 	
 	
-	my  $src_dir = File::Basename::dirname(File::Spec->rel2abs(__FILE__));
-	my  $CJVars_file= "$src_dir/CJ/CJVars.pm";
+	#my  $src_dir = File::Basename::dirname(File::Spec->rel2abs(__FILE__));
+	#my  $CJVars_file= "$src_dir/CJ/CJVars.pm";
 	
 	
 
-	my $agent_line= "our \$AgentID= \"$AgentID\";  #\"<<AgentID>>\";";
-    my $cmd="sed -i '' 's|.*<<AgentID>>.*|$agent_line|'  $CJVars_file";
-    system($cmd);
+	#my $agent_line= "our \$AgentID= \"$AgentID\";  #\"<<AgentID>>\";";
+    #my $cmd="sed -i '' 's|.*<<AgentID>>.*|$agent_line|'  $CJVars_file";
+    #system($cmd);
 
 	mkdir "$info_dir";
-	&CJ::writeFile($AgentIDPATH, $AgentID);  # write it to a file for the record. 
+	&CJ::writeFile($AgentIDPATH, $AgentID);  # Record the AgentID in a file. 
 	&CJ::create_info_files();
-	
 	
 	if(defined($CJKEY)){
 		# Add this agent to the the list of agents
@@ -93,9 +93,7 @@ sub write2firebase
 	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
 	# Check to see if this agent is defined in the agents 
 	# if not add it.
-	my $fb_get;
-	$fb_get    = $firebase->get("${CJID}/agents/$AgentID");
-	&CJ::add_agent_to_remote($AgentID) unless defined($fb_get);
+	&CJ::add_agent_to_remote($AgentID);
 	
 	
 	my $exists = defined( $firebase->get("${CJID}/pid_list/${pid}") );
@@ -118,7 +116,8 @@ sub write2firebase
 		
 		# This is either new or hasn't been pushed before
 		my $last = $firebase->get("${CJID}/last_instance");
-		$firebase->patch("${CJID}/last_instance", {"pid" => $pid, "epoch"=> $epoch} ) if ( $epoch > $last->{"epoch"} ); 
+		my $remote_last_epoch = defined($last) ? $last->{"epoch"} : 0;
+		$firebase->patch("${CJID}/last_instance", {"pid" => $pid, "epoch"=> $epoch} ) if ( $epoch >  $remote_last_epoch ); 
 		# Add last instance for this agentm and update push ts. 
 	    my $result = $firebase->patch("${CJID}/agents/$AgentID", {"last_instance" => {"pid" => $pid, "epoch"=> $epoch}, "push_timestamp"=> $epoch} ); 		
 		$result   = $firebase->patch("${CJID}/pid_list/${pid}",{"timestamp" => $timestamp, "short_pid" => $pid_head , "info" => $runinfo});
@@ -138,6 +137,8 @@ sub write2firebase
 sub add_agent_to_remote{
 	# This is the first time agent is added.
 	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);	
+	# make sure agent doesnt exist already
+	return if defined($firebase->get("${CJID}/agents/$AgentID"));
 	my $agentHash = {"SyncReq" => "null", "last_instance" => "null", "push_timestamp" =>0  ,"pull_timestamp" => 0}; 
     my $result = $firebase->patch("${CJID}/agents/$AgentID",  $agentHash); 	
 }
@@ -1963,11 +1964,11 @@ sub read_record{
 	# my $record = `grep -A 1 $pid $run_history_file` ; chomp($record);
 	
 	my $is_scalar = is_valid_pid($pid) ? 1 : 0;
- 	$pid = [$pid] if $is_scalar;  #change the single pid to be a array ref
+ 	my $pids = $is_scalar ? [$pid] : $pid;  #change the single pid to be a array ref
 	
 	# get a copy of the array ref as we will destroy this copy in a for loop
 	# so the input is intact;
-	my @pids =  @{$pid};  
+	my @pids =  @{$pids};  
 	
 		 
 		# Do it in perl 
@@ -1975,7 +1976,7 @@ sub read_record{
 	    my @records = split(/\n\n/,$contents) if defined($contents);  
   	
 		my $regex = "(";
-		$regex .= join "|", @{$pid};
+		$regex .= join "|", @pids;
 		$regex .= ")";
 		
 		#print $regex . "\n";

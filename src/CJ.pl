@@ -40,11 +40,9 @@ foreach ( @ARGV ) {
 
 my $cjcmd0 = $cmd[2];chomp($cjcmd0);
 
-
- 
 # Send error if the agent isn't initialized
-if( (! -d "$info_dir") & ($cjcmd0 ne "init") ){
-	&CJ::err(" This CJ agent is not initialized. Please initiate it by issuing 'cj init'");
+if( (!-d "$info_dir" || !defined($AgentID)) & ($cjcmd0 ne "init") ){
+	&CJ::err(" This CJ agent is not initialized. Please initiate it by 'cj init'");
 }
 
 
@@ -66,7 +64,7 @@ $sync_status 	   = 0;
 
 
 
-if(-d "$info_dir"){
+if( -d "$info_dir" ){
 #=========================================
 # refresh CJlog before declaring options.
 # it keeps updated for each new run
@@ -74,6 +72,7 @@ if(-d "$info_dir"){
 #=========================================
 
 if($CJKEY){	
+		&CJ::add_agent_to_remote();  # if there is no agent, add it.
 		$sync_status = &CJ::AutoSync();
 }
 
@@ -86,6 +85,8 @@ my $spec = <<'EOSPEC';
                {defer{CJ::init}}
 	  sync 	    force sync [nocase]
 		                {defer{CJ::sync_forced($sync_status)}}
+	  who 	    prints out agent ID [nocase]
+				  	    {defer{print "      agent:". $AgentID . "\n";}}					
       prompt 	    opens CJ prompt command [undocumented]
                      {defer{cj_prompt}}
      -help 	  Show usage information [undocumented]

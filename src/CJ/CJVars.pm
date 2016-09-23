@@ -53,12 +53,23 @@ our $save_info_file     = "$info_dir/save.info";
 our $ssh_config_file    = "$install_dir/ssh_config";
 our $remote_config_file = "$install_dir/cj_config";
 our $firebase_name		= "clusterjob-78552";     
-# Read AgentID, CJID and CJKEY upon init
-our $AgentID= "56DAEA2A-7FED-11E6-870C-B0C95C8A0BAC";  #"<<AgentID>>";
+# Read AgentID
+our $AgentID= undef;
+
+if(-f $AgentIDPATH){
+	my $line;
+	
+open(my $FILE,  $AgentIDPATH) or  die "could not open $AgentIDPATH: $!";
+local $/ = undef;
+$line = <$FILE>;
+close ($FILE);
+chomp($line);
+$AgentID= $line;
+if($AgentID){$AgentID =~ s/^\s+|\s+$//g};
+}
 
 
-
-# Make sure CJID and CJKEY are there and obtain them.
+# Read CJID and CJKEY 
 our $CJID =undef;
 our $CJKEY=undef;
 my $lines;
