@@ -545,7 +545,7 @@ $master_script.="$docstring";
     }
     
     
-    
+    return $master_script;
 }
 
 
@@ -970,8 +970,8 @@ sub show
 
     
     my $short_pid = substr($pid,0,8);
-    if(defined($info->{'clean'}->{'date'})){
-        CJ::message("Nothing to show. Package $short_pid has been cleaned on $info->{'clean'}->{'date'} at $info->{'clean'}->{'time'}.");
+    if(defined($info->{clean}{date})){
+        CJ::message("Nothing to show. Package $short_pid has been cleaned on $info->{clean}{date}{datestr}.");
         exit 0;
     }
 
@@ -1967,8 +1967,7 @@ sub update_record{
 
 sub read_record{
     my ($pid) = @_;
-	
-	
+		
 	
 	# my $record = `grep -A 1 $pid $run_history_file` ; chomp($record);
 	

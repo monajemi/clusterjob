@@ -440,13 +440,13 @@ my $cmd = "ssh $account 'echo `ls` '  ";
 &CJ::my_system($cmd, $verbose);
 
 
-&CJ::message("Sending package");
+&CJ::message("Sending package \033[32m$short_pid\033[0m");
 # copy tar.gz file to remoteDir
 my $cmd = "rsync -avz  ${localDir}/${tarfile} ${account}:$remoteDir/";
 &CJ::my_system($cmd,$verbose);
 
 
-&CJ::message("Submitting package $short_pid");
+&CJ::message("Submitting job");
 my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; cd ${pid}; bash master.sh > $remote_sep_Dir/qsub.info; sleep 2'";
 &CJ::my_system($cmd,$verbose) unless ($runflag eq "deploy");
     
@@ -564,7 +564,6 @@ if($forlines_idx_set[$i+1] ne $forlines_idx_set[$i]+1){
 }
 
     
-    
 my $TOP;
 my $FOR;
 my $BOT;
@@ -593,10 +592,10 @@ my @forlines_to_matlab_interpret;
    
 for my $this_forline (@forline_list) {
     
-    
     my ($idx_tag, $range) = &CJ::Matlab::read_matlab_index_set($this_forline, $TOP,$verbose);
     
-    
+    #TODO: This will switch order if we dont check it. Rewrite this 
+	# so as to keep order of indecies.
     # if we can't establish range, we output undef
     if(defined($range)){
         push @idx_tags, $idx_tag;

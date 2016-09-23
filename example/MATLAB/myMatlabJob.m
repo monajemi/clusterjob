@@ -20,7 +20,7 @@ for i = 1:length(l)
 	file2 = sprintf('file_%i', counter);
 	fid2 = fopen(file2,'at');
         fprintf(fid2, '%i\n', counter);
-	fclose(fid2)
+	 fclose(fid2)
 
 
 	% File for testing reduce
