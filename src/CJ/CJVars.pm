@@ -48,7 +48,7 @@ our $cmd_history_file   = "$info_dir/cmd_history.info";
 our $run_history_file   = "$info_dir/run_history.info";
 our $pid_timestamp_file = "$info_dir/pid_timestamp.info";
 our $local_push_timestamp_file = "$info_dir/local_push_timestamp";
-
+our $lastSync_file      = "$info_dir/last_sync";
 our $save_info_file     = "$info_dir/save.info";
 our $ssh_config_file    = "$install_dir/ssh_config";
 our $remote_config_file = "$install_dir/cj_config";
@@ -86,7 +86,7 @@ if($KEY){
 
 
 # Export global variables
-our @EXPORT = qw($local_push_timestamp_file $pid_timestamp_file $firebase_name $AgentIDPATH $AgentID $CJID $CJKEY $info_dir $src_dir $install_dir $remotePrefix $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $remote_config_file $CJlog $localIP $localHostName $localUserName);
+our @EXPORT = qw( $lastSync_file $local_push_timestamp_file $pid_timestamp_file $firebase_name $AgentIDPATH $AgentID $CJID $CJKEY $info_dir $src_dir $install_dir $remotePrefix $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $remote_config_file $CJlog $localIP $localHostName $localUserName);
 
 
 

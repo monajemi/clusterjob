@@ -4,6 +4,7 @@ package CJ;
 use strict;
 use warnings;
 use CJ::CJVars;
+use CJ::Sync;
 use Term::ReadLine;
 use Time::Local;
 use Time::Piece;
@@ -29,25 +30,27 @@ $version_script .=  "\n          https://github.com/monajemi/clusterjob";
 
 sub init{
 
-	# check to see there is  no prior installation
-	if(-d $info_dir){
-		&CJ::err("Cannot initialize. Prior installation exist in this directory.")
-	}
-	
-	
 
 	# Generate a uuid for this installation 
 	my $ug    = Data::UUID->new;
 	my $UUID = $ug->create_str();   # This will be the Unique ID for this installation
 	
+	# check to see there is  no prior installation
+	if(-d $info_dir){
+		&CJ::err("Cannot initialize. Prior installation exist in this directory.")
+	}else{
+		&CJ::message("Initializing agent $UUID");
+	}
+	
+	# Set the global variable to this UUID; (important to rewrite the CJVars exported ID)
+	$AgentID = $UUID; #!important
+	
+	
 	my  $src_dir = File::Basename::dirname(File::Spec->rel2abs(__FILE__));
 	my  $CJVars_file= "$src_dir/CJ/CJVars.pm";
 	
-	# AgentID in CJVar.pm
 	
-	# Set the global variable to this UUID; (important to rewrite the CJVars exported ID)
-	$AgentID = $UUID; 
-	
+
 	my $agent_line= "our \$AgentID= \"$AgentID\";  #\"<<AgentID>>\";";
     my $cmd="sed -i '' 's|.*<<AgentID>>.*|$agent_line|'  $CJVars_file";
     system($cmd);
@@ -60,7 +63,7 @@ sub init{
 	if(defined($CJKEY)){
 		# Add this agent to the the list of agents
 		&CJ::add_agent_to_remote();
-		&CJ::SyncAgent();
+		&CJ::AutoSync();
 	}
 
 
@@ -83,7 +86,7 @@ sub check_hash {
 
 sub write2firebase
 {
-	my ($pid, $runinfo, $timestamp) = @_;
+	my ($pid, $runinfo, $timestamp, $inform) = @_;
 	
 	return if not defined($CJKEY);	
 	
@@ -95,40 +98,38 @@ sub write2firebase
 	&CJ::add_agent_to_remote($AgentID) unless defined($fb_get);
 	
 	
-	my $exists = $firebase->get("${CJID}/pid_list/${pid}");
+	my $exists = defined( $firebase->get("${CJID}/pid_list/${pid}") );
 	
 	my $epoch = $runinfo->{date}->{epoch};
 	my $pid_head = substr($pid,0,8);  #short_pid
 	
 	
-	if(! defined($exists)){
-		# this is a new run -- hence will be our last (run) instance
-		CJ::err('Timestamp is different than Epoch for a new run.') unless ($timestamp eq $epoch);
-		
-		my $result   = $firebase->patch("${CJID}/last_instance", {"pid" => $pid, "epoch"=> $epoch} );	
-		# Add last instance for this agent. 
-	    $result = $firebase->patch("${CJID}/agents/$AgentID", {"last_instance" => {"pid" => $pid, "epoch"=> $epoch}, "push_timestamp"=> $epoch} ); 		
-	
-		$result   = $firebase->patch("${CJID}/pid_list/${pid}",{"timestamp" => $timestamp, "short_pid" => $pid_head , "info" => $runinfo});
-		# Timestamp is the last change to this pid	
-	
-	}else{
+	if($exists){
+		# This is a change
 		# here timestamp may be different than epoch; 
 		# for example when we clean $timestamp is going 
 		# to be the time of cleaning
 		my $result   = $firebase->patch("${CJID}/pid_list/${pid}",{"timestamp" => $timestamp, "short_pid" => $pid_head , "info" => $runinfo});
-		
-		# Inform All other agents of this change (SyncReq) 
-		&CJ::informOtherAgents($pid, $timestamp);	
-		
-		# change the local timestamp (for changes). 
+
+		# Update the push timestamp 
 	    $result = $firebase->patch("${CJID}/agents/$AgentID", {"push_timestamp"=> $timestamp} ); 
 		
-					
+	}else{
+		
+		# This is either new or hasn't been pushed before
+		my $last = $firebase->get("${CJID}/last_instance");
+		$firebase->patch("${CJID}/last_instance", {"pid" => $pid, "epoch"=> $epoch} ) if ( $epoch > $last->{"epoch"} ); 
+		# Add last instance for this agentm and update push ts. 
+	    my $result = $firebase->patch("${CJID}/agents/$AgentID", {"last_instance" => {"pid" => $pid, "epoch"=> $epoch}, "push_timestamp"=> $epoch} ); 		
+		$result   = $firebase->patch("${CJID}/pid_list/${pid}",{"timestamp" => $timestamp, "short_pid" => $pid_head , "info" => $runinfo});
+		
+		
 	}
+	
+	# Inform All other agents of this change (SyncReq) 
+	&CJ::informOtherAgents($pid, $timestamp) if $inform;	
 
-
-&CJ::update_local_push_timestamp($timestamp);	
+	&CJ::update_local_push_timestamp($timestamp);	
 
 }
 
@@ -178,186 +179,61 @@ sub informOtherAgents{
 
 
 
-sub SyncAgentBySyncReq{
-# Current agent should get info from 
-# $fb_get->{$agent}->{SyncReq}; and if the value is not
-# null,  it should update the corresponding PIDs (keys of the hashref);
-# once all updates are done the agent changes the value of todo to null
-# to indicateall updates are done. 
 
-my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
-# Get todo list
-
-my $fb_get = $firebase->get("${CJID}/agents/$AgentID") ;
-return unless defined($fb_get);
-my $fb_todo = $fb_get->{SyncReq};
-return if ($fb_todo eq "null");
-
-#print "OK\n";
-
-my @pids = keys %$fb_todo;
-return unless @pids;
-			
-		&CJ::message("Sync request...");
-		
-		my $timestamp_hashref = {};
-		 
-			foreach my $pid (@pids){
-	          
-			  	 my $fb_get = $firebase->get("${CJID}/pid_list/$pid") ;
-			   		
-				  $timestamp_hashref->{$pid} = $fb_get->{timestamp};
-						
-		           my $newinfo = $fb_get->{info};
-				   my $pid_head = 	substr($pid,0,8);			   
-				   my $rec = read_record($pid);
-				   if(defined($rec)){
-			       		&CJ::update_record($pid,$newinfo);
-					}else{
-					    &CJ::add_to_run_history($newinfo);
-				   	}   
-				   # If other agent cleaned the package, and if we are 
-				   # on local machine that originated that package, clean
-				   # local repo.	   
-				   if( defined($newinfo->{clean}) &  ($newinfo->{agent} eq $AgentID) ){
-					  
-					   		&CJ::message("--- Cleaning local dir for $pid_head");
-							my $local_path = $newinfo->{'local_path'};
-					        my $save_path = $newinfo->{'save_path'};
-						   
-						   	my $local_clean     = "$local_path\*";
-					       	my $save_clean      = "$save_path\*";
-    
-					        my $cmd = "rm -rf $local_clean;rm -rf $save_clean;" ;
-							my $verbose = 0;
-					        &CJ::my_system($cmd,$verbose);
-				   }
-				   
-			
-			} # Update all the PIDs	
-		   #update  timestamp file;	
-		   &CJ::add_to_timestamp($timestamp_hashref) if defined($timestamp_hashref);		
-           my $result = $firebase->patch("${CJID}/agents/$AgentID", {"SyncReq" => "null"} ) ;	
-}
-
-
-sub SyncAgentByPullTimeStamp{
-# This type of sync is a pull sync. It checkes the pull_timestamp 
-# of the agent, and pulls every pid in pid_list that has a bigger 
-# timestamp. This is efficient due to firebase indexing.
-my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
-my $fb_get = $firebase->get("${CJID}/agents/$AgentID");
-return unless defined($fb_get);
-my $pull_timestamp = $fb_get->{pull_timestamp};
-return unless defined($pull_timestamp);
-
-# update the last instance.
-my $last_instance = $firebase->get("${CJID}/last_instance");
-&CJ::writeFile($last_instance_file, $last_instance->{'pid'}) unless not defined($last_instance->{'pid'});
-
-
-# get everything bigger than the $pull_timestamp  (Efficient use of Firebase indexing)
-my $param_hash  = {"orderBy"=>"\"timestamp\"", "startAt"=>$pull_timestamp};
-my $pid_hash = $firebase->get("${CJID}/pid_list", $param_hash) ;
-
-
-
-# pull and write them locally
-my $updated_pull_timestamp = $pull_timestamp;
-my $timestamp_hashref = {};
-while( my ($pid, $hash) = each(%$pid_hash) ){
-	# startAt is inclusive. The pull_timestamp must be removed since 
-	# we already have it.
-	my  $timestamp  = $hash->{timestamp};
-	
-	if( ($timestamp ne $pull_timestamp) ){
-		    $updated_pull_timestamp = $timestamp unless ($timestamp lt $updated_pull_timestamp);
-			if ($hash->{info}{agent} ne $AgentID){ # Write locally only if this job doesnt belong to this agent.
-		  		
-				$timestamp_hashref->{$pid} = $timestamp;
-				
-				my $info = $hash->{info};
-	    		my $pid_head = 	substr($pid,0,8);			   
-				my $rec = &CJ::read_record($pid);
-	    		if( defined($rec) ){
-					# This step is not really needed. This is a sanity check really
-					# This wont happen if everything goes well. If an interuption happens
-					# between now and updating pull_timestap, we prevent duplicate this way.
-	     			&CJ::update_record($pid,$info);	
-	    		}else{
-	 	    		&CJ::add_to_run_history($info);
-	    		}	   
-			}	
-	}
-	
-} #while
-# update timestamp
-&CJ::add_to_timestamp($timestamp_hashref) if defined($timestamp_hashref);		
-
-# Update the pull_timestamp
-my $result = $firebase->patch("${CJID}/agents/$AgentID", {"pull_timestamp" => $updated_pull_timestamp} ) ;	
-
-}
-
-sub GetLocalPushTimeStamp
+sub sync_forced
 {
-	# Get local epoch
-	my $local_push_timestamp   =   `sed -n '1{p;q;}' $local_push_timestamp_file`;chomp($local_push_timestamp);
-	
-	if( (not defined $local_push_timestamp) || ($local_push_timestamp eq "") ){
-		return undef;
-	}else{
-		return $local_push_timestamp;
-	}
-	
+	my $sync = CJ::Sync->new($AgentID);
+	&CJ::sync($sync);
+	&CJ::message("All up to date.");
 }
 
-sub SyncAgentByPushTimeStamp{    #Incomplete
-	
-# This type of sync is a push sync. It checkes the push_timestamp 
-# of the agent, and if the local push_timestamp is bigger 
-# than the remote counterpart, it sends to the server the local info that hasnt been pushed.
-my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
-my $fb_get = $firebase->get("${CJID}/agents/$AgentID");
-return unless defined($fb_get);
-my $remote_push_timestamp = $fb_get->{push_timestamp};
-return unless defined($remote_push_timestamp);
-
-my $local_push_timestamp = &CJ::GetLocalPushTimeStamp(); 
-return unless defined($local_push_timestamp);
-	
-return if ($remote_push_timestamp eq $local_push_timestamp);	
-CJ::warning("CJ is in awe! Push TimeStamp:: remote is bigger than local") if ($remote_push_timestamp gt $local_push_timestamp);	 
-
-
-	# comprare the two
-	if( $remote_push_timestamp lt $local_push_timestamp ){ # Some data are missing from Firebase
-		
-		&CJ::message("Syncing data missing from the cloud. Please be patient...");
-			# Patch all data that are available locally 
-			# but missing on FB
-			
-			
-			my $pid_timestamp = &CJ::read_pid_timestamp();
-			my @filtered_pids = grep { $_ > $remote_push_timestamp } keys %$pid_timestamp;
-			my $info = retrieve_package_info(@filtered_pids);
-	  		&CJ::write2firebase($info->{pid},$info);	
-			
-			
-	  }
-	
-	
-	
-}
-
-
-sub SyncAgent{
+sub  sync
+{
+	my ($sync) = @_;
+	CJ::err("Input should be a CJ::Sync object") unless $sync->isa("CJ::Sync");
 	&CJ::message("Syncing...");
-	&CJ::SyncAgentBySyncReq();   # Sync changes that are requested by other agents
-	&CJ::SyncAgentByPullTimeStamp(); # Sync based on pull_timestamp
-	&CJ::SyncAgentByPushTimeStamp(); # Sync based on pull_timestamp
+	$sync->request() ;	# Sync changes that are requested by other agents
+	$sync->pull_timestamp();  # Sync based on pull_timestamp
+	$sync->push_timestamp();  # Sync based on pull_timestamp
+	updateLastSync();
 }
 
+sub AutoSync{
+	my $sync = CJ::Sync->new($AgentID);
+	my $lastSync = getLastSync();
+	return if ( lc($sync->{type}) ne "auto");
+	my $diff = time - $lastSync;
+	my $interval = $sync->{interval};
+	#print $diff . "\n";
+	#print $interval;
+	return if( $diff <= $interval); 
+	&CJ::sync($sync);
+}
+
+sub updateLastSync
+{
+	
+	my $now = time;
+	CJ::create_lastSync_file();
+	&CJ::writeFile($lastSync_file, $now);
+	return 1;
+}
+
+sub getLastSync
+{
+	    CJ::create_lastSync_file();  # if it doesnt exist. It creates one;
+		
+		# Get local epoch
+		my $lastSync   =   `sed -n '1{p;q;}' $lastSync_file`; chomp($lastSync);
+	
+		if( (not defined $lastSync) || ($lastSync eq "") ){
+			return 0;
+		}else{
+			return $lastSync;
+		}
+
+	
+}
 
 
 sub rerun
@@ -510,7 +386,8 @@ my $newinfo = &CJ::add_change_to_run_history($pid, $change, $type);
 
 # write runinfo to FB as well
 my $timestamp  = $date->{epoch};    
-&CJ::write2firebase($info->{'pid'},$newinfo, $timestamp);
+my $inform = 1;
+&CJ::write2firebase($info->{'pid'},$newinfo, $timestamp, $inform);
 
 exit 0;
 }
@@ -828,10 +705,8 @@ sub show_log{
         $log_argin =~ s/\D//g;     #remove any non-digit
         $num_show = $log_argin;
     }elsif(&CJ::is_valid_pid($log_argin)){
-        
-        if(defined(&CJ::read_record($log_argin))){
-            &CJ::print_detailed_log($log_argin);
-           
+        if(defined(&CJ::retrieve_package_info($log_argin))){
+            &CJ::print_detailed_log($log_argin);       
         }else{
             &CJ::err("No such job found in CJ database");
         }
@@ -843,43 +718,38 @@ sub show_log{
     }
     
    
-    
-	my ($fb_pids, $fb_response) = CJ::avail_pids();
+    my @unique_pids;
+	my ($sorted_pids, $sorted_ts) = CJ::avail_pids();
+
+	my $maxIdx = $#{$sorted_pids};
 	
-	my @unique_pids = @$fb_pids;
-      #  say Dumper($fb_response);
-                
+    my $info_hash =  &CJ::retrieve_package_info($sorted_pids);			
+
         my  @to_show_idx;
         
         if(!defined($log_script)){
             #my $min = ($num_show-1, $#unique_pids)[$num_show-1 > $#unique_pids];
             #foreach my $i (0..$min){
             my $counter = 0;
-            while( ($counter <= $#unique_pids) & ($#to_show_idx < $num_show-1 )  ){
-                        #my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$counter]);			
-		 			   my $this_pid = $unique_pids[$#unique_pids-$counter];
-		 	    	   my $pid_head = substr($this_pid,0,8);  #short_pid
-		 	    	   my $pid_tail = substr($this_pid,8,32);
-		 			   my $info =   $fb_response->{$pid_head}->{$pid_tail};
-						
-						
+            while( ($counter <= $maxIdx) & ($#to_show_idx < $num_show-1 )  ){
+		 			    my $this_pid = $sorted_pids->[$maxIdx-$counter];
+                        my $info =  $info_hash->{$this_pid};			
+		 	    	 
                         if( $log_tag eq "showclean" ){
                             push @to_show_idx, $counter;
                         }else{
                             # only alive
                             push @to_show_idx, $counter if( ! $info->{clean} );
                         }
-                $counter = $counter +1;
+                $counter++;
             }
         }else{
-            foreach my $i (0..$#unique_pids){
-                #my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$i]);
+			# full search. User required a search of script
+            foreach my $i (0..$maxIdx){
                 
- 			   my $this_pid = $unique_pids[$#unique_pids-$i];
- 	    	   my $pid_head = substr($this_pid,0,8);  #short_pid
- 	    	   my $pid_tail = substr($this_pid,8,32);
- 			   my $info =   $fb_response->{$pid_head}->{$pid_tail};
-				
+ 			   my $this_pid = $sorted_pids->[$maxIdx-$i];
+               my $info =  $info_hash->{$this_pid};			
+ 	    	   				
 				if( $log_tag eq "showclean" ){
                 push @to_show_idx, $i if( $info->{program} =~ m/$log_script/);
                 }else{
@@ -889,17 +759,10 @@ sub show_log{
             }
         }
             
-        
-    #say Dumper(@to_show_idx);
     
-        
-        foreach my $i (reverse @to_show_idx){
-			  my $this_pid = $unique_pids[$#unique_pids-$i];
-	    	   my $pid_head = substr($this_pid,0,8);  #short_pid
-	    	   my $pid_tail = substr($this_pid,8,32);
-			   my $info =   $fb_response->{$pid_head}->{$pid_tail};
-			   
-        	   #my $info =  &CJ::retrieve_package_info($unique_pids[$#unique_pids-$i]);
+       foreach my $i (reverse @to_show_idx){
+			  my $this_pid = $sorted_pids->[$maxIdx-$i];
+	    	  my $info =  $info_hash->{$this_pid};			
 
         print "\n";
         print "\033[32mpid $info->{pid}\033[0m\n";
@@ -915,12 +778,10 @@ sub show_log{
         print "\n";
         print ' ' x 10; print "$info->{message}\n";
         print "\n";
-        }
+        
+		}
     
   
-        
-    
-    
     
     
     
@@ -1064,7 +925,8 @@ my $newinfo = &CJ::add_change_to_run_history($pid, $change, "clean");
 
 my $timestamp = $date->{epoch};
 # Write runinfo to FB as well
-&CJ::write2firebase($info->{'pid'},$newinfo, $timestamp);
+my $inform = 1;
+&CJ::write2firebase($info->{'pid'},$newinfo, $timestamp, $inform);
 	    
 }
     
@@ -1184,13 +1046,11 @@ sub show_info
     if( (!defined $pid) || ($pid eq "") ){
         #read last_instance.info;
         $info = &CJ::retrieve_package_info();
-        $pid = $info->{'pid'};
-        
+        $pid = $info->{'pid'};        
     }else{
         if( &CJ::is_valid_pid($pid) ){
             # read info from $run_history_file
             $info = &CJ::retrieve_package_info($pid);
-            
             if (!defined($info)){
                 CJ::err("No such job found in the database");
             }
@@ -1585,6 +1445,17 @@ if($size eq 1){
 	
 
 
+sub grep_config_var
+{
+	my ($filepath, $var_pattern) = @_;
+	
+	return if (! -f $remote_config_file);
+	
+	# See if user has defined an interval of interest
+	my $line = `grep -i -A 1 $var_pattern $remote_config_file` ; chomp($line);
+	my ($var) = $line =~ /^$var_pattern(.*)/im;  if($var) { $var =~ s/^\s+|\s+$//g};
+	return defined($var)? $var : undef ;
+}
 
 sub grep_var_line
 {
@@ -1644,7 +1515,7 @@ sub add_record{
 	my $history = sprintf("%-15u%-15s%-45s%-10s%-15s%-30s",$counter, $hist_date,$info->{pid}, $info->{runflag}, $info->{machine}, $short_message);
 	&CJ::add_to_history($history);
 	&CJ::add_to_run_history($info);
-	&CJ::add_to_timestamp( { $info->{pid} => $info->{date}{epoch} }  );
+	&CJ::add_to_pid_timestamp( { $info->{pid} => $info->{date}{epoch} }  );
 	&CJ::update_local_push_timestamp($info->{date}{epoch});
 	&CJ::update_last_instance($info->{'pid'});
 }
@@ -1693,23 +1564,45 @@ sub host{
 
 sub retrieve_package_info{
     
-    my ($pid) = @_;
+    my ($pids) = @_;
     #### EVERY THING IS DONE LOCALLY NOW. 
 	# From commit 87ec10b
 	
-	if(!$pid){
-		$pid =`sed -n '1{p;q;}' $last_instance_file`; chomp($pid);
+	if(!$pids){
+		$pids =`sed -n '1{p;q;}' $last_instance_file`; chomp($pids);
 	}
 	
-	&CJ::err("No valid PID detected")  unless &CJ::is_valid_pid($pid);
 	
-       my $this_record = read_record($pid);
-		if(defined($this_record)){
-           my $info = decode_json $this_record;
-		   return $info;
-       	}else{
-       		&CJ::err("No such job in CJ database");	
-       	}	
+	my $is_scalar = is_valid_pid($pids) ? 1 : 0;
+ 	$pids = [$pids] if $is_scalar;  #change the single pid to be a array ref
+	
+	# Make sure all PIDs are valid
+	foreach my $pid (@{$pids}){
+   	    &CJ::err("No valid PID detected")  unless &CJ::is_valid_pid($pid);
+   	}
+		
+    my $records = &CJ::read_record($pids);  # pids can be a scalar or a array ref
+
+		
+	my $info_hash;   
+	
+	foreach my $pid ( @$pids ){
+		if(defined($records->{$pid})){			
+	 	   $info_hash->{$pid} = decode_json $records->{$pid};
+		}else{
+			&CJ::err(" \'$pid\' has not yet been found in CJ database. May be you need to force sync using 'CJ sync'");
+		} 	
+	}
+    
+	
+	
+	if ($is_scalar & defined($info_hash)){		
+		return $info_hash->{(keys %$info_hash)[0]} ; # scalar-case;
+	}
+	
+	
+	return  defined($info_hash) ? $info_hash : undef;
+	
 }
 
 
@@ -1730,7 +1623,6 @@ sub update_local_push_timestamp
 
 sub read_pid_timestamp
 {
-
 	# read file
 	my $contents = &CJ::readFile($pid_timestamp_file);
 	my $hash;
@@ -1738,7 +1630,7 @@ sub read_pid_timestamp
 	return $hash;
 }
 
-sub add_to_timestamp
+sub add_to_pid_timestamp
 {
 my ($timestamp_hashref) = @_;
 
@@ -2017,9 +1909,7 @@ sub add_change_to_run_history
 	
 	# This needs to be comuunicating with remote.
 	
-    my $this_record = &CJ::read_record($pid);
-    my $info = decode_json $this_record;
-    
+    my $info = &CJ::retrieve_package_info($pid);    
 
 if(lc($type) eq "clean"){
     $info->{clean}->{date}  =  $change->{date};
@@ -2056,7 +1946,6 @@ if(lc($type) eq "clean"){
 
 sub update_record{
     my ($pid,$new_info) = @_;
-    #my $old_record = read_record($pid);
     my $new_record = encode_json($new_info);
     my $cmd="sed -i '' 's|.*$pid.*|$new_record|'  $run_history_file";
     &CJ::my_system($cmd,0);
@@ -2067,14 +1956,20 @@ sub read_record{
     my ($pid) = @_;
 	
 	
+	
 	# my $record = `grep -A 1 $pid $run_history_file` ; chomp($record);
 	
 	my $is_scalar = is_valid_pid($pid) ? 1 : 0;
- 		$pid = [$pid] if $is_scalar;  #change the single pid to be a array ref
+ 	$pid = [$pid] if $is_scalar;  #change the single pid to be a array ref
+	
+	# get a copy of the array ref as we will destroy this copy in a for loop
+	# so the input is intact;
+	my @pids =  @{$pid};  
+	
 		 
 		# Do it in perl 
 		my $contents = &CJ::readFile($run_history_file);
-	    my @records = split(/\n\n/,$contents);  
+	    my @records = split(/\n\n/,$contents) if defined($contents);  
   	
 		my $regex = "(";
 		$regex .= join "|", @{$pid};
@@ -2082,7 +1977,7 @@ sub read_record{
 		
 		#print $regex . "\n";
 		
-	    my $remaining  = scalar @{ $pid };		
+	    my $remaining  = scalar @pids;		
 		my $record_hash;
 		# a reverse loop over the file.
 		my $i=$#records;
@@ -2093,18 +1988,18 @@ sub read_record{
 		  		my $matched_pid = $1;
 	  		    $record_hash->{$matched_pid} = $record;  # $1 is the captured PID
 	  		    # delete this PID from the array
-	  		    @{$pid} = grep $_ ne $matched_pid, @{$pid};
-			    $remaining  = scalar @{ $pid };
+	  		    @pids = grep $_ ne $matched_pid, @pids;
+			    $remaining  = scalar @pids;
 			    # print "\n$remaining\n";
 		  	}
 			
 		  $i--;  # reverse loop. The older ones are at the end of the file and usually people inqure about the older ones.	
 		}
 		
-		if ($is_scalar & defined($record_hash)){
-			 my $key = (keys %$record_hash)[0];
-			 $record_hash = $record_hash->{$key}  ; # scalar-case;
-		}
+		#if ($is_scalar & defined($record_hash)){
+		#	 my $key = (keys %$record_hash)[0];
+		#	 $record_hash = $record_hash->{$key}  ; # scalar-case;
+		#}
 	 return defined($record_hash) ? $record_hash : undef;
 	
 }
@@ -2171,101 +2066,36 @@ sub get_cmd{
 
 sub avail_pids{
 
-	#### There should be a local (pid-timestamp file);
-	# from which we can then acquire all available PIDs.
-
-
-	# Check the last local instance 
-	# and if it not the same as firebase
-	# and if its Epoch is larger than
-	# the last instance of firebase, 
-	# then do partial syncing to include 
-	# the runs that are not available on FireBase
-	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
-	my $fb_last = $firebase->get("${CJID}/last_instance");
-	
-	my $fb_epoch;
-	if(defined($fb_last)){
-		$fb_epoch = $fb_last->{epoch};
-	}else{
-		$fb_epoch = 0;
-	}
-	
-	# look at local files
-	my $local_last_pid    =   `sed -n '1{p;q;}' $last_instance_file`;chomp($local_last_pid);
-    my $local_record      = read_record($local_last_pid);
-	
-	my $local_epoch;
-	if(defined($local_record)){
-       my $info = decode_json $local_record;
-	   $local_epoch=$info->{date}->{epoch};
-	}else{	
-		$local_epoch = 0
-	}  
-	  
-	 
-	 
-	# comprare the two
-	if( $fb_epoch lt $local_epoch ){ # Some data are missing from Firebase
-		
-		&CJ::message("Transfering local metadata to cloud...Please be patient");
-			# Patch all data that are available locally 
-			# but missing on FB
-			
-			my $string = &CJ::readFile($run_history_file);
-			
-			my $missing_json;
-			
-			my $last_fb_pid="";
-			if(defined($fb_last->{pid})){
-			   $last_fb_pid = $fb_last->{pid};
-			}
-			
-			if( ! $string =~ /\b$last_fb_pid\b/){
-			$missing_json = `awk 'BEGIN{ found=0} /$last_fb_pid/{found=1;next} {if (found) print}' $run_history_file`;
-			}else{
-			$missing_json = `cat $run_history_file`; 
-			}
-			#print $missing_json, "\n";
-		
-		  my @records = split(/\n\n/,$missing_json);  
-		  foreach my $record (@records){
-			  my $info = decode_json($record);
-				  # patching the data to database if it exists locally  
-	  		  &CJ::write2firebase($info->{pid},$info);	
-		  }	
-		  
-		  	  
-  		  
-	}elsif( !$fb_epoch & !$local_epoch){
-		 &CJ::message("NO PID is available in DB"); exit 0;
-	}
-	
-	
-
-    my @sorted_pidList;
-	# locally stored pids
-    #my $pidList=`cat $history_file | awk \'{print \$3}\' `;
-    #my @pidList = $pidList =~ m/\b([0-9a-f]{8,40})\b/g;
-    # fetch pids available on the server
-	
-	
     # Get unsorted PIDS and epochs
-	my $fetched_pids = $firebase->get("${CJID}/pid-epoch-map");
-	if(defined($fetched_pids)){
-							
-		    # Sort PIDs by epoch		
-			foreach my $pid (sort { $fetched_pids->{"$a"} <=> $fetched_pids->{"$b"} } keys %$fetched_pids) {
-				    #printf "%-8s %s\n", $pid, $fetched_pids{$pid};
-			push(@sorted_pidList, $pid);
-		 	}
-				
+	my $pid_timestamp = &CJ::read_pid_timestamp();	 
+   
+    if (!defined($pid_timestamp)){
+	CJ::message("No PID available.");
+	return;
 	}
+	
+	# Sort hash
+	my ($sorted_pids, $sorted_ts) =  &CJ::sort_hash($pid_timestamp);				
 	
     #my @unique_pids = do { my %seen; grep { !$seen{$_}++ } @pidList};
-	#return @unique_pids;
-	my $fb_response  = $firebase->get("${CJID}/runinfo");   #Later add order by value of Epoch and only 10 of them!
-	return (\@sorted_pidList,$fb_response);
+	return ($sorted_pids,$sorted_ts);
+}
+
+
+sub sort_hash
+{
+	my ($hash) = @_;
+	
+    my @sorted_keys;
+    my @sorted_values;
+	
+    # Sort PIDs by epoch		
+	foreach my $key (sort { $hash->{"$a"} <=> $hash->{"$b"} } keys %$hash) {
+		push(@sorted_keys, $key);
+		push(@sorted_values, $hash->{$key});
+ 	}
+	
+	return(\@sorted_keys, \@sorted_values);
 }
 
 
@@ -2302,7 +2132,7 @@ sub create_info_files{
 	&CJ::create_run_history_file();
 	&CJ::create_pid_timestamp_file();
 	&CJ::create_local_push_timestamp_file();
-	
+	&CJ::create_lastSync_file();
 }
 
 sub create_history_file{	
@@ -2313,6 +2143,14 @@ if( ! -f $history_file ){
 	  &CJ::add_to_history($header);
 }
 	
+}
+
+sub create_lastSync_file{
+		
+		if (! -f $lastSync_file) {
+		&CJ::touch($lastSync_file);
+		&CJ::writeFile($lastSync_file, 0);
+	    }
 }
 
 sub create_local_push_timestamp_file{

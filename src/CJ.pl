@@ -54,37 +54,10 @@ if(-d "$info_dir"){
 &CJ::my_system("rm $CJlog") unless (! -f $CJlog);
 #=========================================
 
-# create history file if it does not exist
-#if( ! -f $history_file ){
-# &CJ::touch($history_file);
-#    #my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%-30s", "count", "date", "pid", "action", "machine", "job_id", "message");
-#  my $header = sprintf("%-15s%-15s%-45s%-10s%-30s", "count", "date", "pid", "action", "machine","message");
-#  &CJ::add_to_history($header);
-#}
-
-#if( ! -f $cmd_history_file ){
-#    &CJ::touch($cmd_history_file);
-#}
-
-# create run_history file if it does not exit
-# this file contains more information about a run
-# such as where it is saved, etc.
-
-# TODO: This History file should check to see if there
-# is any info avilable from other agnets online if CJkey defined. If there
-# is it needs to Sync 
-#&CJ::touch($run_history_file) unless ( -f $run_history_file);
-#=========================================	
-
-
-
-if($CJKEY){
-	# Sync Agent for changes made by other agnets.
-	&CJ::SyncAgent();
+if($CJKEY){	
+	&CJ::AutoSync();
 	# TO BE DONE: Sync Agent for PIDs that are beyond its current Epoch 
 }
-
-
 
 }
 
@@ -102,10 +75,11 @@ $qsub_extra        = "";
 $log_tag           = "all";
 $log_script        = undef;
 
-
 my $spec = <<'EOSPEC';
-	  init 	    initiates CJ installation [undocumented]
+	  init 	    initiates CJ installation [nocase]
                {defer{CJ::init}}
+	  sync 	    force sync [nocase]
+		                {defer{CJ::sync_forced}}
       prompt 	    opens CJ prompt command [undocumented]
                      {defer{cj_prompt}}
      -help 	  Show usage information [undocumented]
@@ -518,7 +492,7 @@ message       => $message,
 &CJ::add_record($runinfo);
 
 # write runinfo to FireBaee as well
-&CJ::write2firebase($pid,$runinfo,$date->{epoch});
+&CJ::write2firebase($pid,$runinfo,$date->{epoch},0);
 
     
 }elsif($runflag eq "parrun"  || $runflag eq "pardeploy"){
@@ -910,7 +884,7 @@ message       => $message,
 &CJ::add_record($runinfo);
     
 # write runinfo to FB as well
-&CJ::write2firebase($pid,$runinfo, $date->{epoch});
+&CJ::write2firebase($pid,$runinfo, $date->{epoch},0);
 
 }else{
 &CJ::err("Runflag $runflag was not recognized");
