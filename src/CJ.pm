@@ -15,12 +15,14 @@ use feature 'say';
 
 
 sub version_info{
-my $version_script="\n\n          This is Clusterjob (CJ) verion 1.1.0";
+my $version_script="\n\n          This is ClusterJob (CJ) version V0.0.3";
 $version_script .=  "\n          Copyright (c) 2015 Hatef Monajemi (monajemi\@stanford.edu)";
 $version_script .="\n          CJ may be copied only under the terms and conditions of";
 $version_script .=  "\n          the GNU General Public License, which may be found in the CJ";
 $version_script .=  "\n          source code. For more info please visit";
 $version_script .=  "\n          https://github.com/monajemi/clusterjob";
+$version_script .=  "\n          https://clusterjob.org";
+
     return $version_script ;
 }
 
@@ -39,7 +41,7 @@ sub init{
 	if(-d $info_dir){
 		&CJ::err("Cannot initialize. Prior installation exist in this directory.")
 	}else{
-		&CJ::message("Initializing agent $UUID");
+		&CJ::message("Initializing agent \033[32m$UUID\033[0m");
 	}
 	
 	# Set the global variable to this UUID;
@@ -380,13 +382,18 @@ my $runinfo    = join(',', @runinfo);
 my $this_rerun = "$date -> $runinfo";
 
 
-my $type = "Rerun";
+my $type = "rerun";
 my $change = {new_job_id => $job_id,
               date       => $date, 
 			  old_job_id => $runinfo
 		     };
+
 			  
 my $newinfo = &CJ::add_change_to_run_history($pid, $change, $type);
+
+
+&CJ::add_to_history($newinfo,$date,$type);
+
 
 # write runinfo to FB as well
 my $timestamp  = $date->{epoch};    
@@ -621,15 +628,9 @@ sub save_results{
     
     
     my $date = &CJ::date();
-    # Find the last number
-    my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
-    my $hist_date = (split('\s', $date->{datestr}))[0];
     my $flag = "save";
-    #my $history = sprintf("%-15u%-15s%-21s%-10s",$lastnum+1, $hist_date,substr($pid,0,8), $flag);
-    my $history = sprintf("%-15u%-15s%-45s%-10s",$lastnum+1, $hist_date,$info->{pid}, $flag);
-	
 	# ADD THIS SAVE TO HISTRY
-    &CJ::add_to_history($history);
+    &CJ::add_to_history($info,$date,$flag);
 
     exit 0;
 }
@@ -907,13 +908,8 @@ sub clean
     
     
     my $date = &CJ::date();
-    # Find the last number
-    my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
-    my $hist_date = (split('\s', $date->{datestr}))[0];
     my $flag = "clean";
-    # ADD THIS CLEAN TO HISTRY
-    my $history = sprintf("%-15u%-15s%-45s%-10s",$lastnum+1, $hist_date,$info->{pid}, $flag);
-    &CJ::add_to_history($history);
+    &CJ::add_to_history($info,$date,$flag);
         
         
 #    my @time_array = ( $time =~ m/../g );
@@ -1512,12 +1508,7 @@ sub add_record{
 	my ($info) = @_;
     
 	# Find the last number
-	my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
-	my $hist_date = (split('\s', $info->{date}{datestr}))[0];
-	my $short_message = substr($info->{message}, 0, 30);
-	my $counter = ($lastnum =~ m/\d+/) ? $lastnum+1 : 1;
-	my $history = sprintf("%-15u%-15s%-45s%-10s%-15s%-30s",$counter, $hist_date,$info->{pid}, $info->{runflag}, $info->{machine}, $short_message);
-	&CJ::add_to_history($history);
+	&CJ::add_to_history($info, $info->{date}, $info->{runflag});
 	&CJ::add_to_run_history($info);
 	&CJ::add_to_pid_timestamp( { $info->{pid} => $info->{date}{epoch} }  );
 	&CJ::update_local_push_timestamp($info->{date}{epoch});
@@ -1864,13 +1855,32 @@ sub readFile
 
 sub add_to_history
 {
-    my ($text) = @_;
+    my ($info, $date, $flag) = @_;
 	# create if it doesnt exist;
 	&CJ::create_history_file();
+	  
+	my $short_message = substr($info->{message}, 0, 40);
+	my $lastnum=`grep "." $history_file | tail -1  | awk \'{print \$1}\' `;
+	my $hist_date = (split('\s', $date->{datestr}))[0];
+	# ADD THIS RERUN TO HISTRY
+	my $counter = ($lastnum =~ m/\d+/) ? $lastnum+1 : 1;
+	
+	
+	my @change = ("clean", "rerun");
+	my %changeFlags = map { $_ => 1 } @change;
+	
+	my $history ;
+	my $short_pid= substr($info->{pid},0,8);
+	if(! exists($changeFlags{$flag})){
+		$history = sprintf("%-15u%-15s%-15s%-10s%-15s%-40s",$counter, $hist_date,$short_pid, $flag, $info->{machine}, $short_message);
+	}else{
+		$history = sprintf("%-15u%-15s%-15s%-10s",$counter, $hist_date, $short_pid, $flag);
+	}
+				
 		
     # ADD THIS SAVE TO HISTRY
     open (my $FILE , '>>', $history_file) or die("could not open file '$history_file' $!");
-    print $FILE "$text\n";
+    print $FILE "$history\n";
     close $FILE;
     
 }
@@ -2142,9 +2152,16 @@ sub create_info_files{
 sub create_history_file{	
 if( ! -f $history_file ){
 	 &CJ::touch($history_file);
-#my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%-30s", "count", "date", "pid", "action", "machine", "job_id", "message");
-	  my $header = sprintf("%-15s%-15s%-45s%-10s%-30s", "count", "date", "pid", "action", "machine","message");
-	  &CJ::add_to_history($header);
+	 
+		
+ 	#my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%-30s", "count", "date", "pid", "action", "machine", "job_id", "message");
+ 	my $header = sprintf("%-15s%-15s%-15s%-10s%-15s%-40s", "count", "date", "pid", "action", "machine","message");
+		
+     # ADD THIS SAVE TO HISTRY
+     open (my $FILE , '>>', $history_file) or die("could not open file '$history_file' $!");
+     print $FILE "$header\n";
+     close $FILE; 
+	 
 }
 	
 }

@@ -64,6 +64,7 @@ $sync_status 	   = 0;
 
 
 
+
 if( -d "$info_dir" ){
 #=========================================
 # refresh CJlog before declaring options.
@@ -71,7 +72,15 @@ if( -d "$info_dir" ){
 &CJ::my_system("rm $CJlog") unless (! -f $CJlog);
 #=========================================
 
-if($CJKEY){	
+
+# Dont sync if the command is one of these.
+my @nosync_cmds = ("who", "help", "prompt", "version");
+my %nosync = map { $_ => 1 } @nosync_cmds;
+
+
+
+
+if($CJKEY && (!exists($nosync{$cjcmd0})) ){	
 		&CJ::add_agent_to_remote();  # if there is no agent, add it.
 		$sync_status = &CJ::AutoSync();
 }
@@ -81,15 +90,9 @@ if($CJKEY){
 
 
 my $spec = <<'EOSPEC';
-	  init 	    initiates CJ installation [nocase]
-               {defer{CJ::init}}
-	  sync 	    force sync [nocase]
-		                {defer{CJ::sync_forced($sync_status)}}
-	  who 	    prints out agent ID [nocase]
-				  	    {defer{print "      agent:". $AgentID . "\n";}}					
       prompt 	    opens CJ prompt command [undocumented]
                      {defer{cj_prompt}}
-     -help 	  Show usage information [undocumented]
+     -help 	      Show usage information [undocumented]
                     {defer{&CJ::add_cmd($cmdline);$self->usage(0);}}
      help  	 	  [ditto]  [undocumented]
 
@@ -103,7 +106,7 @@ my $spec = <<'EOSPEC';
      -v 	          [ditto] [undocumented]
      --v[erbose]	                                  verbose mode [nocase]
                                                               {$verbose=1}
-     --err[or]	                                      error tag for show [nocase] [requires: show]
+     --err[or]	                                          error tag for show [nocase] [requires: show]
                                                               {$show_tag="error"}
      --less      	                                  less tag for show [nocase]  [requires: show]
                                                                {$show_tag="less";}
@@ -125,6 +128,12 @@ my $spec = <<'EOSPEC';
                                                                 {$runtime=$r_time}
      -alloc[ate]   <resources>	                          machine specific allocation [nocase]
                                                                 {$qsub_extra=$resources}
+     init 	    					  initiates CJ installation [nocase]
+               							{defer{CJ::init}}
+     sync 	                                          force sync [nocase]
+		                				{defer{CJ::sync_forced($sync_status)}}
+     who 	                                          prints out agent ID [nocase]
+				  	                        {defer{print "      agent: \033[32m$AgentID\033[0m\n";}}			
      log [<argin>]	                                  log  -n|all|pid [nocase]
                                                                 {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin,$log_tag,$log_script) }}
      hist[ory]    [<argin>]	                          history of runs -n|all 

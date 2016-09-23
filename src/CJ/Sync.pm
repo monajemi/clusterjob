@@ -19,7 +19,7 @@ sub new {
  	my $class= shift;
  	my ($agent) = @_;
 	
-	my $default_interval = 60;  # default 1min;
+	my $default_interval = 300;  # default 5min;
 	my $default_type = "auto";  # default 1min;
 	my $self= bless {
 		agent => $agent, 
