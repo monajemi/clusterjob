@@ -4,13 +4,16 @@
 
 use strict;
 
-use lib '/Users/hatef/github_projects/clusterjob/src';  #for testing
-use lib '/Users/hatef/github_projects/clusterjob/src/external/firebase/lib';  
-use lib '/Users/hatef/github_projects/clusterjob/src/external/ouch/lib'; 
+
+
+use FindBin qw($Bin);
+use lib "$Bin";  #for testing
+use lib "$Bin/external/firebase/lib";  
+use lib "$Bin/external/ouch/lib"; 
+
+
 use Firebase; 
 use Ouch;
-
-
 use File::chdir;
 use CJ;          # contains essential functions
 use CJ::CJVars;  # contains global variables of CJ
