@@ -98,7 +98,7 @@ sub write2firebase
 	&CJ::add_agent_to_remote($AgentID);
 	
 	
-	my $exists = defined( $firebase->get("${CJID}/pid_list/${pid}") );
+	my $exists = defined( $firebase->get("users/${CJID}/pid_list/${pid}") );
 	
 	my $epoch = $runinfo->{date}->{epoch};
 	my $pid_head = substr($pid,0,8);  #short_pid
@@ -109,27 +109,26 @@ sub write2firebase
 		# here timestamp may be different than epoch; 
 		# for example when we clean $timestamp is going 
 		# to be the time of cleaning
-		my $result   = $firebase->patch("${CJID}/pid_list/${pid}",{"timestamp" => $timestamp, "short_pid" => $pid_head , "info" => $runinfo});
+		my $result   = $firebase->patch("users/${CJID}/pid_list/${pid}",{"timestamp" => $timestamp, "short_pid" => $pid_head , "info" => $runinfo});
 
 		# Update the push timestamp 
-	    $result = $firebase->patch("${CJID}/agents/$AgentID", {"push_timestamp"=> $timestamp} ); 
+	    $result = $firebase->patch("users/${CJID}/agents/$AgentID", {"push_timestamp"=> $timestamp} ); 
 		
 	}else{
 		
 		# This is either new or hasn't been pushed before
-		my $last = $firebase->get("${CJID}/last_instance");
+		my $last = $firebase->get("users/${CJID}/last_instance");
 		my $remote_last_epoch = defined($last) ? $last->{"epoch"} : 0;
-		$firebase->patch("${CJID}/last_instance", {"pid" => $pid, "epoch"=> $epoch} ) if ( $epoch >  $remote_last_epoch ); 
+		$firebase->patch("users/${CJID}/last_instance", {"pid" => $pid, "epoch"=> $epoch} ) if ( $epoch >  $remote_last_epoch ); 
 		# Add last instance for this agentm and update push ts. 
-	    my $result = $firebase->patch("${CJID}/agents/$AgentID", {"last_instance" => {"pid" => $pid, "epoch"=> $epoch}, "push_timestamp"=> $epoch} ); 		
-		$result   = $firebase->patch("${CJID}/pid_list/${pid}",{"timestamp" => $timestamp, "short_pid" => $pid_head , "info" => $runinfo});
+	    my $result = $firebase->patch("users/${CJID}/agents/$AgentID", {"last_instance" => {"pid" => $pid, "epoch"=> $epoch}, "push_timestamp"=> $epoch} ); 		
+		$result   = $firebase->patch("users/${CJID}/pid_list/${pid}",{"timestamp" => $timestamp, "short_pid" => $pid_head , "info" => $runinfo});
 		
 		
 	}
 	
 	# Inform All other agents of this change (SyncReq) 
 	&CJ::informOtherAgents($pid, $timestamp) if $inform;	
-
 	&CJ::update_local_push_timestamp($timestamp);	
 
 }
@@ -140,9 +139,9 @@ sub add_agent_to_remote{
 	# This is the first time agent is added.
 	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);	
 	# make sure agent doesnt exist already
-	return if defined($firebase->get("${CJID}/agents/$AgentID"));
+	return if defined($firebase->get("users/${CJID}/agents/$AgentID"));
 	my $agentHash = {"SyncReq" => "null", "last_instance" => "null", "push_timestamp" =>0  ,"pull_timestamp" => 0}; 
-    my $result = $firebase->patch("${CJID}/agents/$AgentID",  $agentHash); 	
+    my $result = $firebase->patch("users/${CJID}/agents/$AgentID",  $agentHash); 	
 }
 
 sub informOtherAgents{
@@ -151,7 +150,7 @@ sub informOtherAgents{
 	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
 	# Get Agent List
 	my $fb_get;
-	return unless eval {$fb_get = $firebase->get("${CJID}/agents")};
+	return unless eval {$fb_get = $firebase->get("users/${CJID}/agents")};
 	
 	my @agents= keys %$fb_get;
 	return unless @agents;
@@ -169,7 +168,7 @@ sub informOtherAgents{
 						$todo =  $hash unless ($hash eq "null") ;	
 		 		}
 				$todo->{$pid} = $timestamp ;
-				my $result = $firebase->patch("${CJID}/agents/$agent", {"SyncReq" => $todo} ); 	
+				my $result = $firebase->patch("users/${CJID}/agents/$agent", {"SyncReq" => $todo} ); 	
 			}
 		
 	  }	

@@ -69,7 +69,7 @@ sub request{
 my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
 # Get todo list
 
-my $fb_get = $firebase->get("${CJID}/agents/$agent") ;
+my $fb_get = $firebase->get("users/${CJID}/agents/$agent") ;
 return unless defined($fb_get);
 my $fb_todo = $fb_get->{SyncReq};
 return if ($fb_todo eq "null");
@@ -85,7 +85,7 @@ return unless @pids;
 		 
 			foreach my $pid (@pids){
 	          
-			  	 my $fb_get = $firebase->get("${CJID}/pid_list/$pid") ;
+			  	 my $fb_get = $firebase->get("users/${CJID}/pid_list/$pid") ;
 				 next if not defined($fb_get);  # if somehow the entry doesnt exist.
 				 
 				  $timestamp_hashref->{$pid} = $fb_get->{timestamp};			
@@ -117,7 +117,7 @@ return unless @pids;
 			} # Update all the PIDs	
 		   #update  timestamp file;	
 		   &CJ::add_to_pid_timestamp($timestamp_hashref) if defined($timestamp_hashref);		
-           my $result = $firebase->patch("${CJID}/agents/$agent", {"SyncReq" => "null"} ) ;	
+           my $result = $firebase->patch("users/${CJID}/agents/$agent", {"SyncReq" => "null"} ) ;	
 }
 
 
@@ -132,19 +132,19 @@ sub pull_timestamp{
 # of the agent, and pulls every pid in pid_list that has a bigger 
 # timestamp. This is efficient due to firebase indexing.
 my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
-my $fb_get = $firebase->get("${CJID}/agents/$agent");
+my $fb_get = $firebase->get("users/${CJID}/agents/$agent");
 return unless defined($fb_get);
 my $pull_timestamp = $fb_get->{pull_timestamp};
 return unless defined($pull_timestamp);
 
 # update the last instance.
-my $last_instance = $firebase->get("${CJID}/last_instance");
+my $last_instance = $firebase->get("users/${CJID}/last_instance");
 &CJ::writeFile($last_instance_file, $last_instance->{'pid'}) unless not defined($last_instance->{'pid'});
 
 
 # get everything bigger than the $pull_timestamp  (Efficient use of Firebase indexing)
 my $param_hash  = {"orderBy"=>"\"timestamp\"", "startAt"=>$pull_timestamp};
-my $pid_hash = $firebase->get("${CJID}/pid_list", $param_hash) ;
+my $pid_hash = $firebase->get("users/${CJID}/pid_list", $param_hash) ;
 
 
 
@@ -180,7 +180,7 @@ while( my ($pid, $hash) = each(%$pid_hash) ){
 &CJ::add_to_pid_timestamp($timestamp_hashref) if defined($timestamp_hashref);		
 
 # Update the pull_timestamp
-my $result = $firebase->patch("${CJID}/agents/$agent", {"pull_timestamp" => $updated_pull_timestamp} ) ;	
+my $result = $firebase->patch("users/${CJID}/agents/$agent", {"pull_timestamp" => $updated_pull_timestamp} ) ;	
 
 }
 
@@ -195,7 +195,7 @@ sub push_timestamp{    #Incomplete
 # of the agent, and if the local push_timestamp is bigger 
 # than the remote counterpart, it sends to the server the local info that hasnt been pushed.
 my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
-my $fb_get = $firebase->get("${CJID}/agents/$agent");
+my $fb_get = $firebase->get("users/${CJID}/agents/$agent");
 return unless defined($fb_get);
 my $remote_push_timestamp = $fb_get->{push_timestamp};
 return unless defined($remote_push_timestamp);
