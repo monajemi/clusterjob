@@ -1,6 +1,6 @@
 #!/bin/bash
 if [ "$1" == "run" ];then
-perl /Users/hatef/CJ_agent1//src/CJ.pl  run  myMatlabJob.m sherlock -dep ./ -m "test of CJ" -mem "2G"
+perl ../../src/CJ.pl  run  myMatlabJob.m sherlock -dep ./ -m "test of CJ" -mem "2G"
 else
-perl /Users/hatef/CJ_agent1/src/CJ.pl "$@" 
+perl ../../src/CJ.pl "$@" 
 fi   
