@@ -77,7 +77,7 @@ if( -d "$info_dir" ){
 
 
 # Dont sync if the command is one of these.
-my @nosync_cmds = ("who", "help", "prompt", "version");
+my @nosync_cmds = qw ( init who help -help -h -Help -HELP prompt version -v );
 my %nosync = map { $_ => 1 } @nosync_cmds;
 
 
