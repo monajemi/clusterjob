@@ -203,12 +203,12 @@ return unless defined($remote_push_timestamp);
 my $local_push_timestamp = $self->GetLocalPushTimeStamp(); 
 return unless defined($local_push_timestamp);
 	
-return if ($remote_push_timestamp eq $local_push_timestamp);	
-CJ::warning("CJ is in awe! Push TimeStamp:: remote is bigger than local") if ($remote_push_timestamp gt $local_push_timestamp);	 
+return if ($remote_push_timestamp == $local_push_timestamp);	
+CJ::warning("CJ is in awe! Push TimeStamp:: remote is bigger than local") if ($remote_push_timestamp > $local_push_timestamp);	 
 
 
 	# comprare the two
-	if( $remote_push_timestamp lt $local_push_timestamp ){ # Some data are missing from Firebase
+	if( $remote_push_timestamp < $local_push_timestamp ){ # Some data are missing from Firebase
 		
 		&CJ::message("Sending data missing from the cloud. Please be patient...");
 			# Patch all data that are available locally 
