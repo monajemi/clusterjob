@@ -1,17 +1,13 @@
 #/usr/bin/perl -w
 #
 # Copyright (c) 2015 Hatef Monajemi (monajemi@stanford.edu)
+# visit www.clsuetrjob.org
 
 use strict;
-
-
-
 use FindBin qw($Bin);
 use lib "$Bin";  #for testing
 use lib "$Bin/external/firebase/lib";  
 use lib "$Bin/external/ouch/lib"; 
-
-
 use Firebase; 
 use Ouch;
 use File::chdir;
@@ -19,14 +15,17 @@ use CJ;          # contains essential functions
 use CJ::CJVars;  # contains global variables of CJ
 use CJ::Matlab;  # Contains Matlab related subs
 use CJ::Get;     # Contains Get related subs
+use CJ::ShellScripts; # Contains shell scripts
 use Getopt::Declare;
 use Data::Dumper;
-#use Term::ReadKey;
 use Term::ReadLine;
 use JSON::PP;
-#use Term::ANSIColor qw(:constants); # for changing terminal text colors
 use Digest::SHA qw(sha1_hex); # generate hexa-decimal SHA1 PID
+#use Term::ANSIColor qw(:constants); # for changing terminal text colors
+#use Term::ReadKey;
+
 use vars qw( $sync_status $message $mem $runtime $dep_folder $verbose $log_script $text_header_lines $show_tag $log_tag $qsub_extra $cmdline);  # options
+
 
 $::VERSION = &CJ::version_info();
 
@@ -40,7 +39,6 @@ $cmdline = "$cmd[0] "." $cmd[1]";
 foreach ( @ARGV ) {
     $cmdline .= /\s/ ?   " \"" . $_ . "\"":     " "   . $_;
 }
-
 my $cjcmd0 = $cmd[2];chomp($cjcmd0);
 
 # Send error if the agent isn't initialized
@@ -135,8 +133,9 @@ my $spec = <<'EOSPEC';
                							{defer{CJ::init}}
      sync 	                                          force sync [nocase]
 		                				{defer{CJ::sync_forced($sync_status)}}
-     who 	                                          prints out agent ID [nocase]
-				  	                        {defer{print "      agent: \033[32m$AgentID\033[0m\n";}}			
+     who 	                                          prints out user and agent info [nocase]
+				  	                        {defer{print "      user : \033[32m$CJID\033[0m\n";
+											       print "      agent: \033[32m$AgentID\033[0m\n";}}			
      log [<argin>]	                                  log  -n|all|pid [nocase]
                                                                 {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin,$log_tag,$log_script) }}
      hist[ory]    [<argin>]	                          history of runs -n|all 
@@ -204,12 +203,16 @@ my $opts = Getopt::Declare->new($spec);
 
 
 
+
+
+
+
 #==========================
 #   prompt
 #==========================
 sub cj_prompt{
 	
-	local $CWD ;     # This is local to prompt. When prompt is quit, we are back to where we were. 
+	local $CWD ;     # This is local to prompt. When prompt is exited, we are back to where we were. 
     my $COLOR = "\033[47;30m";
     my $RESET = "\033[0m";
     
@@ -262,7 +265,6 @@ sub cj_prompt{
 
 #========================================================================
 #            CLUSTERJOB RUN/DEPLOY/PARRUN
-#  ex.  clusterjob run myScript.m sherlock -dep DepFolder
 #  ex.  clusterjob run myScript.m sherlock -dep DepFolder -m  "my reminder"
 #========================================================================
 
@@ -412,13 +414,13 @@ CJ::Matlab::build_reproducible_script($program, $local_sep_Dir, $runflag);
     
   
 
-my $sh_script = make_shell_script($ssh,$program,$pid,$bqs);
+my $sh_script = &CJ::ShellScripts::make_shell_script($ssh,$program,$pid,$bqs);
 my $local_sh_path = "$local_sep_Dir/bashMain.sh";
 &CJ::writeFile($local_sh_path, $sh_script);
 
 # Build master-script for submission
 my $master_script;
-$master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra);
+$master_script =  &CJ::ShellScripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra);
     
     
 
@@ -625,7 +627,6 @@ if ( @tags_to_matlab_interpret ) { # if we need to run matlab
 }
     
     
-    
 #===================================================
 #     Check that user has initialized for loop vars
 #===================================================
@@ -686,11 +687,11 @@ if($nloops eq 1){
                     
                     # build bashMain.sh for each parallel package
                     my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
-                    my $sh_script = make_par_shell_script($ssh,$program,$pid,$bqs,$counter,$remote_par_sep_dir);
+                    my $sh_script = &CJ::ShellScripts::make_par_shell_script($ssh,$program,$pid,$bqs,$counter,$remote_par_sep_dir);
                     my $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                     &CJ::writeFile($local_sh_path, $sh_script);
                 
-                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
+                $master_script =  &CJ::ShellScripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
                 } #v0
     
 
@@ -734,11 +735,11 @@ if($nloops eq 1){
                 
                 # build bashMain.sh for each parallel package
                 my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
-                my $sh_script = make_par_shell_script($ssh,$program,$pid,$bqs,$counter, $remote_par_sep_dir);
+                my $sh_script = &CJ::ShellScripts::make_par_shell_script($ssh,$program,$pid,$bqs,$counter, $remote_par_sep_dir);
                 my $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
-                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date, $pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
+                $master_script =  &CJ::ShellScripts::make_master_script($master_script,$runflag,$program,$date, $pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
             } #v0
         } #v1
     
@@ -783,12 +784,12 @@ if($nloops eq 1){
                 
                 # build bashMain.sh for each parallel package
                 my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
-                my $sh_script = make_par_shell_script($ssh,$program,$pid,$bqs,$counter, $remote_par_sep_dir);
+                my $sh_script = &CJ::ShellScripts::make_par_shell_script($ssh,$program,$pid,$bqs,$counter, $remote_par_sep_dir);
                 my $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
                 &CJ::writeFile($local_sh_path, $sh_script);
                 
                 
-                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date, $pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
+                $master_script =  &CJ::ShellScripts::make_master_script($master_script,$runflag,$program,$date, $pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
                 
         } #v0
         } #v1
@@ -914,382 +915,7 @@ exit 0;
     
 }
     
-    
-
-
-
-#====================================
-#       BUILD A BASH WRAPPER
-#====================================
-
-sub make_shell_script
-    {
-        my ($ssh,$program,$pid,$bqs) = @_;
-
-        
-        
-my $sh_script;
-
-if($bqs eq "SGE"){
-$sh_script=<<'HEAD'
-#!/bin/bash
-#\$ -cwd
-#\$ -S /bin/bash
-    
-
-echo JOB_ID $JOB_ID
-echo WORKDIR $SGE_O_WORKDIR
-DIR=`pwd`
-HEAD
-    
-}elsif($bqs eq "SLURM"){
-$sh_script=<<'HEAD'
-#!/bin/bash -l
-echo JOB_ID $SLURM_JOBID
-echo WORKDIR $SLURM_SUBMIT_DIR
-DIR=`pwd`
-HEAD
-}else{
-&CJ::err("unknown BQS");
-}
- 
-$sh_script.= <<'MID';
-PROGRAM="<PROGRAM>";
-PID=<PID>;
-cd $DIR;
-mkdir scripts
-mkdir logs
-SHELLSCRIPT=${DIR}/scripts/CJrun.${PID}.sh;
-LOGFILE=${DIR}/logs/CJrun.${PID}.log;
-MID
-
-if($bqs eq "SGE"){
-$sh_script.= <<'BASH';
-cat <<THERE > $SHELLSCRIPT
-#! /bin/bash
-#$ -cwd
-#$ -R y
-#$ -S /bin/bash
-
-echo starting job $SHELLSCRIPT
-echo JOB_ID \$JOB_ID
-echo WORKDIR \$SGE_O_WORKDIR
-date
-cd $DIR
-
-module load MATLAB-R2014b
-unset _JAVA_OPTIONS
-matlab -nosplash -nodisplay <<HERE
-<MATPATH>
-
-% make sure each run has different random number stream
-myversion = version;
-mydate = date;
-RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
-globalStream = RandStream.getGlobalStream;
-CJsavedState = globalStream.State;
-fname = sprintf('CJrandState.mat');
-save(fname,'myversion','mydate', 'CJsavedState');
-cd $DIR
-run('${PROGRAM}');
-quit;
-HERE
-
-echo ending job \$SHELLSCRIPT
-echo JOB_ID \$JOB_ID
-date
-echo "done"
-THERE
-    
-chmod a+x $SHELLSCRIPT
-bash $SHELLSCRIPT > $LOGFILE
-    
-BASH
-}elsif($bqs eq "SLURM"){
-$sh_script.= <<'BASH';
-cat <<THERE > $SHELLSCRIPT
-#! /bin/bash -l
-
-echo starting job \$SHELLSCRIPT
-echo JOB_ID \$SLURM_JOBID
-echo WORKDIR \$SLURM_SUBMIT_DIR
-date
-cd $DIR
-
-module load matlab\/R2014b
-unset _JAVA_OPTIONS
-matlab -nosplash -nodisplay <<HERE
-<MATPATH>
-% make sure each run has different random number stream
-myversion = version;
-mydate = date;
-RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
-globalStream = RandStream.getGlobalStream;
-CJsavedState = globalStream.State;
-fname = sprintf('CJrandState.mat');
-save(fname, 'myversion' ,'mydate', 'CJsavedState');
-cd $DIR
-run('${PROGRAM}');
-quit;
-HERE
-    
-echo ending job \$SHELLSCRIPT
-echo JOB_ID \$SLURM_JOBID
-date
-echo "done"
-THERE
-    
-chmod a+x $SHELLSCRIPT
-bash $SHELLSCRIPT > $LOGFILE
-    
-BASH
-}
-
-        
-        
-my $pathText.=<<MATLAB;
-        
-% add user defined path
-addpath $ssh->{matlib} -begin
-
-% generate recursive path
-addpath(genpath('.'));
-    
-try
-    cvx_setup;
-    cvx_quiet(true)
-    % Find and add Sedumi Path for machines that have CVX installed
-        cvx_path = which('cvx_setup.m');
-    oldpath = textscan( cvx_path, '%s', 'Delimiter', '/');
-    newpath = horzcat(oldpath{:});
-    sedumi_path = [sprintf('%s/', newpath{1:end-1}) 'sedumi'];
-    addpath(sedumi_path)
-    
-catch
-    warning('CVX not enabled. Please set CVX path in .ssh_config if you need CVX for your jobs');
-end
-
-MATLAB
-
-        
-        
-        
-        
-        
-        
-$sh_script =~ s|<PROGRAM>|$program|;
-$sh_script =~ s|<PID>|$pid|;
-$sh_script =~ s|<MATPATH>|$pathText|;
-        
-return $sh_script;
-}
-        
-        
-
-# parallel shell script
-#====================================
-#       BUILD A PARALLEL BASH WRAPPER
-#====================================
-
-sub make_par_shell_script
-{
-my ($ssh,$program,$pid,$bqs,$counter,$remote_path) = @_;
-
-my $sh_script;
-if($bqs eq "SGE"){
-    
-$sh_script=<<'HEAD'
-#!/bin/bash -l
-#\$ -cwd
-#\$ -S /bin/bash
-
-echo JOB_ID $JOB_ID
-echo WORKDIR $SGE_O_WORKDIR
-DIR=<remote_path>
-HEAD
-
-}elsif($bqs eq "SLURM"){
-$sh_script=<<'HEAD'
-#!/bin/bash -l
-echo JOB_ID $SLURM_JOBID
-echo WORKDIR $SLURM_SUBMIT_DIR
-DIR=<remote_path>
-HEAD
-}else{
-&CJ::err("unknown BQS");
-}
-    
-
-$sh_script.= <<'MID';
-PROGRAM="<PROGRAM>";
-PID=<PID>;
-COUNTER=<COUNTER>;
-cd $DIR;
-mkdir scripts
-mkdir logs
-SHELLSCRIPT=${DIR}/scripts/CJrun.${PID}.${COUNTER}.sh;
-LOGFILE=${DIR}/logs/CJrun.${PID}.${COUNTER}.log;
-MID
-
-if($bqs eq "SGE"){
-$sh_script.= <<'BASH';
-cat <<THERE > $SHELLSCRIPT
-#! /bin/bash -l
-#$ -cwd
-#$ -R y
-#$ -S /bin/bash
-
-echo starting job $SHELLSCRIPT
-echo JOB_ID \$JOB_ID
-echo WORKDIR \$SGE_O_WORKDIR
-date
-cd $DIR
-
-module load MATLAB-R2014b
-unset _JAVA_OPTIONS
-matlab -nosplash -nodisplay <<HERE
-<MATPATH>
-
-    
-% add path for parrun
-oldpath = textscan('$DIR', '%s', 'Delimiter', '/');
-newpath = horzcat(oldpath{:});
-bin_path = sprintf('%s/', newpath{1:end-1});
-addpath(genpath(bin_path));  % recursive path
-    
-    
-% make sure each run has different random number stream
-myversion = version;
-mydate = date;
-    
-% To get different Randstate for different jobs
-rng(${COUNTER})
-seed = sum(100*clock) + randi(10^6);
-RandStream.setGlobalStream(RandStream('mt19937ar','seed', seed));
-globalStream = RandStream.getGlobalStream;
-CJsavedState = globalStream.State;
-fname = sprintf('CJrandState.mat');
-save(fname, 'myversion','mydate', 'CJsavedState');
-cd $DIR
-run('${PROGRAM}');
-quit;
-HERE
-
-echo ending job \$SHELLSCRIPT
-echo JOB_ID \$JOB_ID
-date
-echo "done"
-THERE
-
-chmod a+x $SHELLSCRIPT
-bash $SHELLSCRIPT > $LOGFILE
-
-BASH
-}elsif($bqs eq "SLURM"){
-$sh_script.= <<'BASH';
-cat <<THERE > $SHELLSCRIPT
-#! /bin/bash -l
-
-echo starting job \$SHELLSCRIPT
-echo JOB_ID \$SLURM_JOBID
-echo WORKDIR \$SLURM_SUBMIT_DIR
-date
-cd $DIR
-
-module load matlab\/R2014b
-unset _JAVA_OPTIONS
-matlab -nosplash -nodisplay <<HERE
-<MATPATH>
-
-    
-% add path for parrun
-oldpath = textscan('$DIR', '%s', 'Delimiter', '/');
-newpath = horzcat(oldpath{:});
-bin_path = sprintf('%s/', newpath{1:end-1});
-addpath(genpath(bin_path));
-    
-    
-% make sure each run has different random number stream
-myversion = version;
-mydate = date;
-% To get different Randstate for different jobs
-rng(${COUNTER})
-seed = sum(100*clock) + randi(10^6);
-RandStream.setGlobalStream(RandStream('mt19937ar','seed', seed));
-globalStream = RandStream.getGlobalStream;
-CJsavedState = globalStream.State;
-fname = sprintf('CJrandState.mat');
-save(fname,'myversion', 'mydate', 'CJsavedState');
-cd $DIR
-run('${PROGRAM}');
-quit;
-HERE
-
-echo ending job \$SHELLSCRIPT
-echo JOB_ID \$SLURM_JOBID
-date
-echo "done"
-THERE
-
-chmod a+x $SHELLSCRIPT
-bash $SHELLSCRIPT > $LOGFILE
-
-
-BASH
-}
-
-my $pathText.=<<MATLAB;
-    
-% add user defined path
-addpath $ssh->{matlib} -begin
-
-% generate recursive path
-addpath(genpath('.'));
-
-try
-cvx_setup;
-cvx_quiet(true)
-% Find and add Sedumi Path for machines that have CVX installed
-    cvx_path = which('cvx_setup.m');
-oldpath = textscan( cvx_path, '%s', 'Delimiter', '/');
-newpath = horzcat(oldpath{:});
-sedumi_path = [sprintf('%s/', newpath{1:end-1}) 'sedumi'];
-addpath(sedumi_path)
-
-catch
-warning('CVX not enabled. Please set CVX path in .ssh_config if you need CVX for your jobs');
-end
-
-MATLAB
-
-
-
-
-$sh_script =~ s|<PROGRAM>|$program|;
-$sh_script =~ s|<PID>|$pid|;
-$sh_script =~ s|<COUNTER>|$counter|;
-$sh_script =~ s|<MATPATH>|$pathText|;
-$sh_script =~ s|<remote_path>|$remote_path|;
-    
-
-return $sh_script;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+   
 
 
 

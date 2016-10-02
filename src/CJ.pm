@@ -241,6 +241,32 @@ sub getLastSync
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 sub rerun
 {
     my ($pid,$counter,$mem,$runtime,$qsub_extra,$verbose) = @_;
@@ -296,17 +322,17 @@ sub rerun
     my $master_script;
     if ($#job_ids eq 0) { # if there is only one job
         #run
-        $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra);
+        $master_script =  &CJ::ShellScripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra);
     }else{
         #parrun
         if(@$counter){
             foreach my $count (@$counter){
-                $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$count);
+                $master_script =  &CJ::ShellScripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$count);
             }
         }else{
             # Package is parrun, run the whole again!
             foreach my $i (0..$#job_ids){
-               $master_script =  &CJ::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$i);
+               $master_script =  &CJ::ShellScripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$i);
             }
         }
     }
@@ -406,21 +432,6 @@ exit 0;
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 # This is the CJ confirmation included in the
 # reproducible package
 sub build_cj_confirmation{
@@ -467,84 +478,6 @@ CJ::writeFile("$path/CJ_CONFIRMATION.TXT", $confirmation_script);
 my $cmd = "chmod +x $path/CJ_CONFIRMATION.TXT";
 &CJ::my_system($cmd,0);
 
-
-
-
-}
-
-# ======
-# Build master script
-sub make_master_script{
-    my($master_script,$runflag,$program,$date,$pid,$bqs,$mem, $runtime, $remote_sep_Dir,$qsub_extra,$counter) = @_;
-    
-    
-    
-if( (!defined($master_script)) ||  ($master_script eq "")){
-my $docstring=<<DOCSTRING;
-# EXPERIMENT $program
-# COPYRIGHT 2014:
-# Hatef Monajemi (monajemi AT stanford DOT edu)
-# DATE : $date->{datestr}
-DOCSTRING
-
-my $HEADER = &CJ::bash_header($bqs);
-$master_script=$HEADER;
-$master_script.="$docstring";
-}
-
-
-
-
-    my $programName = &CJ::remove_extention($program);
-
-
-    if(!($runflag =~ /^par.*/) ){
-        
-        
-        $master_script .= "mkdir ${remote_sep_Dir}"."/logs" . "\n" ;
-        $master_script .= "mkdir ${remote_sep_Dir}"."/scripts" . "\n" ;
-    
-        my $tagstr="CJ_$pid\_$programName";
-        if($bqs eq "SGE"){
-            
-        $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem -l h_rt=$runtime $qsub_extra -N $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n";
-        }elsif($bqs eq "SLURM"){
-            
-            $master_script.="sbatch --mem=$mem --time=$runtime $qsub_extra -J $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n"
-            
-        }else{
-            &CJ::err("unknown BQS")
-        }
-
-    
-    
-    }elsif(defined($counter)){
-    
-    
-    
-        # Add QSUB to MASTER SCRIPT
-        $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/logs"    . "\n" ;
-        $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/scripts" . "\n" ;
-        
-        
-        my $tagstr="CJ_$pid\_$counter\_$programName";
-        if($bqs eq "SGE"){
-            $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem  -l h_rt=$runtime $qsub_extra -N $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n";
-        }elsif($bqs eq "SLURM"){
-            
-            $master_script.="sbatch --mem=$mem --time=$runtime $qsub_extra -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
-            
-        }else{
-            &CJ::err("unknown BQS");
-        }
-        
-        
-    }else{
-            &CJ::err("counter is not defined");
-    }
-    
-    
-    return $master_script;
 }
 
 

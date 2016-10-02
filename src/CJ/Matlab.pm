@@ -199,7 +199,7 @@ sub run_matlab_index_interpreter{
     
     my $check_matlab_installed = `source ~/.bashrc ; source ~/.profile; command -v matlab`;
     if($check_matlab_installed eq ""){
-    &CJ::err("I require matlab but it's not installed");
+    &CJ::err("I require matlab but it's not installed: The following check command returned null. \n     `source ~/.bashrc ; source ~/.profile; command -v matlab`");
     }else{
     &CJ::message("Test passed, Matlab is installed on your machine.");
     }
