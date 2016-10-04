@@ -271,14 +271,9 @@ sub cj_prompt{
 sub run{
     
     my ($machine,$program, $runflag,$qsub_extra) = @_;
-    
     my $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
-    
     CJ::message("$runflag"."ing [$program] on [$machine]");
-   
-
-    
-    
+ 
 #===================
 #  Check connection
 #===================
@@ -286,7 +281,6 @@ my $ssh      = &CJ::host($machine);
 my $account  = $ssh->{account};
 my $bqs      = $ssh->{bqs};
 my $remotePrefix    = $ssh->{remote_repo};
-
 # create remote directory  using outText
 my $sshres = `ssh $account 'mkdir /tmp/CJsshtest; rm -r /tmp/CJsshtest'  2>&1`;
 &CJ::err("Cannot connect to $account: $sshres") if($sshres);
@@ -297,35 +291,26 @@ my $sshres = `ssh $account 'mkdir /tmp/CJsshtest; rm -r /tmp/CJsshtest'  2>&1`;
 #====================================
 my $date = &CJ::date();
 
-    
-# TO BE IMPLEMENTED
+# PID
 my $sha_expr = "$CJID:$localHostName:$program:$account:$date->{datestr}";
 my $pid  = sha1_hex("$sha_expr");
 my $short_pid = substr($pid, 0, 8);  # we use an 8 character abbrviation
 
 
-#check to see if the file and dep folder exists
-    
-if(! -e "$BASE/$program" ){
- &CJ::err("$BASE/$program not found");
-}
-if(! -d "$BASE/$dep_folder" ){
-    &CJ::err("Dependency folder $BASE/$dep_folder not found");
-}
-    
-&CJ::message("Base-dir=$BASE");
+# Check to see if the file and dep folder exists
+&CJ::err("$BASE/$program not found") if(! -e "$BASE/$program" );    
+&CJ::err("Dependency folder $BASE/$dep_folder not found") if(! -d "$BASE/$dep_folder" );    
+&CJ::message("Sending from: $BASE");
 
 
 #=======================================
-#       BUILD DOCSTRING
-#       WE NAME THE REMOTE FOLDERS
-#       BY PROGRAM AND PID
-#       EXAMPLE : MaxEnt/20dd3203e29ec295c50334f6082cee98aae8518e
+#    BUILD DOCSTRING
+#    WE NAME THE REMOTE FOLDERS
+#    BY PROGRAM AND PID
+#    EXAMPLE : MaxEnt/20dd3203e29ec29...
 #=======================================
 
-
-
-my $program_name   = &CJ::remove_extention($program);
+my $program_name   = &CJ::remove_extension($program);
 my $localDir       = "$localPrefix/"."$program_name";
 my $local_sep_Dir = "$localDir/" . "$pid"  ;
 my $saveDir       = "$savePrefix"."$program_name";
@@ -348,6 +333,9 @@ if(-d $localPrefix){
 }
 
     
+# cp code
+my $cmd = "cp $BASE/$program $local_sep_Dir/";
+&CJ::my_system($cmd,$verbose);	
 # cp dependencies
 my $cmd   = "cp -r $dep_folder/* $local_sep_Dir/";
 &CJ::my_system($cmd,$verbose);
@@ -357,7 +345,6 @@ my $cmd   = "cp -r $dep_folder/* $local_sep_Dir/";
 #=====================
 #  REMOTE DIRECTORIES
 #=====================
-my $program_name    = &CJ::remove_extention($program);
 my $remoteDir       = "$remotePrefix/"."$program_name";
 my $remote_sep_Dir = "$remoteDir/" . "$pid"  ;
 
@@ -389,25 +376,10 @@ TEXT
 
 if ($runflag eq "deploy" || $runflag eq "run"){
 
-#============================================
-#   COPY ALL NECESSARY FILES INTO THE
-#    EXPERIMENT FOLDER
-#============================================
-   
-
-
-my $cmd = "cp $BASE/$program $local_sep_Dir/";
-&CJ::my_system($cmd,$verbose);
     
 CJ::message("Creating reproducible script reproducible_$program");
 CJ::Matlab::build_reproducible_script($program, $local_sep_Dir, $runflag);
     
-
-    
-    
-    
-    
-
 #===========================================
 # BUILD A BASH WRAPPER
 #===========================================
@@ -428,13 +400,9 @@ my $local_master_path="$local_sep_Dir/master.sh";
 &CJ::writeFile($local_master_path, $master_script);
 
 
-
-
-
-#==================================
-#       PROPAGATE THE FILES
-#       AND RUN ON CLUSTER
-#==================================
+#==============================================
+#    PROPAGATE THE FILES AND RUN ON CLUSTER
+#==============================================
 my $tarfile="$pid".".tar.gz";
 my $cmd="cd $localDir; tar  --exclude '.git' --exclude '*~' --exclude '*.pdf'  -czf $tarfile $pid/  ; rm -rf $local_sep_Dir  ; cd $BASE";
 &CJ::my_system($cmd,$verbose);
@@ -509,7 +477,7 @@ program       => $program,
 message       => $message,
 };	
 
-
+# add_record locally
 &CJ::add_record($runinfo);
 
 # write runinfo to FireBaee as well
@@ -519,10 +487,9 @@ message       => $message,
 }elsif($runflag eq "parrun"  || $runflag eq "pardeploy"){
 #==========================================
 #   clusterjob parrun myscript.m DEP
-#
-#   this implements parfor in perl so for
-#   each grid point, we will have one separate
-#   job
+#   this implements parrallel for in perl 
+#   so for each grid point, we will have 
+#   one separate job
 #==========================================
 
 # read the script, parse it out and
@@ -543,28 +510,28 @@ while(<$fh>){
 }
 close $fh;
     
-    # this includes fors on one line
+# this includes fors on one line
 my @lines = split('\n|;\s*(?=for)', $script_lines);
 
 my @forlines_idx_set;
 foreach my $i (0..$#lines){
 my $line = $lines[$i];
     if ($line =~ /^\s*(for.*)/ ){
-    push @forlines_idx_set, $i;
+        push @forlines_idx_set, $i;
     }
 }
 # ==============================================================
 # complain if the size of for loops is more than three or
-# if they are not consecetive. We do not allow it in clusterjob.
+# if they are not consecutive. We do not allow it in clusterjob.
 # ==============================================================
-if($#forlines_idx_set+1 > 3 || $#forlines_idx_set+1 < 1)
+if($#forlines_idx_set+1 < 1)
 {
- &CJ::err(" 'parrun' does not allow a non-par loop, less than 1 or more than 3 parloops inside the MAIN script.");
+ &CJ::err(" 'parrun' does not allow less than 1 parallel loops inside the MAIN script.");
 }
     
 foreach my $i (0..$#forlines_idx_set-1){
 if($forlines_idx_set[$i+1] ne $forlines_idx_set[$i]+1){
- &CJ::err("CJ does not allow anything between the parallel for's. try rewriting your loops");
+ &CJ::err("CJ does not allow anything between the parallel for's. try rewriting your loops.");
 }
 }
 
@@ -584,48 +551,9 @@ $BOT .= "$lines[$i]\n";
 }
     
 
-    
-# Determine the tags and ranges of the
-# indecies
-my @idx_tags;
-my @ranges;
-my @tags_to_matlab_interpret;
-my @forlines_to_matlab_interpret;
-    
-    
-    my @forline_list = split /^/, $FOR;
-   
-for my $this_forline (@forline_list) {
-    
-    my ($idx_tag, $range) = &CJ::Matlab::read_matlab_index_set($this_forline, $TOP,$verbose);
-    
-    #TODO: This will switch order if we dont check it. Rewrite this 
-	# so as to keep order of indecies.
-    # if we can't establish range, we output undef
-    if(defined($range)){
-        push @idx_tags, $idx_tag;
-        push @ranges, $range;
-    }else{
-        push @tags_to_matlab_interpret, $idx_tag;
-        push @forlines_to_matlab_interpret, $this_forline;
-    }
-    
-}
-
-
-    
-if ( @tags_to_matlab_interpret ) { # if we need to run matlab
-    my $range_run_interpret = &CJ::Matlab::run_matlab_index_interpreter(\@tags_to_matlab_interpret,\@forlines_to_matlab_interpret, $TOP, $verbose);
-    
-    
-    for (keys %$range_run_interpret)
-    {
-    push @idx_tags, $_;
-    push @ranges, $range_run_interpret->{$_};
-    #print"$_:$range_run_interpret->{$_} \n";
-    }
-}
-    
+my ($idx_tags,$ranges) = &CJ::Matlab::findIdxTagRange($FOR, $TOP,$verbose);  
+my @idx_tags = @{$idx_tags};
+my @ranges = @{$ranges};
     
 #===================================================
 #     Check that user has initialized for loop vars
@@ -648,178 +576,31 @@ my $nloops = $#forlines_idx_set+1;
 
 my $counter = 0;   # counter gives the total number of jobs submited: (1..$counter)
 
-my $master_script;
-if($nloops eq 1){
+my $extra={};
+$extra->{TOP}= $TOP;
+$extra->{FOR}= $FOR;
+$extra->{BOT}= $BOT;
+$extra->{local_sep_Dir}= $local_sep_Dir;
+$extra->{remote_sep_Dir}= $remote_sep_Dir;
+$extra->{runflag}= $runflag;
+$extra->{program}= $program;
+$extra->{date}= $date;
+$extra->{pid}= $pid;
+$extra->{bqs}= $bqs;
+$extra->{mem}= $mem;
+$extra->{qsub_extra}=$qsub_extra;
+$extra->{runtime}=$runtime;
+$extra->{ssh}=$ssh;
 
-    
-            # parallel vars
-            my @idx_0 = split(',', $ranges[0]);
-            
-            foreach my $v0 (@idx_0){
-                  $counter = $counter+1;
-                    
-                    #============================================
-                    #     BUILD EXP FOR this (v0)
-                    #============================================
-                    
-                    
-                    my $INPUT;
-                    $INPUT .= "if ($idx_tags[0]~=$v0); continue;end";
-                    my $new_script = "$TOP \n $FOR \n $INPUT \n $BOT";
-                    undef $INPUT;                   #undef INPUT for the next run
-                    
-                    #============================================
-                    #   COPY ALL NECESSARY FILES INTO THE
-                    #   EXPERIMENTS FOLDER
-                    #============================================
-                    
-                
-                    mkdir "$local_sep_Dir/$counter";
-                    
-                    my $this_path  = "$local_sep_Dir/$counter/$program";
-                    &CJ::writeFile($this_path,$new_script);
-                
-                    # build reproducible script for each run
-                    CJ::Matlab::build_reproducible_script($program, "$local_sep_Dir/$counter", $runflag);
-                
-                
-                    
-                    
-                    # build bashMain.sh for each parallel package
-                    my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
-                    my $sh_script = &CJ::ShellScripts::make_par_shell_script($ssh,$program,$pid,$bqs,$counter,$remote_par_sep_dir);
-                    my $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
-                    &CJ::writeFile($local_sh_path, $sh_script);
-                
-                $master_script =  &CJ::ShellScripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
-                } #v0
-    
+# Implement recursive loop
+my $master_script = &CJ::ShellScripts::build_nloop_master_script($nloops, \@idx_tags,\@ranges,$extra);
 
-}elsif($nloops eq 2){
-
-  
-    
-        # parallel vars
-        my @idx_0 = split(',', $ranges[0]);
-        my @idx_1 = split(',', $ranges[1]);
-        
-        
-        foreach my $v0 (@idx_0){
-            foreach my $v1 (@idx_1){
-            
-                $counter = $counter+1;
-                
-                #============================================
-                #     BUILD EXP FOR this (v0,v1)
-                #============================================
-                
-                
-                my $INPUT;
-                $INPUT .= "if ($idx_tags[0]~=$v0 || $idx_tags[1]~=$v1 ); continue;end";
-                my $new_script = "$TOP \n $FOR \n $INPUT \n $BOT";
-                undef $INPUT;                   #undef INPUT for the next run
-               
-                #============================================
-                #   COPY ALL NECESSARY FILES INTO THE
-                #   EXPERIMENTS FOLDER
-                #============================================
-                
-                
-                mkdir "$local_sep_Dir/$counter";
-                my $this_path  = "$local_sep_Dir/$counter/$program";
-                &CJ::writeFile($this_path,$new_script);
-                # build reproducible script for each run
-                CJ::Matlab::build_reproducible_script($program,  "$local_sep_Dir/$counter", $runflag);
-
-                
-                
-                # build bashMain.sh for each parallel package
-                my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
-                my $sh_script = &CJ::ShellScripts::make_par_shell_script($ssh,$program,$pid,$bqs,$counter, $remote_par_sep_dir);
-                my $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
-                &CJ::writeFile($local_sh_path, $sh_script);
-                
-                $master_script =  &CJ::ShellScripts::make_master_script($master_script,$runflag,$program,$date, $pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
-            } #v0
-        } #v1
-    
-
-}elsif($nloops eq 3){
-    
-    
-    
-        # parallel vars
-        my @idx_0 = split(',', $ranges[0]);
-        my @idx_1 = split(',', $ranges[1]);
-        my @idx_2 = split(',', $ranges[2]);
-        foreach my $v0 (@idx_0){
-            foreach my $v1 (@idx_1){
-                foreach my $v2 (@idx_2){
-                $counter = $counter+1;
-                
-                #============================================
-                #     BUILD EXP FOR this (v0,v1)
-                #============================================
-                
-                
-                my $INPUT;
-                $INPUT .= "if ($idx_tags[0]~=$v0 || $idx_tags[1]~=$v1  || $idx_tags[2]~=$v2); continue;end";
-                my $new_script = "$TOP \n $FOR \n $INPUT \n $BOT";
-                undef $INPUT;                   #undef INPUT for the next run
-                
-                #============================================
-                #   COPY ALL NECESSARY FILES INTO THE
-                #   EXPERIMENTS FOLDER
-                #============================================
-                
-                
-                mkdir "$local_sep_Dir/$counter";
-                    
-                my $this_path  = "$local_sep_Dir/$counter/$program";
-                &CJ::writeFile($this_path,$new_script);
-                # build reproducible script for each run
-                CJ::Matlab::build_reproducible_script($program, "$local_sep_Dir/$counter", $runflag);
-
-                
-                
-                # build bashMain.sh for each parallel package
-                my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
-                my $sh_script = &CJ::ShellScripts::make_par_shell_script($ssh,$program,$pid,$bqs,$counter, $remote_par_sep_dir);
-                my $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
-                &CJ::writeFile($local_sh_path, $sh_script);
-                
-                
-                $master_script =  &CJ::ShellScripts::make_master_script($master_script,$runflag,$program,$date, $pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);
-                
-        } #v0
-        } #v1
-        } #v2
-        
-        
-    
-    
-    
-
-
-}else{
-    &CJ::err("Max number of parallel variables exceeded; $nloops > 3 ");
-}
-    
-
-    
-#============================================
-#   COPY ALL NECESSARY FILES INTO THE
-#    EXPERIMENT FOLDER
-#============================================
-my $cmd = "cp $BASE/$program $local_sep_Dir/";
-&CJ::my_system($cmd,$verbose);
-    
     
 #===================================
-# write out developed master script
+# write out built master script
 #===================================
 my $local_master_path="$local_sep_Dir/master.sh";
-    &CJ::writeFile($local_master_path, $master_script);
+&CJ::writeFile($local_master_path, $master_script);
     
 
 #==================================

@@ -310,7 +310,7 @@ sub rerun
     my $job_id = $info->{'job_id'};
     my $bqs = $info->{'bqs'};
 
-    #my $programName = &CJ::remove_extention($program);
+    #my $programName = &CJ::remove_extension($program);
     
     my @job_ids = split(',',$job_id);
 
@@ -1969,7 +1969,7 @@ return \@job_ids;
 }
 
 
-sub remove_extention
+sub remove_extension
 {
     my ($program) = @_;
     

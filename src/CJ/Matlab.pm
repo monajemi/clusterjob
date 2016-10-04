@@ -82,6 +82,58 @@ CJ::writeFile("$path/$rp_program", $rp_program_script);
 
 
 
+sub findIdxTagRange
+{
+	my ($FOR,$TOP,$verbose) = @_;
+	# Determine the tags and ranges of the
+	# indecies
+	my @idx_tags;
+	my @ranges;
+	my @tags_to_matlab_interpret;
+	my @forlines_to_matlab_interpret;
+    
+    
+	    my @forline_list = split /^/, $FOR;
+   
+	for my $this_forline (@forline_list) {
+    
+	    my ($idx_tag, $range) = &CJ::Matlab::read_matlab_index_set($this_forline, $TOP,$verbose);
+    
+	    #TODO: This will switch order if we dont check it. Rewrite this 
+		# so as to keep order of indecies.
+	    # if we can't establish range, we output undef
+	    if(defined($range)){
+	        push @idx_tags, $idx_tag;
+	        push @ranges, $range;
+	    }else{
+	        push @tags_to_matlab_interpret, $idx_tag;
+	        push @forlines_to_matlab_interpret, $this_forline;
+	    }
+    
+	}
+
+
+    
+	if ( @tags_to_matlab_interpret ) { # if we need to run matlab
+	    my $range_run_interpret = &CJ::Matlab::run_matlab_index_interpreter(\@tags_to_matlab_interpret,\@forlines_to_matlab_interpret, $TOP, $verbose);
+    
+    
+	    for (keys %$range_run_interpret)
+	    {
+	    push @idx_tags, $_;
+	    push @ranges, $range_run_interpret->{$_};
+	    #print"$_:$range_run_interpret->{$_} \n";
+	    }
+	}
+    
+	return (\@idx_tags,\@ranges);
+}
+
+
+
+
+
+
 sub read_matlab_index_set
 {
     my ($forline, $TOP, $verbose) = @_;
