@@ -49,7 +49,7 @@ sub check_initialization{
 
 sub build_reproducible_script{
     my ($program, $path, $runflag) = @_;
-
+	#TODO: add dependecies like CVX, etc.
 
 my $program_script = CJ::readFile("$path/$program");
     

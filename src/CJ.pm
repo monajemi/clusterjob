@@ -322,17 +322,17 @@ sub rerun
     my $master_script;
     if ($#job_ids eq 0) { # if there is only one job
         #run
-        $master_script =  &CJ::ShellScripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra);
+        $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra);
     }else{
         #parrun
         if(@$counter){
             foreach my $count (@$counter){
-                $master_script =  &CJ::ShellScripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$count);
+                $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$count);
             }
         }else{
             # Package is parrun, run the whole again!
             foreach my $i (0..$#job_ids){
-               $master_script =  &CJ::ShellScripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$i);
+               $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$i);
             }
         }
     }
@@ -1974,10 +1974,10 @@ sub remove_extension
     my ($program) = @_;
     
     my @program_name    = split /\./,$program;
-    my $lastone = pop @program_name;
+    my $extension = pop @program_name;
     my $program_name   =   join "\_",@program_name;  # NOTE: Dots in the name are replace by \_
 
-    return $program_name;
+    return ($program_name,$extension);
     
 }
 

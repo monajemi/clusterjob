@@ -15,7 +15,7 @@ use CJ;          # contains essential functions
 use CJ::CJVars;  # contains global variables of CJ
 use CJ::Matlab;  # Contains Matlab related subs
 use CJ::Get;     # Contains Get related subs
-use CJ::ShellScripts; # Contains shell scripts
+use CJ::Scripts; # Contains shell scripts
 use Getopt::Declare;
 use Data::Dumper;
 use Term::ReadLine;
@@ -270,9 +270,8 @@ sub cj_prompt{
 
 sub run{
     
-    my ($machine,$program, $runflag,$qsub_extra) = @_;
+    my ($machine,$program, $runflag,$qsub_extra) = @_;	
     my $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
-    CJ::message("$runflag"."ing [$program] on [$machine]");
  
 #===================
 #  Check connection
@@ -285,7 +284,7 @@ my $remotePrefix    = $ssh->{remote_repo};
 my $sshres = `ssh $account 'mkdir /tmp/CJsshtest; rm -r /tmp/CJsshtest'  2>&1`;
 &CJ::err("Cannot connect to $account: $sshres") if($sshres);
     
-    
+
 #====================================
 #         DATE OF CALL
 #====================================
@@ -300,7 +299,6 @@ my $short_pid = substr($pid, 0, 8);  # we use an 8 character abbrviation
 # Check to see if the file and dep folder exists
 &CJ::err("$BASE/$program not found") if(! -e "$BASE/$program" );    
 &CJ::err("Dependency folder $BASE/$dep_folder not found") if(! -d "$BASE/$dep_folder" );    
-&CJ::message("Sending from: $BASE");
 
 
 #=======================================
@@ -310,7 +308,22 @@ my $short_pid = substr($pid, 0, 8);  # we use an 8 character abbrviation
 #    EXAMPLE : MaxEnt/20dd3203e29ec29...
 #=======================================
 
-my $program_name   = &CJ::remove_extension($program);
+my ($program_name,$ext) = &CJ::remove_extension($program);
+
+my $programType;
+if(lc($ext) eq "m"){
+	$programType = "matlab";
+}elsif(lc($ext) eq "r"){
+	$programType = "R";
+}else{
+	CJ::err("Code type .$ext is not recognized");
+}
+
+CJ::message("$runflag"."ing [$program] on [$machine]");
+&CJ::message("Sending from: $BASE");
+
+
+
 my $localDir       = "$localPrefix/"."$program_name";
 my $local_sep_Dir = "$localDir/" . "$pid"  ;
 my $saveDir       = "$savePrefix"."$program_name";
@@ -378,7 +391,9 @@ if ($runflag eq "deploy" || $runflag eq "run"){
 
     
 CJ::message("Creating reproducible script reproducible_$program");
-CJ::Matlab::build_reproducible_script($program, $local_sep_Dir, $runflag);
+
+
+CJ::Scripts::build_reproducible_script($programType,$program, $local_sep_Dir, $runflag);
     
 #===========================================
 # BUILD A BASH WRAPPER
@@ -386,13 +401,13 @@ CJ::Matlab::build_reproducible_script($program, $local_sep_Dir, $runflag);
     
   
 
-my $sh_script = &CJ::ShellScripts::make_shell_script($ssh,$program,$pid,$bqs);
+my $sh_script = &CJ::Scripts::make_shell_script($ssh,$program,$pid,$bqs);
 my $local_sh_path = "$local_sep_Dir/bashMain.sh";
 &CJ::writeFile($local_sh_path, $sh_script);
 
 # Build master-script for submission
 my $master_script;
-$master_script =  &CJ::ShellScripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra);
+$master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra);
     
     
 
@@ -562,15 +577,9 @@ my @ranges = @{$ranges};
     
     
     
-    
-    
-    
-    
 #==============================================
 #        MASTER SCRIPT
 #==============================================
-    
-    
     
 my $nloops = $#forlines_idx_set+1;
 
@@ -592,12 +601,13 @@ $extra->{qsub_extra}=$qsub_extra;
 $extra->{runtime}=$runtime;
 $extra->{ssh}=$ssh;
 
-# Implement recursive loop
-my $master_script = &CJ::ShellScripts::build_nloop_master_script($nloops, \@idx_tags,\@ranges,$extra);
+
+# Recursive loop for arbitrary number of loops.
+my $master_script = &CJ::Scripts::build_nloop_master_script($nloops, \@idx_tags,\@ranges,$extra);
 
     
 #===================================
-# write out built master script
+# write out master_script
 #===================================
 my $local_master_path="$local_sep_Dir/master.sh";
 &CJ::writeFile($local_master_path, $master_script);
@@ -696,7 +706,6 @@ exit 0;
     
 }
     
-   
 
 
 
