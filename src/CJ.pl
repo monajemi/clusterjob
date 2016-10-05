@@ -390,9 +390,7 @@ TEXT
 if ($runflag eq "deploy" || $runflag eq "run"){
 
     
-CJ::message("Creating reproducible script reproducible_$program");
-
-
+CJ::message("Creating reproducible script(s) reproducible_$program");
 CJ::Scripts::build_reproducible_script($programType,$program, $local_sep_Dir, $runflag);
     
 #===========================================
