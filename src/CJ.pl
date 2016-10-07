@@ -510,9 +510,8 @@ my $matlab = CJ::Matlab->new($BASE,$program);
 my $parser = $matlab->parse();    
 my ($idx_tags,$ranges) = $matlab->findIdxTagRange($parser,$verbose);  
   
-#===================================================
-#     Check that user has initialized for loop vars
-#===================================================
+
+#Check that user has initialized for loop vars
 $matlab->check_initialization($parser,$idx_tags,$verbose);
     
 #==============================================
