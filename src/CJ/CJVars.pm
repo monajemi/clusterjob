@@ -42,7 +42,7 @@ our $last_instance_file = "$install_dir/.info/last_instance.info";
 our $CJlog              = "$install_dir/.info/CJcall.log";
 our $AgentIDPATH	 	= "$install_dir/.info/agent_id";  # The UUID of installation
 
-our $get_tmp_dir        = "$install_dir/../CJ_get_tmp";
+our $get_tmp_dir        = "$HOME/CJ_get_tmp";
 our $history_file       = "$info_dir/history.info";
 our $cmd_history_file   = "$info_dir/cmd_history.info";
 our $run_history_file   = "$info_dir/run_history.info";

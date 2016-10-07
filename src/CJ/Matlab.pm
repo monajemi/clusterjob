@@ -1,6 +1,5 @@
 package CJ::Matlab;
-# This is part of Clusterjob that handles the collection
-# of Matlab results
+# This is the Matlab class of CJ 
 # Copyright 2015 Hatef Monajemi (monajemi@stanford.edu) 
 
 use strict;
@@ -11,9 +10,100 @@ use feature 'say';
 
 
 
-sub check_initialization{
-    my ($tag_list,$TOP,$BOT,$verbose) = @_;
+
+# class constructor
+sub new {
+ 	my $class= shift;
+ 	my ($path,$program) = @_;
+	
+	my $default_interval = 300;  # default 5min;
+	my $default_type = "auto";  # default 1min;
+	my $self= bless {
+		path => $path, 
+		program => $program
+	}, $class;
+		
+	return $self;
+}
+
+
+
+sub parse {
+	
+	my $self=shift;
+	
+	# script lines will have blank lines or comment lines removed;
+	# ie., all remaining lines are effective codes
+	# that actually do something.
+	my $script_lines;
+	    open my $fh, "$self->{path}/$self->{program}" or CJ::err("Couldn't open file: $!");
+		while(<$fh>){
+	    $_ = $self->uncomment_matlab_line($_);
+	    if (!/^\s*$/){
+	        $script_lines .= $_;
+	    }
+	}
+	close $fh;
     
+	# this includes fors on one line
+	my @lines = split('\n|;\s*(?=for)', $script_lines);
+
+	my @forlines_idx_set;
+	foreach my $i (0..$#lines){
+	my $line = $lines[$i];
+	    if ($line =~ /^\s*(for.*)/ ){
+	        push @forlines_idx_set, $i;
+	    }
+	}
+	# ==============================================================
+	# complain if the size of for loops is more than three or
+	# if they are not consecutive. We do not allow it in clusterjob.
+	# ==============================================================
+	&CJ::err(" 'parrun' does not allow less than 1 parallel loops inside the MAIN script.") if($#forlines_idx_set+1 < 1);
+
+	foreach my $i (0..$#forlines_idx_set-1){
+	&CJ::err("CJ does not allow anything between the parallel for's. try rewriting your loops.") if($forlines_idx_set[$i+1] ne $forlines_idx_set[$i]+1);
+	}
+
+    
+	my $TOP;
+	my $FOR;
+	my $BOT;
+    
+	foreach my $i (0..$forlines_idx_set[0]-1){
+	$TOP .= "$lines[$i]\n";
+	}
+	foreach my $i ($forlines_idx_set[0]..$forlines_idx_set[0]+$#forlines_idx_set){
+	$FOR .= "$lines[$i]\n";
+	}
+	foreach my $i ($forlines_idx_set[0]+$#forlines_idx_set+1..$#lines){
+	$BOT .= "$lines[$i]\n";
+	}
+	
+	
+	my $parser ={};
+	$parser->{TOP} = $TOP;
+	$parser->{FOR} = $FOR;	
+	$parser->{BOT} = $BOT;
+	$parser->{nloop} = $#forlines_idx_set+1;
+
+	return $parser;
+	
+}
+
+
+
+
+sub check_initialization{
+	my $self = shift;
+	
+    my ($parser,$tag_list,$verbose) = @_;
+
+	my $BOT = $parser->{BOT};
+	my $TOP = $parser->{TOP};
+	
+	
+	
     my @BOT_lines = split /\n/, $BOT;
    
     
@@ -48,11 +138,13 @@ sub check_initialization{
 
 
 sub build_reproducible_script{
-    my ($program, $path, $runflag) = @_;
+	
+	my $self = shift;
+    my ($runflag) = @_;
 	#TODO: add dependecies like CVX, etc.
 
-my $program_script = CJ::readFile("$path/$program");
-    
+my $program_script = CJ::readFile("$self->{path}/$self->{program}");
+	
 my $rp_program_script =<<RP_PRGRAM;
 
 % CJ has its own randState upon calling
@@ -67,15 +159,15 @@ globalStream.State = CJsavedState;
 RP_PRGRAM
   
 if($runflag =~ /^par.*/){
-$rp_program_script .= "addpath(genpath('../.'));";
+$rp_program_script .= "addpath(genpath('../.'));\n";
 }else{
-$rp_program_script .= "addpath(genpath('.'));";
+$rp_program_script .= "addpath(genpath('.'));\n";
 }
 
 $rp_program_script .= $program_script ;
     
-my $rp_program = "reproduce_$program";
-CJ::writeFile("$path/$rp_program", $rp_program_script);
+my $rp_program = "reproduce_$self->{program}";
+CJ::writeFile("$self->{path}/$rp_program", $rp_program_script);
 
 
 }
@@ -84,7 +176,12 @@ CJ::writeFile("$path/$rp_program", $rp_program_script);
 
 sub findIdxTagRange
 {
-	my ($FOR,$TOP,$verbose) = @_;
+	my $self = shift;
+	my ($parser,$verbose) = @_;
+	
+	my $FOR = $parser->{FOR};
+	my $TOP = $parser->{TOP};
+	
 	# Determine the tags and ranges of the
 	# indecies
 	my @idx_tags;
@@ -97,7 +194,7 @@ sub findIdxTagRange
    
 	for my $this_forline (@forline_list) {
     
-	    my ($idx_tag, $range) = &CJ::Matlab::read_matlab_index_set($this_forline, $TOP,$verbose);
+	    my ($idx_tag, $range) = $self->read_matlab_index_set($this_forline, $TOP,$verbose);
     
 	    #TODO: This will switch order if we dont check it. Rewrite this 
 		# so as to keep order of indecies.
@@ -115,7 +212,7 @@ sub findIdxTagRange
 
     
 	if ( @tags_to_matlab_interpret ) { # if we need to run matlab
-	    my $range_run_interpret = &CJ::Matlab::run_matlab_index_interpreter(\@tags_to_matlab_interpret,\@forlines_to_matlab_interpret, $TOP, $verbose);
+	    my $range_run_interpret = $self->run_matlab_index_interpreter(\@tags_to_matlab_interpret,\@forlines_to_matlab_interpret, $TOP, $verbose);
     
     
 	    for (keys %$range_run_interpret)
@@ -136,10 +233,12 @@ sub findIdxTagRange
 
 sub read_matlab_index_set
 {
+	my $self = shift;
+	
     my ($forline, $TOP, $verbose) = @_;
     
     chomp($forline);
-    $forline = &CJ::Matlab::uncomment_matlab_line($forline);   # uncomment the line so you dont deal with comments. easier parsing;
+    $forline = $self->uncomment_matlab_line($forline);   # uncomment the line so you dont deal with comments. easier parsing;
     
     
     # split at equal sign.
@@ -244,6 +343,7 @@ sub read_matlab_index_set
 
 
 sub run_matlab_index_interpreter{
+	my $self = shift;
     my ($tag_list,$for_lines,$TOP,$verbose) = @_;
     
     
@@ -333,6 +433,8 @@ foreach my $tag (@$tag_list){
 
 
 sub uncomment_matlab_line{
+	my $self = shift;
+	
     my ($line) = @_;
     $line =~ s/^(?:(?!\').)*\K\%(.*)//;
     return $line;
@@ -348,6 +450,8 @@ sub uncomment_matlab_line{
 
 sub make_MAT_collect_script
 {
+	my $self = shift;
+	
 my ($res_filename, $completed_filename, $bqs) = @_;
     
 my $collect_filename = "collect_list.txt";

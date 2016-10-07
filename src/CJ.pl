@@ -390,7 +390,7 @@ TEXT
 if ($runflag eq "deploy" || $runflag eq "run"){
 
     
-CJ::message("Creating reproducible script(s) reproducible_$program");
+CJ::message("Creating reproducible script(s) reproduce_$program");
 CJ::Scripts::build_reproducible_script($programType,$program, $local_sep_Dir, $runflag);
     
 #===========================================
@@ -492,7 +492,6 @@ message       => $message,
 
 # add_record locally
 &CJ::add_record($runinfo);
-
 # write runinfo to FireBaee as well
 &CJ::write2firebase($pid,$runinfo,$date->{epoch},0);
 
@@ -507,86 +506,25 @@ message       => $message,
 
 # read the script, parse it out and
 # find the for loops
-my $scriptfile = "$BASE/$program";
+my $matlab = CJ::Matlab->new($BASE,$program);
+my $parser = $matlab->parse();    
+my ($idx_tags,$ranges) = $matlab->findIdxTagRange($parser,$verbose);  
   
-    
-# script lines will have blank lines or comment lines removed;
-# ie., all remaining lines are effective codes
-# that actually do something.
-my $script_lines;
-    open my $fh, "$scriptfile" or CJ::err("Couldn't open file: $!");
-while(<$fh>){
-    $_ = &CJ::Matlab::uncomment_matlab_line($_);
-    if (!/^\s*$/){
-        $script_lines .= $_;
-    }
-}
-close $fh;
-    
-# this includes fors on one line
-my @lines = split('\n|;\s*(?=for)', $script_lines);
-
-my @forlines_idx_set;
-foreach my $i (0..$#lines){
-my $line = $lines[$i];
-    if ($line =~ /^\s*(for.*)/ ){
-        push @forlines_idx_set, $i;
-    }
-}
-# ==============================================================
-# complain if the size of for loops is more than three or
-# if they are not consecutive. We do not allow it in clusterjob.
-# ==============================================================
-if($#forlines_idx_set+1 < 1)
-{
- &CJ::err(" 'parrun' does not allow less than 1 parallel loops inside the MAIN script.");
-}
-    
-foreach my $i (0..$#forlines_idx_set-1){
-if($forlines_idx_set[$i+1] ne $forlines_idx_set[$i]+1){
- &CJ::err("CJ does not allow anything between the parallel for's. try rewriting your loops.");
-}
-}
-
-    
-my $TOP;
-my $FOR;
-my $BOT;
-    
-foreach my $i (0..$forlines_idx_set[0]-1){
-$TOP .= "$lines[$i]\n";
-}
-foreach my $i ($forlines_idx_set[0]..$forlines_idx_set[0]+$#forlines_idx_set){
-$FOR .= "$lines[$i]\n";
-}
-foreach my $i ($forlines_idx_set[0]+$#forlines_idx_set+1..$#lines){
-$BOT .= "$lines[$i]\n";
-}
-    
-
-my ($idx_tags,$ranges) = &CJ::Matlab::findIdxTagRange($FOR, $TOP,$verbose);  
-my @idx_tags = @{$idx_tags};
-my @ranges = @{$ranges};
-    
 #===================================================
 #     Check that user has initialized for loop vars
 #===================================================
-&CJ::Matlab::check_initialization(\@idx_tags,$TOP,$BOT,$verbose);
-    
-    
+$matlab->check_initialization($parser,$idx_tags,$verbose);
     
 #==============================================
 #        MASTER SCRIPT
 #==============================================
     
-my $nloops = $#forlines_idx_set+1;
-
+my $nloops = $parser->{nloop};
 my $counter = 0;   # counter gives the total number of jobs submited: (1..$counter)
-
 my $extra={};
-$extra->{TOP}= $TOP;
-$extra->{FOR}= $FOR;
-$extra->{BOT}= $BOT;
+$extra->{TOP}= $parser->{TOP};
+$extra->{FOR}= $parser->{FOR};
+$extra->{BOT}= $parser->{BOT};
 $extra->{local_sep_Dir}= $local_sep_Dir;
 $extra->{remote_sep_Dir}= $remote_sep_Dir;
 $extra->{runflag}= $runflag;
@@ -599,11 +537,9 @@ $extra->{qsub_extra}=$qsub_extra;
 $extra->{runtime}=$runtime;
 $extra->{ssh}=$ssh;
 
-
 # Recursive loop for arbitrary number of loops.
-my $master_script = &CJ::Scripts::build_nloop_master_script($nloops, \@idx_tags,\@ranges,$extra);
+my $master_script = &CJ::Scripts::build_nloop_master_script($nloops, $idx_tags,$ranges,$extra);
 
-    
 #===================================
 # write out master_script
 #===================================
