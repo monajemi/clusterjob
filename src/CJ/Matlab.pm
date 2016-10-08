@@ -249,10 +249,8 @@ sub read_matlab_index_set
     my $range = undef;
     # The right of equal sign
     my $right  = $myarray[1];
-    
     # see if the forline contains :
     if($right =~ /^[^:]+:[^:]+$/){
-        
         my @rightarray = split( /\s*:\s*/, $right, 2 );
         
         my $low =$rightarray[0];

@@ -1716,8 +1716,12 @@ sub warning{
 
 
 sub message{
-    my ($msg) = @_;
-    print(' ' x 5 . "CJmessage::$msg\n");
+    my ($msg,$noBegin) = @_;
+	if($noBegin){
+    print(' ' x 16 . "$msg\n");
+	}else{
+	print(' ' x 5 . "CJmessage::$msg\n");	
+	}
 }
 
 
