@@ -64,8 +64,11 @@ sub init{
 	
 	if(defined($CJKEY)){
 		# Add this agent to the the list of agents
-		&CJ::add_agent_to_remote();
-		&CJ::AutoSync();
+		eval{&CJ::add_agent_to_remote();}
+		if($@->message eq '401 Unauthorized'){
+			CJ::warning("Your CJKEY is invalid. Please provide a valid one and then issue 'cj sync' ");
+		}
+		&CJ::AutoSync() unless ($@);
 	}
 
 
