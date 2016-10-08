@@ -132,11 +132,9 @@ my $spec = <<'EOSPEC';
      init 	    					  initiates CJ installation [nocase]
                							{defer{CJ::init}}
      sync 	                                          force sync [nocase]
-		                				{defer{CJ::sync_forced($sync_status)}}
+		                				{defer{CJ::sync_forced($sync_status)}}								
      who 	                                          prints out user and agent info [nocase]
-				  	                        {defer{print "      user : \033[32m$CJID\033[0m\n";
-											       print "      agent: \033[32m$AgentID\033[0m\n";}}
-	 update	                                  updates installation to the most recent commit on GitHub [nocase]							   			
+     install-update	                                          updates installation to the most recent commit on GitHub [nocase]
      log [<argin>]	                                  log  -n|all|pid [nocase]
                                                                 {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin,$log_tag,$log_script) }}
      hist[ory]    [<argin>]	                          history of runs -n|all 
@@ -194,7 +192,7 @@ EOSPEC
 
 my $opts = Getopt::Declare->new($spec);
 
-if($opts->{update}){
+if($opts->{'install-update'}){
 	my $star_line = '*' x length($install_dir);
     # make sure s/he really want a deletion
 	CJ::message("This update results in cloning the newest version of ClusterJob in");
@@ -223,6 +221,12 @@ if($opts->{update}){
        CJ::message("Installation updated.");
 	   
 	   exit;	
+}
+
+if($opts->{who})
+{
+	print "      user : \033[32m$CJID\033[0m\n";
+	print "      agent: \033[32m$AgentID\033[0m\n";
 }
 
 #    print "$opts->{'-m'}\n";
