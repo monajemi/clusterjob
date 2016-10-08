@@ -187,7 +187,7 @@ my $result = $firebase->patch("users/${CJID}/agents/$agent", {"pull_timestamp" =
 
 
 
-sub push_timestamp{    #Incomplete
+sub push_timestamp{   
 	my $self = shift;
 	my $agent = $self->{agent};
 	
@@ -218,10 +218,15 @@ CJ::warning("CJ is in awe! Push TimeStamp:: remote is bigger than local") if ($r
 			my $pid_timestamp = &CJ::read_pid_timestamp();
 			my @filtered_pids = grep { $pid_timestamp->{$_} > $remote_push_timestamp } keys %$pid_timestamp;
 			my $info_hash = &CJ::retrieve_package_info(\@filtered_pids);
+			
+			my $size = keys $info_hash;
+			my $counter = 0;
 			while ( my ($pid,$info) = each (%$info_hash)){
 				my $timestamp = $info->{date}{epoch};
 				my $inform    = 1;
-		  		&CJ::write2firebase($pid,$info,$timestamp, $inform) unless ($info->{agent} ne $AgentID); # not responsible for other agnets mess. The agent might have been already deleted, etc. We only push our own!	
+				$counter++;
+				CJ::message("$counter/$size: $pid",1);
+		  		&CJ::write2firebase($pid,$info,$timestamp, $inform) unless ($info->{agent} ne $AgentID); # not responsible for other agnets mess. The agent might have been already deleted, etc. We only push our own!		
 			}
 	  				
 	  }
