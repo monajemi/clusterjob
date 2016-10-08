@@ -8,9 +8,11 @@ SUID     = 'monajemi';
 l = 1:10;
 k = [20,40,60,80,100];
 
+rng(1969);
 r = rand(length(k));
+
 fid = fopen(filename, 'at');
-fprintf(fid, '%s, %s, %s\n','SUID','counter1', 'counter2');
+fprintf(fid, '%s, %s, %s, %s\n','SUID','counter1', 'counter2','random_number');
 
 for i = 1:length(l)
  for j = 1:length(k)
@@ -24,7 +26,7 @@ for i = 1:length(l)
 
 
 	% File for testing reduce
-	fprintf(fid, '%s, %i, %i\n', SUID,i,r(j));
+	fprintf(fid, '%s, %i,%i, %f\n', SUID,i,j,r(j));
   end
 end
 

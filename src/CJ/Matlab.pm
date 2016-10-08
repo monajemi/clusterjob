@@ -185,7 +185,7 @@ sub findIdxTagRange
 	# Determine the tags and ranges of the
 	# indecies
 	my @idx_tags;
-	my @ranges;
+	my $ranges={};  # This is a hashref $range->{tag}
 	my @tags_to_matlab_interpret;
 	my @forlines_to_matlab_interpret;
     
@@ -196,12 +196,11 @@ sub findIdxTagRange
     
 	    my ($idx_tag, $range) = $self->read_matlab_index_set($this_forline, $TOP,$verbose);
     
-	    #TODO: This will switch order if we dont check it. Rewrite this 
-		# so as to keep order of indecies.
-	    # if we can't establish range, we output undef
-	    if(defined($range)){
-	        push @idx_tags, $idx_tag;
-	        push @ranges, $range;
+	    CJ::err("Index tag cannot be established for $this_forline") unless ($idx_tag);
+        push @idx_tags, $idx_tag;   # This will keep order.
+	    
+		if(defined($range)){
+	       $ranges->{$idx_tag} = $range;
 	    }else{
 	        push @tags_to_matlab_interpret, $idx_tag;
 	        push @forlines_to_matlab_interpret, $this_forline;
@@ -212,18 +211,16 @@ sub findIdxTagRange
 
     
 	if ( @tags_to_matlab_interpret ) { # if we need to run matlab
-	    my $range_run_interpret = $self->run_matlab_index_interpreter(\@tags_to_matlab_interpret,\@forlines_to_matlab_interpret, $TOP, $verbose);
+	    my $range_run_interpret = $self->run_matlab_index_interpreter($TOP,\@tags_to_matlab_interpret,\@forlines_to_matlab_interpret, $verbose);
     
     
-	    for (keys %$range_run_interpret)
-	    {
-	    push @idx_tags, $_;
-	    push @ranges, $range_run_interpret->{$_};
-	    #print"$_:$range_run_interpret->{$_} \n";
+	    for (keys %$range_run_interpret){
+	    	$ranges->{$_} = $range_run_interpret->{$_};
+	    	#print"$_:$range_run_interpret->{$_} \n";
 	    }
 	}
     
-	return (\@idx_tags,\@ranges);
+	return (\@idx_tags,$ranges);
 }
 
 
@@ -344,8 +341,7 @@ sub read_matlab_index_set
 
 sub run_matlab_index_interpreter{
 	my $self = shift;
-    my ($tag_list,$for_lines,$TOP,$verbose) = @_;
-    
+    my ($TOP,$tag_list,$for_lines,$verbose) = @_;
     
     # Check that the local machine has MATLAB (we currently build package locally!)
     
@@ -361,7 +357,6 @@ sub run_matlab_index_interpreter{
     
 # Add top
 my $matlab_interpreter_script=$TOP;
-    
 
     
 # Add for lines
@@ -418,6 +413,7 @@ foreach my $tag (@$tag_list){
     #print $range->{$tag} . "\n";
 }
     return $range;
+	
 }
 
 
