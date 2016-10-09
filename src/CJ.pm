@@ -642,7 +642,8 @@ sub show_log{
         $num_show = 10;
         $log_argin = "";
     }elsif( $log_argin =~ m/^\-?all$/ ){
-        $num_show= `cat $history_file | wc -l`; chomp($num_show); $num_show=~s/^\s+|\s+$//;
+		my $pid_timestamp = &CJ::read_pid_timestamp();
+		my $num_show = keys $pid_timestamp;
     }elsif( $log_argin =~ m/^\-?\d*$/ ){
         $log_argin =~ s/\D//g;     #remove any non-digit
         $num_show = $log_argin;
