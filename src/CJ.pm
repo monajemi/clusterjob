@@ -643,7 +643,7 @@ sub show_log{
         $log_argin = "";
     }elsif( $log_argin =~ m/^\-?all$/ ){
 		my $pid_timestamp = &CJ::read_pid_timestamp();
-		my $num_show = keys $pid_timestamp;
+		$num_show = keys $pid_timestamp;
     }elsif( $log_argin =~ m/^\-?\d*$/ ){
         $log_argin =~ s/\D//g;     #remove any non-digit
         $num_show = $log_argin;
