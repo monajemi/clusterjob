@@ -134,7 +134,7 @@ my $spec = <<'EOSPEC';
      sync 	                                          force sync [nocase]
 		                				{defer{CJ::sync_forced($sync_status)}}								
      who 	                                          prints out user and agent info [nocase]
-     install-update	                                          updates installation to the most recent commit on GitHub [nocase]
+     install-update	                                  updates installation to the most recent commit on GitHub [nocase]
      log [<argin>]	                                  log  -n|all|pid [nocase]
                                                                 {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin,$log_tag,$log_script) }}
      hist[ory]    [<argin>]	                          history of runs -n|all 
