@@ -94,7 +94,7 @@ my $spec = <<'EOSPEC';
       prompt 	    opens CJ prompt command [undocumented]
                      {defer{cj_prompt}}
      -help 	      Show usage information [undocumented]
-                    {defer{&CJ::add_cmd($cmdline);$self->usage(0);}}
+                    {defer{&CJ::add_cmd($cmdline);$self->usage(0);exit;}}
      help  	 	  [ditto]  [undocumented]
 
      -Help  	 	  [ditto]  [undocumented]
