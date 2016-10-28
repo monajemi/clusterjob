@@ -275,7 +275,7 @@ echo WORKDIR \$SGE_O_WORKDIR
 date
 cd $DIR
 
-module load MATLAB-R2014b
+module load matlab\/r2014b #MATLAB-R2014b
 unset _JAVA_OPTIONS
 matlab -nosplash -nodisplay <<HERE
 <MATPATH>

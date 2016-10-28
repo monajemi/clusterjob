@@ -315,15 +315,17 @@ my $ssh      = &CJ::host($machine);
 my $account  = $ssh->{account};
 my $bqs      = $ssh->{bqs};
 my $remotePrefix    = $ssh->{remote_repo};
+my $date = &CJ::date();
+
 # create remote directory  using outText
-my $sshres = `ssh $account 'mkdir /tmp/CJsshtest; rm -r /tmp/CJsshtest'  2>&1`;
+my $check = $date->{year}.$date->{month}.$date->{min}.$date->{sec};
+my $sshres = `ssh $account 'mkdir CJsshtest_$check; rm -rf CJsshtest_$check; exit;'  2>&1`;
 &CJ::err("Cannot connect to $account: $sshres") if($sshres);
     
 
 #====================================
 #         DATE OF CALL
 #====================================
-my $date = &CJ::date();
 
 # PID
 my $sha_expr = "$CJID:$localHostName:$program:$account:$date->{datestr}";
@@ -455,11 +457,9 @@ my $tarfile="$pid".".tar.gz";
 my $cmd="cd $localDir; tar  --exclude '.git' --exclude '*~' --exclude '*.pdf'  -czf $tarfile $pid/  ; rm -rf $local_sep_Dir  ; cd $BASE";
 &CJ::my_system($cmd,$verbose);
 
-    
 # create remote directory  using outText
-my $cmd = "ssh $account 'echo `ls` '  ";
-&CJ::my_system($cmd, $verbose);
-
+my $cmd = "ssh $account 'echo `$outText` '  ";
+&CJ::my_system($cmd,$verbose);
 
 &CJ::message("Sending package \033[32m$short_pid\033[0m");
 # copy tar.gz file to remoteDir

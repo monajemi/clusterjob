@@ -22,10 +22,10 @@ Repo	/hsgs/nobackup/monajemi/CJRepo_Remote
 MATlib	~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 [proclus]
 
-[myMac]
-Host	local
-User	hatef
-Bqs	none	
-Repo	~/CJRepo_local
+[farmshare]
+Host	corn.stanford.edu
+User	monajemi
+Bqs		SGE
+Repo	/farmshare/user_data/monajemi/CJRepo_Remote
 MATlib	~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
-[myMac]
+[farmshare]
