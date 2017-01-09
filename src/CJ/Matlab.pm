@@ -16,8 +16,6 @@ sub new {
  	my $class= shift;
  	my ($path,$program) = @_;
 	
-	my $default_interval = 300;  # default 5min;
-	my $default_type = "auto";  # default 1min;
 	my $self= bless {
 		path => $path, 
 		program => $program
