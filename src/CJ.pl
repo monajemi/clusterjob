@@ -468,7 +468,7 @@ my $cmd = "rsync -avz  ${localDir}/${tarfile} ${account}:$remoteDir/";
 
 
 &CJ::message("Submitting job");
-my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; cd ${pid}; bash master.sh > $remote_sep_Dir/qsub.info; sleep 2'";
+my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep 2'";
 &CJ::my_system($cmd,$verbose) unless ($runflag eq "deploy");
     
 
