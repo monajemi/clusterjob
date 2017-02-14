@@ -81,6 +81,26 @@ sub init{
 }
 
 
+sub getProgramType{
+	my ($program) = @_;
+	
+	my ($program_name,$ext) = &CJ::remove_extension($program);
+
+	my $programType;
+	if(lc($ext) eq "m"){
+		$programType = "matlab";
+	}elsif(lc($ext) eq "r"){
+		$programType = "R";
+	}else{
+		CJ::err("Program type .$ext is not recognized");
+	}
+	
+	return $programType;
+	
+}
+
+
+
 sub check_hash {
    my( $hash, $keys ) = @_;
 

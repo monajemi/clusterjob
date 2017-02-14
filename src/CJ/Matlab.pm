@@ -133,6 +133,65 @@ sub check_initialization{
 
 
 
+sub build_run_script{
+	
+	my $self = shift;
+	my ($ssh) = @_;
+
+my $run_script=<<'RUN_SCRIPT';
+
+module load matlab\/r2014b #MATLAB-R2014b
+unset _JAVA_OPTIONS
+matlab -nosplash -nodisplay <<HERE
+<MATPATH>
+
+% make sure each run has different random number stream
+myversion = version;
+mydate = date;
+RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
+globalStream = RandStream.getGlobalStream;
+CJsavedState = globalStream.State;
+fname = sprintf('CJrandState.mat');
+save(fname,'myversion','mydate', 'CJsavedState');
+cd $DIR
+run('${PROGRAM}');
+quit;
+HERE
+
+RUN_SCRIPT
+
+
+my $pathText=<<MATLAB;
+        
+% add user defined path
+addpath $ssh->{matlib} -begin
+
+% generate recursive path
+addpath(genpath('.'));
+    
+try
+    cvx_setup;
+    cvx_quiet(true)
+    % Find and add Sedumi Path for machines that have CVX installed
+    cvx_path = which('cvx_setup.m');
+    oldpath = textscan( cvx_path, '%s', 'Delimiter', '/');
+    newpath = horzcat(oldpath{:});
+    sedumi_path = [sprintf('%s/', newpath{1:end-1}) 'sedumi'];
+    addpath(sedumi_path)
+    
+catch
+    warning('CVX not enabled. Please set CVX path in .ssh_config if you need CVX for your jobs');
+end
+
+MATLAB
+
+	
+$run_script =~ s|<MATPATH>|$pathText|;
+
+	
+}
+
+
 
 
 sub build_reproducible_script{
@@ -145,11 +204,10 @@ my $program_script = CJ::readFile("$self->{path}/$self->{program}");
 	
 my $rp_program_script =<<RP_PRGRAM;
 
-% CJ has its own randState upon calling
-% to reproduce results one needs to set
+% CJ generates its own random state upon calling.
+% to reproduce results, we set
 % the internal State of the global stream
-% to the one saved when ruuning the code for
-% the fist time;
+% to the one saved by CJ;
     
 load('CJrandState.mat');
 globalStream = RandStream.getGlobalStream;
@@ -169,6 +227,19 @@ CJ::writeFile("$self->{path}/$rp_program", $rp_program_script);
 
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

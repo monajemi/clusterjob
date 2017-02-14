@@ -344,17 +344,17 @@ my $short_pid = substr($pid, 0, 8);  # we use an 8 character abbrviation
 #    BY PROGRAM AND PID
 #    EXAMPLE : MaxEnt/20dd3203e29ec29...
 #=======================================
-
 my ($program_name,$ext) = &CJ::remove_extension($program);
-
-my $programType;
-if(lc($ext) eq "m"){
-	$programType = "matlab";
-}elsif(lc($ext) eq "r"){
-	$programType = "R";
-}else{
-	CJ::err("Code type .$ext is not recognized");
-}
+my $programType = CJ::getProgramType($program);
+#
+# my $programType;
+# if(lc($ext) eq "m"){
+# 	$programType = "matlab";
+# }elsif(lc($ext) eq "r"){
+# 	$programType = "R";
+# }else{
+# 	CJ::err("Program type .$ext is not recognized");
+# }
 
 CJ::message("$runflag"."ing [$program] on [$machine]");
 &CJ::message("Sending from: $BASE");
@@ -468,7 +468,7 @@ my $cmd = "rsync -avz  ${localDir}/${tarfile} ${account}:$remoteDir/";
 
 
 &CJ::message("Submitting job");
-my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; cd ${pid}; bash master.sh > $remote_sep_Dir/qsub.info; sleep 2'";
+my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep 2'";
 &CJ::my_system($cmd,$verbose) unless ($runflag eq "deploy");
     
 

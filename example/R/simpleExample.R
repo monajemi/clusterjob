@@ -10,7 +10,6 @@ for (i in 1:3){
         for (j in 1:5){
                        # write to a csv file for testing reduce    
 					   data = sprintf("%i,%i,%i\n",i,j,i+j);          
-                       cat(data, file = myFile, append = TRUE) 
+                       cat(data, file = myFile, append = TRUE); 
  }
 }
-
