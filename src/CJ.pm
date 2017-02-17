@@ -1082,12 +1082,18 @@ sub get_summary
 	my 	 $REC_PIDS_STATES = "";
 	
     if($bqs eq "SGE"){
-       # $REC_STATES = (`ssh ${account} 'qstat -u \\${user}' | awk \'{print \$5}\'`) ;chomp($REC_STATES);
-       # $REC_PIDS_STATES = (`ssh ${account} 'qstat | grep \\${user}' | awk \'{print \$2}\'`) ;chomp($REC_PIDS);
-	  my $expr = "qstat -xml | tr \'\\n\' \' \' | sed \'s#<job_list[^>]*>#\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t";
-      $REC_PIDS_STATES = (`ssh ${account} '$expr' | awk \'{print \$3,\$5}\'`) ;chomp($REC_PIDS_STATES);
-  	
-	  ######### THIS IS NOT TESTED FOR SGE;
+        # $REC_STATES = (`ssh ${account} 'qstat -u \\${user}' | awk \'{print \$5}\'`) ;chomp($REC_STATES);
+        # $REC_PIDS_STATES = (`ssh ${account} 'qstat | grep \\${user}' | awk \'{print \$2}\'`) ;chomp($REC_PIDS);
+
+ 	  # This now works for SGE 
+  	  my $expr = "qstat -xml | tr \'\n\' \' \' | sed \'s#<job_list[^>]*>#\\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t";
+ 	  $REC_PIDS_STATES = (`ssh ${account} $expr | awk \'{print \$3,\$5}\' `) ;chomp($REC_PIDS_STATES);
+ 	  #print $REC_PIDS_STATES . "\n";
+ 	  #print $expr . "\n";
+	  
+ 	  #my $expr = "qstat -xml | tr \'\\n\' \' \' | sed \'s#<job_list[^>]*>#\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t";
+       #$REC_PIDS_STATES = `ssh ${account} $expr | awk \'{print \$3,\$5}\'` ;chomp($REC_PIDS_STATES);
+  		
 	
 	
     }elsif($bqs eq "SLURM"){
