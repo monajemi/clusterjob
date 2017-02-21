@@ -812,6 +812,7 @@ sub clean
     my $remote_path;
     my $job_id;
     my $save_path;
+	my $bqs ;
     
     my $info;
     if((!defined $pid)  || ($pid eq "") ){
@@ -833,7 +834,7 @@ sub clean
     }
     
     
-    
+    $bqs         =   $info->{'bqs'};
     $account     =   $info->{'account'};
     $local_path  =   $info->{'local_path'};
     $remote_path =   $info->{'remote_path'};
@@ -863,12 +864,36 @@ sub clean
     my $remote_clean    = "$remote_path\*";
     my $save_clean      = "$save_path\*";
     
-    if (defined($job_id) && $job_id ne "") {
+	
+	
+	my $avail_ids;
+	if($bqs eq "SGE"){
+		
+		my $expr = "qstat -xml | tr \'\n\' \' \' | sed \'s#<job_list[^>]*>#\\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t";
+  		 $avail_ids = `ssh ${account} $expr | grep CJ_$short_pid | awk \'{print \$1}\' | tr '\n' ' ' ` ;
+  	   	 print $avail_ids  . "\n"; 
+			
+	}elsif($bqs eq "SLURM"){
+		$avail_ids = `ssh ${account} ' sacct -n --format=jobid,jobname%15 | grep -v "^[0-9]*\\." | grep CJ_$short_pid ' | awk \'{print \$1}\' | tr '\n' ' '  `;
+	}else{
+		 &CJ::err("Unknown batch queueing system");
+	}
+	
+	
+	
+    if (defined($avail_ids) && $avail_ids ne "") {
         CJ::message("Deleting jobs associated with package $short_pid");
-        my @job_ids = split(',',$job_id);
-        $job_id = join(' ',@job_ids);
-        my $cmd = "rm -rf $local_clean; rm -rf $save_clean; ssh ${account} 'qdel $job_id; rm -rf $remote_clean' " ;
+		
+        #my @job_ids = split(',',$job_id);
+        #$job_id = join(' ',@job_ids);
+        ##### FIXIT
+		# make sure that all are deleted. Sometimes we dont catch a jobID locally because of a failure
+		# So this really cleans the mess
+		
+			#print $job_id . "\n";
+        my $cmd = "rm -rf $local_clean; rm -rf $save_clean; ssh ${account} 'qdel $avail_ids; rm -rf $remote_clean' " ;
         &CJ::my_system($cmd,$verbose);
+			
     }else {
         my $cmd = "rm -rf $local_clean;rm -rf $save_clean; ssh ${account} 'rm -rf $remote_clean' " ;
         &CJ::my_system($cmd,$verbose);
