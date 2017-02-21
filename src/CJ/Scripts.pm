@@ -34,13 +34,6 @@ sub build_reproducible_script{
 
 
 
-
-
-
-
-
-
-
 sub build_nloop_master_script
 {
 	my ($nloop, $idx_tags,$ranges,$extra) = @_;

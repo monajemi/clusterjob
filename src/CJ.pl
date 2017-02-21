@@ -544,7 +544,23 @@ message       => $message,
 my $matlab = CJ::Matlab->new($BASE,$program);
 my $parser = $matlab->parse();    
 my ($idx_tags,$ranges) = $matlab->findIdxTagRange($parser,$verbose);  
-  
+
+# Check that number of jobs doesnt exceed Maximum jobs for user on chosen cluster
+# later check all resources like mem, etc. 
+my @keys  = keys %$ranges;
+my $totalJobs = 1; 
+foreach my $i (0..$parser->{nloop}-1){
+	my @range = split(',', $ranges->{$keys[$i]}); 
+    $totalJobs = (0+@range) * ($totalJobs);
+}
+my $max_jobs = &CJ::max_jobs_allowed($ssh);
+&CJ::err("Maximum jobs allowed on $machine ($max_jobs) exceeded by your request ($totalJobs). Rewrite FOR loops.") unless  ($max_jobs >= $totalJobs);
+
+
+
+
+
+
 
 #Check that user has initialized for loop vars
 $matlab->check_initialization($parser,$idx_tags,$verbose);

@@ -81,6 +81,35 @@ sub init{
 }
 
 
+
+sub max_jobs_allowed{
+	my ($ssh) = @_;
+
+
+	# Later we need to subtract the jobs currently in the queue.  
+	my $account  = $ssh->{account};
+	my $bqs      = $ssh->{bqs};
+	
+	
+	my $max_u_jobs;
+    if($bqs eq "SGE"){
+		$max_u_jobs = `ssh $account 'qconf -sconf | grep max_u_jobs' | awk \'{print \$2}\' `; chomp($max_u_jobs);
+    }elsif($bqs eq "SLURM"){
+		my $qos = "normal"; # need to be general for any qos later
+		$max_u_jobs = `ssh $account 'sacctmgr show qos -n format=Name,MaxSubmitJobs | grep $qos' | awk \'{print \$2}\' `; chomp($max_u_jobs);
+		#$max_u_jobs = $max_u_jobs+0;
+    }else{
+        &CJ::err("Unknown batch queueing system");
+    }
+	
+	return $max_u_jobs;
+}
+
+
+
+
+
+
 sub check_hash {
    my( $hash, $keys ) = @_;
 
@@ -92,7 +121,7 @@ sub check_hash {
        }
 
    return 1;
-   }
+}
 
 
 sub write2firebase
