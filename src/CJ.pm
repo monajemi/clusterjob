@@ -1073,8 +1073,6 @@ sub get_summary
 	  
  	  #my $expr = "qstat -xml | tr \'\\n\' \' \' | sed \'s#<job_list[^>]*>#\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t";
        #$REC_PIDS_STATES = `ssh ${account} $expr | awk \'{print \$3,\$5}\'` ;chomp($REC_PIDS_STATES);
-  		
-	
 	
 	
     }elsif($bqs eq "SLURM"){

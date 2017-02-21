@@ -149,12 +149,31 @@ GATHER
 
 
 
-
-
 sub reduce_results{
+	my ($pids,$res_filename,$verbose, $text_header_lines) = @_;
+	
+	if(! @$pids){
+	    # just the last instance		
+        my $info       = &CJ::retrieve_package_info();
+        my $pid           = $info->{'pid'};
+		CJ::message("$pid");
+		reduce_one_pid($pid,$res_filename,$verbose, $text_header_lines);
+	}else{
+  	  	# here $pids is a reference to an array
+        foreach my $pid (@$pids){
+			CJ::message("$pid");
+           	reduce_one_pid($pid,$res_filename,$verbose, $text_header_lines);
+        }
+	}
+	
+}
+
+
+
+sub reduce_one_pid{
     my ($pid,$res_filename,$verbose, $text_header_lines) = @_;
     
-    
+  
     
     my $info;
     if( (!defined $pid) || ($pid eq "") ){
