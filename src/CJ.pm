@@ -1110,7 +1110,8 @@ sub get_summary
 	
 	#my $remoteinfo  = &CJ::remote();
 	
-	
+	my $live_jobs = (`ssh ${account} 'qstat | grep $user  | wc -l'`); chomp($live_jobs );
+
 
 	#my 	 $REC_STATES = "";
 	my 	 $REC_PIDS_STATES = "";
@@ -1128,7 +1129,7 @@ sub get_summary
  	  #my $expr = "qstat -xml | tr \'\\n\' \' \' | sed \'s#<job_list[^>]*>#\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t";
        #$REC_PIDS_STATES = `ssh ${account} $expr | awk \'{print \$3,\$5}\'` ;chomp($REC_PIDS_STATES);
 	
-	
+		
     }elsif($bqs eq "SLURM"){
        # $REC_STATES = (`ssh ${account} 'sacct --format=state | grep -v "^[0-9]*\\."'`) ;chomp($REC_STATES);
         $REC_PIDS_STATES = (`ssh ${account} 'sacct -n --format=jobname%15,state | grep -v "^[0-9]*\\."'`);chomp($REC_PIDS_STATES);
@@ -1203,12 +1204,12 @@ sub get_summary
 
 
 	@unique_states = do { my %seen; grep { !$seen{$_}++ } @unique_states};
-	
+
 
     #print '-' x 35;print "\n";
     print "\n";
     print "\033[32m$user\@$machine \033[0m\n\n";
-    print ' ' x 5; print "Total Jobs : ", 1+$#rec_states . "\n";
+    print ' ' x 5; print "Live Jobs : ", $live_jobs . "\n";
     print ' ' x 5;print '-' x 17;print "\n";
 
 	foreach my $i (0..$#unique_states){
