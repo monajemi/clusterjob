@@ -24,7 +24,7 @@ use Digest::SHA qw(sha1_hex); # generate hexa-decimal SHA1 PID
 #use Term::ANSIColor qw(:constants); # for changing terminal text colors
 #use Term::ReadKey;
 
-use vars qw( $sync_status $message $mem $runtime $dep_folder $verbose $log_script $text_header_lines $show_tag $log_tag $qsub_extra $cmdline);  # options
+use vars qw( $sync_status $message $mem $runtime $dep_folder $verbose $log_script $text_header_lines $show_tag $log_tag $force_tag $qsub_extra $cmdline);  # options
 
 
 $::VERSION = &CJ::version_info();
@@ -60,6 +60,7 @@ $text_header_lines = undef;
 $show_tag          = "program";
 $qsub_extra        = "";
 $log_tag           = "all";
+$force_tag           = 0;
 $log_script        = undef;
 $sync_status 	   = 0;
 
@@ -115,6 +116,8 @@ my $spec = <<'EOSPEC';
                                                                {$show_tag="ls";}
      --clean      	                                  show cleaned packages in log [nocase]  [requires: log]
                                                                {$log_tag="showclean";}
+	 --f[orce]     	                                  force an action [nocase]  [requires: reduce]
+														       {$force_tag=1;}															   
      --script [=] <pattern>	                          shows log of specific script [requires: log]
                                                                {$log_script=$pattern;}
      --header [=] <num_lines:+i>	                  number of header lines for reducing text files [requires: reduce]
@@ -172,7 +175,7 @@ my $spec = <<'EOSPEC';
                                                                 {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                                }
      reduce       <filename> [<pid>...] 	                  reduce results of parrun [nocase]
-                                                              {defer{&CJ::add_cmd($cmdline);&CJ::Get::reduce_results(\@pid,$filename,$verbose,$text_header_lines)}}
+                                                              {defer{&CJ::add_cmd($cmdline);&CJ::Get::reduce_results(\@pid,$filename,$verbose,$text_header_lines,$force_tag)}}
      gather       <pattern>  <dir_name> [<pid>]	          gather results of parrun [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);&CJ::Get::gather_results($pid,$pattern,$dir_name,$verbose)}}
      get          [<pid> [/] [<subfolder>]]	          bring results (fully/partially) back to local machine [nocase]

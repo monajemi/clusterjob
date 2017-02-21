@@ -95,7 +95,8 @@ sub max_jobs_allowed{
     if($bqs eq "SGE"){
 		$max_u_jobs = `ssh $account 'qconf -sconf | grep max_u_jobs' | awk \'{print \$2}\' `; chomp($max_u_jobs);
     }elsif($bqs eq "SLURM"){
-		my $qos = "normal"; # need to be general for any qos later
+		my $default_qos = `ssh $account 'sacctmgr -n list assoc where user=monajemi format=defaultqos'`; chomp($default_qos);
+		my $qos = $default_qos; # need to be general for any qos later
 		$max_u_jobs = `ssh $account 'sacctmgr show qos -n format=Name,MaxSubmitJobs | grep $qos' | awk \'{print \$2}\' `; chomp($max_u_jobs);
 		#$max_u_jobs = $max_u_jobs+0;
     }else{
@@ -886,7 +887,7 @@ sub clean
 		
         #my @job_ids = split(',',$job_id);
         #$job_id = join(' ',@job_ids);
-        ##### FIXIT
+
 		# make sure that all are deleted. Sometimes we dont catch a jobID locally because of a failure
 		# So this really cleans the mess
 		
