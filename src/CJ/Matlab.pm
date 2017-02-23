@@ -380,6 +380,7 @@ eval{
 	#print $check . "\n";
 };
 if($@){
+	print $@ . "\n";
 &CJ::err("CJ requires 'matlab' but it cannot access it. Consider adding alias 'matlab' in your ~/.bashrc or ~/.bash_profile");	
 }else{
 &CJ::message("matlab available.",1);	
