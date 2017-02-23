@@ -338,6 +338,9 @@ sub read_matlab_index_set
 sub run_matlab_index_interpreter{
 	my $self = shift;
     my ($TOP,$tag_list,$for_lines,$verbose) = @_;
+
+	&CJ::message("Invoking MATLAB to find range of indices. Please be patient...");
+
     
     # Check that the local machine has MATLAB (we currently build package locally!)
 	# Open matlab  and eval
@@ -369,7 +372,7 @@ CHECK_BASH
    
    
    
-&CJ::message("Checking command 'matlab' is available. Please be patient...");
+&CJ::message("Checking command 'matlab' is available...",1);
 eval{
 	CJ::my_system("printf '%s' $matlab_check_bash",$verbose);  # this will generate a file test_file
     my $check = &CJ::readFile($test_name);     # this causes error if there is no file which indicates matlab were not found.
@@ -378,7 +381,7 @@ eval{
 if($@){
 &CJ::err("CJ requires 'matlab' but it cannot access it. Consider adding alias 'matlab' in your ~/.bashrc or ~/.bash_profile");	
 }else{
-&CJ::message("matlab available.");	
+&CJ::message("matlab available.",1);	
 };   
    
 	
@@ -418,7 +421,7 @@ MATLAB
     my $name = "CJ_matlab_interpreter_script.m";
     my $path = "/tmp";
     &CJ::writeFile("$path/$name",$matlab_interpreter_script);
-    &CJ::message("$name is built in $path");
+    #&CJ::message("$name is built in $path",1);
 
     
     
@@ -437,9 +440,9 @@ BASH
     #&CJ::writeFile("$bash_path/$bash_name",$matlab_interpreter_bash);
     #&CJ::message("$bash_name is built in $bash_path");
 
-&CJ::message("Invoking matlab to find range of indices. Please be patient...");
+&CJ::message("finding range of indices...",1);
 &CJ::my_system("printf '%s' $matlab_interpreter_bash ", $verbose);
-&CJ::message("Closing Matlab session!");
+&CJ::message("Closing Matlab session!",1);
     
 # Read the files, and put it into $numbers
 # open a hashref
@@ -460,14 +463,6 @@ foreach my $tag (@$tag_list){
     return $range;
 	
 }
-
-
-
-
-
-
-
-
 
 
 
