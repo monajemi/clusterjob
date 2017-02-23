@@ -340,14 +340,56 @@ sub run_matlab_index_interpreter{
     my ($TOP,$tag_list,$for_lines,$verbose) = @_;
     
     # Check that the local machine has MATLAB (we currently build package locally!)
-    
-    my $check_matlab_installed = `source ~/.bashrc ; source ~/.profile; command -v matlab`;
-    if($check_matlab_installed eq ""){
-    &CJ::err("I require matlab but it's not installed: The following check command returned null. \n     `source ~/.bashrc ; source ~/.profile; command -v matlab`");
-    }else{
-    &CJ::message("Test passed, Matlab is installed on your machine.");
-    }
-    
+	# Open matlab  and eval
+
+my $test_name= "/tmp/cj_matlab_test";
+my $test_file = "\'$test_name\'";
+
+my $matlab_check_script = <<MATLAB_CHECK;
+test_fid = fopen($test_file,'w+');
+fprintf(test_fid,\'%s\', 'test_passed');
+fclose(test_fid);
+MATLAB_CHECK
+
+my $check_path = "/tmp";
+my $check_name= "CJ_matlab_check_script.m";
+
+&CJ::writeFile("$check_path/$check_name",$matlab_check_script);
+
+
+my $junk = "/tmp/matlab.output"; 
+
+my $matlab_check_bash = <<CHECK_BASH;
+#!/bin/bash -l
+source ~/.profile
+source ~/.bashrc
+source ~/.bash_profile
+  matlab -nodisplay -nodesktop -nosplash  < '$check_path/$check_name'  &>$junk;
+CHECK_BASH
+   
+   
+   
+&CJ::message("Checking command 'matlab' is available. Please be patient...");
+eval{
+	CJ::my_system("printf '%s' $matlab_check_bash",$verbose);  # this will generate a file test_file
+    my $check = &CJ::readFile($test_name);     # this causes error if there is no file which indicates matlab were not found.
+	#print $check . "\n";
+};
+if($@){
+&CJ::err("CJ requires 'matlab' but it cannot access it. Consider adding alias 'matlab' in your ~/.bashrc or ~/.bash_profile");	
+}else{
+&CJ::message("matlab available.");	
+};   
+   
+	
+	#
+    # my $check_matlab_installed = `source ~/.bashrc ; source ~/.profile; source ~/.bash_profile; command -v matlab`;
+    # if($check_matlab_installed eq ""){
+    # &CJ::err("I require matlab but it's not installed: The following check command returned null. \n     `source ~/.bashrc ; source ~/.profile; command -v matlab`");
+    # }else{
+    # &CJ::message("Test passed, Matlab is installed on your machine.");
+    # }
+    # 
 
 # build a script from top to output the range of index
     
@@ -362,7 +404,7 @@ foreach my $i (0..$#{$for_lines}){
     
         # print  "$tag: $forline\n";
     
-        my $tag_file = "\'/tmp/$tag\.tmp\'";
+   	 my $tag_file = "\'/tmp/$tag\.tmp\'";
 $matlab_interpreter_script .=<<MATLAB
 $tag\_fid = fopen($tag_file,'w+');
 $forline
@@ -386,7 +428,8 @@ my $matlab_interpreter_bash = <<BASH;
 cd /tmp/
 source ~/.profile
 source ~/.bashrc
-    matlab -nodisplay -nodesktop -nosplash  <'$path/$name' &>/tmp/matlab.output    # dump matlab output
+source ~/.bash_profile
+    matlab -nodisplay -nodesktop -nosplash  <'$path/$name' &>$junk   # dump matlab output
 BASH
 
     #my $bash_name = "CJ_matlab_interpreter_bash.sh";
@@ -394,8 +437,8 @@ BASH
     #&CJ::writeFile("$bash_path/$bash_name",$matlab_interpreter_bash);
     #&CJ::message("$bash_name is built in $bash_path");
 
-&CJ::message("Invoking matlab to find range of indecies. Please be patient...");
-&CJ::my_system("echo $matlab_interpreter_bash", $verbose);
+&CJ::message("Invoking matlab to find range of indices. Please be patient...");
+&CJ::my_system("printf '%s' $matlab_interpreter_bash ", $verbose);
 &CJ::message("Closing Matlab session!");
     
 # Read the files, and put it into $numbers
@@ -406,8 +449,14 @@ foreach my $tag (@$tag_list){
     my $tmp_array = &CJ::readFile("$tag_file");
     my @tmp_array  = split /\n/,$tmp_array;
     $range->{$tag} = join(',', @tmp_array);
-    #print $range->{$tag} . "\n";
+    # print $range->{$tag} . "\n";
+	&CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp  
 }
+
+
+# remove the files you made in /tmp
+&CJ::my_system("rm -f $test_name $junk $check_path/$check_name $path/$name");
+
     return $range;
 	
 }
