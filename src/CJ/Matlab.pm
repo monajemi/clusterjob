@@ -345,7 +345,7 @@ sub run_matlab_index_interpreter{
     # Check that the local machine has MATLAB (we currently build package locally!)
 	# Open matlab  and eval
 
-my $test_name= "/tmp/cj_matlab_test";
+my $test_name= "/tmp/CJ_matlab_test";
 my $test_file = "\'$test_name\'";
 
 my $matlab_check_script = <<MATLAB_CHECK;
@@ -360,7 +360,7 @@ my $check_name= "CJ_matlab_check_script.m";
 &CJ::writeFile("$check_path/$check_name",$matlab_check_script);
 
 
-my $junk = "/tmp/matlab.output"; 
+my $junk = "/tmp/CJ_matlab.output"; 
 
 my $matlab_check_bash = <<CHECK_BASH;
 #!/bin/bash -l
@@ -370,6 +370,7 @@ CHECK_BASH
    
    
 &CJ::message("Checking command 'matlab' is available...",1);
+
 CJ::my_system("echo $matlab_check_bash",$verbose);  # this will generate a file test_file
 
 eval{
