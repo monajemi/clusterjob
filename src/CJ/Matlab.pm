@@ -364,14 +364,18 @@ my $junk = "/tmp/matlab.output";
 
 my $matlab_check_bash = <<CHECK_BASH;
 #!/bin/bash -l
+source ~/.profile
+source ~/.bashrc
+source ~/.bash_profile
   matlab -nodisplay -nodesktop -nosplash  < '$check_path/$check_name'  &>$junk;
 CHECK_BASH
    
    
    
 &CJ::message("Checking command 'matlab' is available...",1);
+CJ::my_system("printf '%s' $matlab_check_bash",$verbose);  # this will generate a file test_file
+
 eval{
-	CJ::my_system("printf '%s' $matlab_check_bash",$verbose);  # this will generate a file test_file
     my $check = &CJ::readFile($test_name);     # this causes error if there is no file which indicates matlab were not found.
 	#print $check . "\n";
 };
