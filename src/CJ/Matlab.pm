@@ -364,9 +364,6 @@ my $junk = "/tmp/matlab.output";
 
 my $matlab_check_bash = <<CHECK_BASH;
 #!/bin/bash -l
-source ~/.profile
-source ~/.bashrc
-source ~/.bash_profile
   matlab -nodisplay -nodesktop -nosplash  < '$check_path/$check_name'  &>$junk;
 CHECK_BASH
    
