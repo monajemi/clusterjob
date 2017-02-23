@@ -364,23 +364,20 @@ my $junk = "/tmp/matlab.output";
 
 my $matlab_check_bash = <<CHECK_BASH;
 #!/bin/bash -l
-source ~/.profile
-source ~/.bashrc
-source ~/.bash_profile
   matlab -nodisplay -nodesktop -nosplash  < '$check_path/$check_name'  &>$junk;
 CHECK_BASH
    
    
    
 &CJ::message("Checking command 'matlab' is available...",1);
-CJ::my_system("printf '%s' $matlab_check_bash",$verbose);  # this will generate a file test_file
+CJ::my_system("echo $matlab_check_bash",$verbose);  # this will generate a file test_file
 
 eval{
     my $check = &CJ::readFile($test_name);     # this causes error if there is no file which indicates matlab were not found.
 	#print $check . "\n";
 };
 if($@){
-	print $@ . "\n";
+	#print $@ . "\n";
 &CJ::err("CJ requires 'matlab' but it cannot access it. Consider adding alias 'matlab' in your ~/.bashrc or ~/.bash_profile");	
 }else{
 &CJ::message("matlab available.",1);	
@@ -431,9 +428,6 @@ my $matlab_interpreter_bash = <<BASH;
 #!/bin/bash -l
 # dump everything user-generated from top in /tmp
 cd /tmp/
-source ~/.profile
-source ~/.bashrc
-source ~/.bash_profile
     matlab -nodisplay -nodesktop -nosplash  <'$path/$name' &>$junk   # dump matlab output
 BASH
 
@@ -443,7 +437,7 @@ BASH
     #&CJ::message("$bash_name is built in $bash_path");
 
 &CJ::message("finding range of indices...",1);
-&CJ::my_system("printf '%s' $matlab_interpreter_bash ", $verbose);
+&CJ::my_system("echo $matlab_interpreter_bash ", $verbose);
 &CJ::message("Closing Matlab session!",1);
     
 # Read the files, and put it into $numbers
