@@ -371,7 +371,7 @@ CHECK_BASH
    
 &CJ::message("Checking command 'matlab' is available...",1);
 
-CJ::my_system("source ~/.bash_profile; source ~/.bashrc; source ~/.profile; printf '%s' $matlab_check_bash",$verbose);  # this will generate a file test_file
+CJ::my_system("source ~/.bash_profile; source ~/.bashrc; printf '%s' $matlab_check_bash",$verbose);  # this will generate a file test_file
 
 eval{
     my $check = &CJ::readFile($test_name);     # this causes error if there is no file which indicates matlab were not found.
@@ -438,7 +438,7 @@ BASH
     #&CJ::message("$bash_name is built in $bash_path");
 
 &CJ::message("finding range of indices...",1);
-CJ::my_system("source ~/.bash_profile; source ~/.bashrc; source ~/.profile; printf '%s' $matlab_interpreter_bash",$verbose);  # this will generate a 
+CJ::my_system("source ~/.bash_profile; source ~/.bashrc; printf '%s' $matlab_interpreter_bash",$verbose);  # this will generate a 
 &CJ::message("Closing Matlab session!",1);
     
 # Read the files, and put it into $numbers
