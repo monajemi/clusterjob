@@ -86,16 +86,16 @@ sub max_jobs_allowed{
 	my ($ssh) = @_;
 
 
-	# Later we need to subtract the jobs currently in the queue.  
 	my $account  = $ssh->{account};
 	my $bqs      = $ssh->{bqs};
-	
+    my $user     = $ssh->{user};
+
 	
 	my $max_u_jobs;
     if($bqs eq "SGE"){
 		$max_u_jobs = `ssh $account 'qconf -sconf | grep max_u_jobs' | awk \'{print \$2}\' `; chomp($max_u_jobs);
     }elsif($bqs eq "SLURM"){
-		my $default_qos = `ssh $account 'sacctmgr -n list assoc where user=monajemi format=defaultqos'`; chomp($default_qos);
+		my $default_qos = `ssh $account 'sacctmgr -n list assoc where user=$user format=defaultqos'`; chomp($default_qos);
 		my $qos = $default_qos; # need to be general for any qos later
 		$max_u_jobs = `ssh $account 'sacctmgr show qos -n format=Name,MaxSubmitJobs | grep $qos' | awk \'{print \$2}\' `; chomp($max_u_jobs);
 		#$max_u_jobs = $max_u_jobs+0;
@@ -103,7 +103,12 @@ sub max_jobs_allowed{
         &CJ::err("Unknown batch queueing system");
     }
 	
-	return $max_u_jobs;
+    
+    #currently live jobs
+    my $live_jobs = (`ssh ${account} 'qstat | grep $user  | wc -l'`); chomp($live_jobs);
+    
+    my $jobs_allowed = $max_u_jobs-$live_jobs;
+	return $jobs_allowed;
 }
 
 
