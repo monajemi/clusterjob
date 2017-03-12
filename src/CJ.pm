@@ -754,7 +754,7 @@ sub show_log{
         print "script: $info->{program}\n";
         #print "remote_path: $info->{remote_path}\n";
         print "initial_flag: $info->{runflag}\n";
-        print "reruned: ", (keys $info->{rerun}) . " times \n" if($info->{rerun}) ;
+        print "reruned: ", 0+keys($info->{rerun}) . " times \n" if($info->{rerun}) ;
         print "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
         print "\n";
         print ' ' x 10; print "$info->{message}\n";
@@ -1075,7 +1075,7 @@ sub show_info
     print "script: $info->{program}\n";
     print "remote_path: $info->{remote_path}\n";
     print "initial_flag: $info->{runflag}\n";
-    print "reruned: ",1+$#{$info->{rerun}} . " times \n" if($info->{rerun}) ;
+    print "reruned: ", 0+keys($info->{rerun}) . " times \n" if($info->{rerun}) ;
     print "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
     print "\n";
     print ' ' x 10; print "$info->{message}\n";
