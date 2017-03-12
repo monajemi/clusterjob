@@ -877,7 +877,7 @@ sub clean
 		
 		my $expr = "qstat -xml | tr \'\n\' \' \' | sed \'s#<job_list[^>]*>#\\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t";
   		 $avail_ids = `ssh ${account} $expr | grep CJ_$short_pid | awk \'{print \$1}\' | tr '\n' ' ' ` ;
-  	   	 print $avail_ids  . "\n"; 
+  	   	 #print $avail_ids  . "\n";
 			
 	}elsif($bqs eq "SLURM"){
 		$avail_ids = `ssh ${account} ' sacct -n --format=jobid,jobname%15 | grep -v "^[0-9]*\\." | grep CJ_$short_pid ' | awk \'{print \$1}\' | tr '\n' ' '  `;
