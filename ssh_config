@@ -1,3 +1,12 @@
+[osg]
+Host	login.osgconnect.net
+User	hatef
+Bqs	HTCondor
+Repo	./
+MATlib	
+[osg]
+
+
 [sherlock]
 Host	sherlock.stanford.edu
 User	monajemi
