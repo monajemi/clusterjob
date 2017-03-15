@@ -229,7 +229,7 @@ sub add_agent_to_remote{
 	# This is the first time agent is added.
 	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);	
 	# make sure agent doesnt exist already
-	return unless eval {my $fb_get = $firebase->get("users/${CJID}/agents/$AgentID")};
+	return if eval {my $fb_get = $firebase->get("users/${CJID}/agents/$AgentID")};
 	my $agentHash = {"SyncReq" => "null", "last_instance" => "null", "push_timestamp" =>0  ,"pull_timestamp" => 0}; 
     my $result = $firebase->patch("users/${CJID}/agents/$AgentID",  $agentHash); 	
 }
