@@ -1562,7 +1562,6 @@ sub grep_var_line
 sub add_record{
 	my ($info) = @_;
     
-	# Find the last number
 	&CJ::add_to_history($info, $info->{date}, $info->{runflag});
 	&CJ::add_to_run_history($info);
 	&CJ::add_to_pid_timestamp( { $info->{pid} => $info->{date}{epoch} }  );

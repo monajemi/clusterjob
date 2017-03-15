@@ -64,7 +64,7 @@ sub request{
 # $fb_get->{$agent}->{SyncReq}; and if the value is not
 # null,  it should update the corresponding PIDs (keys of the hashref);
 # once all updates are done the agent changes the value of todo to null
-# to indicateall updates are done. 
+# to indicate all updates are done.
 
 my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
 # Get todo list
@@ -219,6 +219,7 @@ CJ::warning("CJ is in awe! Push TimeStamp:: remote is bigger than local") if ($r
 			my @filtered_pids = grep { $pid_timestamp->{$_} > $remote_push_timestamp } keys %$pid_timestamp;
 			my $info_hash = &CJ::retrieve_package_info(\@filtered_pids);
 			
+            return if not defined($info_hash);
 			my $size = keys $info_hash;
 			my $counter = 0;
 			while ( my ($pid,$info) = each (%$info_hash)){
