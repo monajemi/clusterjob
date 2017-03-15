@@ -556,7 +556,7 @@ foreach my $i (0..$parser->{nloop}-1){
 	my @range = split(',', $ranges->{$keys[$i]}); 
     $totalJobs = (0+@range) * ($totalJobs);
 }
-my $max_jobs = &CJ::max_jobs_allowed($ssh);
+my $max_jobs = &CJ::max_jobs_allowed($ssh, $qsub_extra);
 &CJ::err("Maximum jobs allowed on $machine ($max_jobs) exceeded by your request ($totalJobs). Rewrite FOR loops to submit in smaller chunks.") unless  ($max_jobs >= $totalJobs);
 
 

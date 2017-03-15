@@ -11,6 +11,7 @@ use Time::Piece;
 use JSON::PP;
 use Data::Dumper;
 use Data::UUID;
+use GetOpt::Declare;
 use feature 'say';
 
 
@@ -82,32 +83,77 @@ sub init{
 
 
 
+
+
+sub parse_qsub_extra{
+        my ($qsub_extra) = @_;
+
+    my $specification = q{
+    --partition [=] <partitions>	Partition
+    -p  [=] <partitions>		[ditto]
+    --qos [=] <qos>			Quality of Service
+    };
+    
+    my $args = Getopt::Declare->new($specification,$qsub_extra);   # parse a string
+    #print Dumper($args);
+return $args;
+}
+
+
+
+
 sub max_jobs_allowed{
-	my ($ssh) = @_;
+	my ($ssh, $qsub_extra) = @_;
 
-
-	my $account  = $ssh->{account};
-	my $bqs      = $ssh->{bqs};
+    
+    
+    my $account  = $ssh->{account};
+    my $bqs      = $ssh->{bqs};
     my $user     = $ssh->{user};
 
-	
+    my $qos;
+
+if($qsub_extra ne "" && $bqs eq "SLURM"){
+    
+    # We need to parse it and get partitions out
+    # partitions are given with flag '-p, --partition=<partition_names>'
+    
+    my $alloc = &CJ::parse_qsub_extra($qsub_extra);
+    # print defined($alloc->{'-p'}) ? $alloc->{'-p'}->{'<partitions>'} . "\n" : "nothing\n";
+    # print defined($alloc->{'--qos'}) ? $alloc->{'--qos'}->{'<qos>'} . "\n" : "nothing\n";
+    
+    if( defined($alloc->{'--qos'}->{'<qos>'})  ){
+        $qos = $alloc->{'--qos'}->{'<qos>'};
+    }elsif(  defined( $alloc->{'-p'}->{'<partitions>'})  ){
+        $qos = $alloc->{'-p'}->{'<partitions>'};
+    }elsif(  defined($alloc->{'--partition'}->{'<partitions>'})  ){
+        $qos = $alloc->{'--partition'}->{'<partitions>'};
+    }else{
+        CJ::message('no partition specified. CJ is using default partition.');
+        $qos = `ssh $account 'sacctmgr -n list assoc where user=$user format=defaultqos'`; chomp($qos);
+    }
+
+    $qos = (split(/,/, $qos))[0];    # if multiple get the first one
+
+    #print "$qos\n";
+}
+
 	my $max_u_jobs;
+    my $live_jobs = int(0);
     if($bqs eq "SGE"){
 		$max_u_jobs = `ssh $account 'qconf -sconf | grep max_u_jobs' | awk \'{print \$2}\' `; chomp($max_u_jobs);
+        $live_jobs = (`ssh ${account} 'qstat | grep $user  | wc -l'`); chomp($live_jobs);
+
     }elsif($bqs eq "SLURM"){
-		my $default_qos = `ssh $account 'sacctmgr -n list assoc where user=$user format=defaultqos'`; chomp($default_qos);
-		my $qos = $default_qos; # need to be general for any qos later
 		$max_u_jobs = `ssh $account 'sacctmgr show qos -n format=Name,MaxSubmitJobs | grep $qos' | awk \'{print \$2}\' `; chomp($max_u_jobs);
-		#$max_u_jobs = $max_u_jobs+0;
+        #currently live jobs
+        $live_jobs = (`ssh ${account} 'qstat | grep $qos | grep $user  | wc -l'`); chomp($live_jobs);
     }else{
         &CJ::err("Unknown batch queueing system");
     }
 	
     
-    #currently live jobs
-    my $live_jobs = (`ssh ${account} 'qstat | grep $user  | wc -l'`); chomp($live_jobs);
-    
-    my $jobs_allowed = $max_u_jobs-$live_jobs;
+    my $jobs_allowed = int($max_u_jobs-$live_jobs);
 	return $jobs_allowed;
 }
 
@@ -432,7 +478,7 @@ my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
         &CJ::message("job-id: $rerun_job_ids->[0]-$rerun_job_ids->[-1]");
         foreach my $i (0..$#{$counter}){
             my $this = $counter->[$i] - 1;
-           $job_id =~ s/$job_ids[$this]/$rerun_job_ids->[$i]/g;
+            $job_id =~ s/$job_ids[$this]/$rerun_job_ids->[$i]/g;
         }
     }
 

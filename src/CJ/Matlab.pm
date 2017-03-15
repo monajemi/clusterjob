@@ -54,8 +54,8 @@ sub parse {
 	    }
 	}
 	# ==============================================================
-	# complain if the size of for loops is more than three or
-	# if they are not consecutive. We do not allow it in clusterjob.
+	# complain if for loops are not 
+	# consecutive. We do not allow it in clusterjob.
 	# ==============================================================
 	&CJ::err(" 'parrun' does not allow less than 1 parallel loops inside the MAIN script.") if($#forlines_idx_set+1 < 1);
 
