@@ -145,7 +145,7 @@ if($qsub_extra ne "" && $bqs eq "SLURM"){
         $live_jobs = (`ssh ${account} 'qstat | grep $user  | wc -l'`); chomp($live_jobs);
 
     }elsif($bqs eq "SLURM"){
-		$max_u_jobs = `ssh $account 'sacctmgr show qos -n format=Name,MaxSubmitJobs | grep $qos' | awk \'{print \$2}\' `; chomp($max_u_jobs);
+		$max_u_jobs = `ssh $account 'sacctmgr show qos -n format=Name,MaxSubmitJobs | grep \"\\b$qos\\b\"' | awk \'{print \$2}\' `; chomp($max_u_jobs);
         #currently live jobs
         $live_jobs = (`ssh ${account} 'qstat | grep $qos | grep $user  | wc -l'`); chomp($live_jobs);
     }else{
@@ -153,7 +153,9 @@ if($qsub_extra ne "" && $bqs eq "SLURM"){
     }
 	
     
+    
     my $jobs_allowed = int($max_u_jobs-$live_jobs);
+    
 	return $jobs_allowed;
 }
 
