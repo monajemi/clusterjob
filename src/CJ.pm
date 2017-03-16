@@ -88,6 +88,8 @@ sub init{
 sub parse_qsub_extra{
         my ($qsub_extra) = @_;
 
+    return undef if ($qsub_extra eq "");
+    
     my $specification = q{
     --partition [=] <partitions>	Partition
     -p  [=] <partitions>		[ditto]
@@ -113,7 +115,7 @@ sub max_jobs_allowed{
 
     my $qos;
 
-if($qsub_extra ne "" && $bqs eq "SLURM"){
+if($bqs eq "SLURM"){
     
     # We need to parse it and get partitions out
     # partitions are given with flag '-p, --partition=<partition_names>'
