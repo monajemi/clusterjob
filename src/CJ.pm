@@ -131,7 +131,7 @@ if($qsub_extra ne "" && $bqs eq "SLURM"){
     }else{
         $qos = `ssh $account 'sacctmgr -n list assoc where user=$user format=defaultqos'`; chomp($qos);
         $qos = &CJ::remove_white_space($qos);
-        CJ::message("No SLURM partition specified. CJ is using default partition \'$qos\' ");
+        &CJ::message("No SLURM partition specified. CJ is using default partition $qos");
 
     }
 
