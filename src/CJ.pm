@@ -129,7 +129,7 @@ if($qsub_extra ne "" && $bqs eq "SLURM"){
     }elsif(  defined($alloc->{'--partition'}->{'<partitions>'})  ){
         $qos = $alloc->{'--partition'}->{'<partitions>'};
     }else{
-        CJ::message('no partition specified. CJ is using default partition.');
+        CJ::message('No SLURM partition specified. CJ is using default partition.');
         $qos = `ssh $account 'sacctmgr -n list assoc where user=$user format=defaultqos'`; chomp($qos);
     }
 
@@ -145,7 +145,7 @@ if($qsub_extra ne "" && $bqs eq "SLURM"){
         $live_jobs = (`ssh ${account} 'qstat | grep $user  | wc -l'`); chomp($live_jobs);
 
     }elsif($bqs eq "SLURM"){
-		$max_u_jobs = `ssh $account 'sacctmgr show qos -n format=Name,MaxSubmitJobs | grep \"\\b$qos\\b\"' | awk \'{print \$2}\' `; chomp($max_u_jobs);
+		$max_u_jobs = `ssh $account 'sacctmgr show qos -n format=Name,MaxSubmitJobs | grep "\\b$qos\\b"' | awk \'{print \$2}\' `; chomp($max_u_jobs);
         #currently live jobs
         $live_jobs = (`ssh ${account} 'qstat | grep $qos | grep $user  | wc -l'`); chomp($live_jobs);
     }else{
