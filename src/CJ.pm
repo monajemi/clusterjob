@@ -129,13 +129,15 @@ if($qsub_extra ne "" && $bqs eq "SLURM"){
     }elsif(  defined($alloc->{'--partition'}->{'<partitions>'})  ){
         $qos = $alloc->{'--partition'}->{'<partitions>'};
     }else{
-        CJ::message('No SLURM partition specified. CJ is using default partition.');
         $qos = `ssh $account 'sacctmgr -n list assoc where user=$user format=defaultqos'`; chomp($qos);
+        &CJ::remove_white_space($qos);
+        CJ::message('No SLURM partition specified. CJ is using default partition "$qos" ');
+
     }
 
     $qos = (split(/,/, $qos))[0];    # if multiple get the first one
+    &CJ::remove_white_space($qos);
 
-    #print "$qos\n";
 }
 
 	my $max_u_jobs;
@@ -2096,6 +2098,12 @@ return \@job_ids;
 }
 
 
+sub remove_white_space
+{
+    my ($string) = @_;
+    $string =~ s/^\s*|\s*$//g;
+    return $string;
+}
 sub remove_extension
 {
     my ($program) = @_;

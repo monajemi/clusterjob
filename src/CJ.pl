@@ -281,7 +281,7 @@ sub cj_prompt{
 			next;
 		}elsif($input =~ m/\bcd\b/){
 			$input =~ s/cd//g;
-		    $input =~ s/^\s|\s$//g;
+		    $input =~ s/^\s*|\s*$//g;
 			if (-d $input){
 			$CWD = $input
 			}else{
