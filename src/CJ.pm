@@ -144,12 +144,12 @@ if($qsub_extra ne "" && $bqs eq "SLURM"){
     my $live_jobs = int(0);
     if($bqs eq "SGE"){
 		$max_u_jobs = `ssh $account 'qconf -sconf | grep max_u_jobs' | awk \'{print \$2}\' `; chomp($max_u_jobs);
-        $live_jobs = (`ssh ${account} 'qstat | grep $user  | wc -l'`); chomp($live_jobs);
+        $live_jobs = (`ssh ${account} 'qstat | grep "\\b$user\\b"  | wc -l'`); chomp($live_jobs);
 
     }elsif($bqs eq "SLURM"){
 		$max_u_jobs = `ssh $account 'sacctmgr show qos -n format=Name,MaxSubmitJobs | grep "\\b$qos\\b"' | awk \'{print \$2}\' `; chomp($max_u_jobs);
         #currently live jobs
-        $live_jobs = (`ssh ${account} 'qstat | grep $qos | grep $user  | wc -l'`); chomp($live_jobs);
+        $live_jobs = (`ssh ${account} 'qstat | grep "\\b$qos\\b" | grep "\\b$user\\b"  | wc -l'`); chomp($live_jobs);
     }else{
         &CJ::err("Unknown batch queueing system");
     }
