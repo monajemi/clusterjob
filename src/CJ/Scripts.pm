@@ -268,7 +268,7 @@ echo WORKDIR \$SGE_O_WORKDIR
 date
 cd $DIR
 
-module load matlab\/r2016b #MATLAB-R2014b
+module load <MATLAB_MODULE>
 unset _JAVA_OPTIONS
 matlab -nosplash -nodisplay <<HERE
 <MATPATH>
@@ -307,7 +307,7 @@ echo WORKDIR \$SLURM_SUBMIT_DIR
 date
 cd $DIR
 
-module load matlab\/R2014b
+module load <MATLAB_MODULE>
 unset _JAVA_OPTIONS
 matlab -nosplash -nodisplay <<HERE
 <MATPATH>
@@ -371,7 +371,8 @@ MATLAB
 $sh_script =~ s|<PROGRAM>|$program|;
 $sh_script =~ s|<PID>|$pid|;
 $sh_script =~ s|<MATPATH>|$pathText|;
-        
+$sh_script =~ s|<MATLAB_MODULE>|$ssh->{mat}|;
+    
 return $sh_script;
 }
        
@@ -437,7 +438,7 @@ echo WORKDIR \$SGE_O_WORKDIR
 date
 cd $DIR
 
-module load matlab\/r2014b #MATLAB-R2014b
+module load <MATLAB_MODULE>
 unset _JAVA_OPTIONS
 matlab -nosplash -nodisplay <<HERE
 <MATPATH>
@@ -488,7 +489,7 @@ echo WORKDIR \$SLURM_SUBMIT_DIR
 date
 cd $DIR
 
-module load matlab\/R2014b
+module load <MATLAB_MODULE>
 unset _JAVA_OPTIONS
 matlab -nosplash -nodisplay <<HERE
 <MATPATH>
@@ -561,6 +562,7 @@ $sh_script =~ s|<PROGRAM>|$program|;
 $sh_script =~ s|<PID>|$pid|;
 $sh_script =~ s|<COUNTER>|$counter|;
 $sh_script =~ s|<MATPATH>|$pathText|;
+$sh_script =~ s|<MATLAB_MODULE>|$ssh->{mat}|;
 $sh_script =~ s|<remote_path>|$remote_path|;
     
 

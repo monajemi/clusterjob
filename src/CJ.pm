@@ -143,7 +143,7 @@ if($bqs eq "SLURM"){
 }
 
 	my $max_u_jobs;
-    my $live_jobs = int(0);
+    my $live_jobs;
     if($bqs eq "SGE"){
 		$max_u_jobs = `ssh $account 'qconf -sconf | grep max_u_jobs' | awk \'{print \$2}\' `; chomp($max_u_jobs);
         $live_jobs = (`ssh ${account} 'qstat | grep "\\b$user\\b"  | wc -l'`); chomp($live_jobs);
@@ -156,8 +156,9 @@ if($bqs eq "SLURM"){
         &CJ::err("Unknown batch queueing system");
     }
 	
-    
-    
+    $live_jobs  = int(0) unless &CJ::isnumeric($live_jobs);
+    $max_u_jobs = int(3000) unless &CJ::isnumeric($max_u_jobs);  # default max allowed!
+
     my $jobs_allowed = int($max_u_jobs-$live_jobs);
     
 	return $jobs_allowed;
@@ -1594,18 +1595,35 @@ sub host{
     }else{
         &CJ::err(".ssh_config:: Machine $machine_name not found. ");
     }
-    my ($user) = $this_host =~ /User[\t\s]*(.*)/;$user =~ s/^\s+|\s+$//g;
-    my ($host) = $this_host =~ /Host[\t\s]*(.*)/;$host =~ s/^\s+|\s+$//g;
-    my ($bqs)  = $this_host =~ /Bqs[\t\s]*(.*)/ ;$bqs =~ s/^\s+|\s+$//g;
-    my ($remote_repo)  = $this_host =~ /Repo[\t\s]*(.*)/ ;$remote_repo =~ s/^\s+|\s+$//g;
-    my ($remote_matlabpath)  = $this_host =~ /MATlib[\t\s]*(.*)/;$remote_repo =~ s/^\s+|\s+$//g;
+    my ($user) = $this_host =~ /User[\t\s]*(.*)/;
+        $user =remove_white_space($user);
+    
+    my ($host) = $this_host =~ /Host[\t\s]*(.*)/;
+        $host =remove_white_space($host);
+    
+    my ($bqs)  = $this_host =~ /Bqs[\t\s]*(.*)/ ;
+        $bqs  =remove_white_space($bqs);
+    
+    my ($remote_repo)  = $this_host =~ /Repo[\t\s]*(.*)/ ;
+        $remote_repo =remove_white_space($remote_repo);
+    
+    my ($remote_matlab_lib)  = $this_host =~ /MATlib[\t\s]*(.*)/;
+        $remote_matlab_lib =remove_white_space($remote_matlab_lib);
+    
+    my ($remote_matlab_module)  = $this_host =~ /\bMAT\b[\t\s]*(.*)/;
+        $remote_matlab_module =remove_white_space($remote_matlab_module);
+
+    
+    
+    
     my $account  = $user . "@" . $host;
     
     
     $ssh_config->{'account'}         = $account;
     $ssh_config->{'bqs'}             = $bqs;
     $ssh_config->{'remote_repo'}     = $remote_repo;
-    $ssh_config->{'matlib'}          = $remote_matlabpath;
+    $ssh_config->{'matlib'}          = $remote_matlab_lib;
+    $ssh_config->{'mat'}             = $remote_matlab_module;
     $ssh_config->{'user'}            = $user;
     
     return $ssh_config;
@@ -2103,7 +2121,7 @@ return \@job_ids;
 sub remove_white_space
 {
     my ($string) = @_;
-    $string =~ s/^\s*|\s*$//g;
+    $string =~ s/^\s+|\s+$//g;
     return $string;
 }
 sub remove_extension

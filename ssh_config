@@ -3,8 +3,38 @@ Host	login.osgconnect.net
 User	hatef
 Bqs	HTCondor
 Repo	./
+MAT	matlab/2016b
 MATlib	
 [osg]
+
+
+[tacc-ls5]
+Host	ls5.tacc.utexas.edu
+User	tg840998
+Bqs	SLURM
+Repo	/scratch/users/tg840998/CJRepo_Remote
+MAT	matlab/2016b
+MATlib	~/BPDN/CVX/cvx
+[tacc-ls5]
+
+[tacc-stampede]
+Host	stampede.tacc.utexas.edu
+User	tg840998
+Bqs	SLURM
+Repo	/work/04800/tg840998/CJRepo_Remote
+MAT	matlab/2016b
+MATlib	~/BPDN/CVX/cvx
+[tacc-stampede]
+
+
+[tacc-maverick]
+Host	maverick.tacc.utexas.edu
+User	tg840998
+Bqs	SLURM
+Repo	/scratch/users/tg840998/CJRepo_Remote
+MAT	matlab/2016b
+MATlib	~/BPDN/CVX/cvx
+[tacc-maverick]
 
 
 [sherlock]
@@ -12,29 +42,16 @@ Host	sherlock.stanford.edu
 User	monajemi
 Bqs	SLURM
 Repo	/scratch/users/monajemi/CJRepo_Remote
+MAT     matlab/R2016b
 MATlib	~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 [sherlock]
 
-[solomon]
-Host	solomon.stanford.edu
-User	monajemi
-Bqs	SGE
-Repo	~/CJRepo_Remote
-MATlib	~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
-[solomon]
-
-[proclus]
-Host	proclus.stanford.edu
-User	monajemi
-Bqs SGE
-Repo	/hsgs/nobackup/monajemi/CJRepo_Remote
-MATlib	~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
-[proclus]
 
 [farmshare]
 Host	corn.stanford.edu
 User	monajemi
-Bqs		SGE
+Bqs	SGE
 Repo	/farmshare/user_data/monajemi/CJRepo_Remote
+MAT     matlab/r2016b
 MATlib	~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 [farmshare]
