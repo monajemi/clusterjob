@@ -82,9 +82,9 @@ sub build_nloop_matlab_code
 	   my $date = $extra->{date} ;
 	   my $pid =$extra->{pid} ;
 	   my $bqs = $extra->{bqs};
-	   my $mem=$extra->{mem};
-	   my $qsub_extra = $extra->{qsub_extra};
-	   my $runtime = $extra->{runtime};
+	   my $submit_defaults=$extra->{submit_defaults};
+       my $qSubmitDefault = $extra->{qSubmitDefault};
+       my $qsub_extra = $extra->{qsub_extra};
 	   my $ssh = $extra->{ssh};
 
        
@@ -126,7 +126,7 @@ sub build_nloop_matlab_code
        my $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
        &CJ::writeFile($local_sh_path, $sh_script);
        
-       $master_script = &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra,$counter);			
+       $master_script = &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$counter);
 	   return ($counter,$master_script);
 }
 
@@ -140,7 +140,12 @@ sub build_nloop_matlab_code
 # ======
 # Build master script
 sub make_master_script{
-    my($master_script,$runflag,$program,$date,$pid,$bqs,$mem, $runtime, $remote_sep_Dir,$qsub_extra,$counter) = @_;
+    my($master_script,$runflag,$program,$date,$pid,$bqs,$submit_defaults,$qSubmitDefault, $remote_sep_Dir,$qsub_extra,$counter) = @_;
+    
+    my $mem = $submit_defaults->{mem};
+    my $runtime = $submit_defaults->{runtime};
+    #my $numberTasks = $submit_defaults->{numberTasks};
+    
     
     
     
@@ -171,12 +176,21 @@ $master_script.="$docstring";
     
         my $tagstr="CJ_$pid\_$programName";
         if($bqs eq "SGE"){
+            if($qSubmitDefault){
+                $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem -l h_rt=$runtime $qsub_extra -N $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n";
+            }else{
+                $master_script.= "qsub -S /bin/bash -w e -l $qsub_extra -N $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n";
+                
+            }
             
-        $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem -l h_rt=$runtime $qsub_extra -N $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n";
+            
         }elsif($bqs eq "SLURM"){
             
-            $master_script.="sbatch --mem=$mem --time=$runtime $qsub_extra -J $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n"
-            
+            if($qSubmitDefault){
+                $master_script.="sbatch --mem=$mem --time=$runtime $qsub_extra -J $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n";
+            }else{
+                $master_script.="sbatch $qsub_extra -J $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n";
+            }
         }else{
             &CJ::err("unknown BQS")
         }
@@ -194,11 +208,23 @@ $master_script.="$docstring";
         
         my $tagstr="CJ_$pid\_$counter\_$programName";
         if($bqs eq "SGE"){
+            
+            if($qSubmitDefault){
             $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem  -l h_rt=$runtime $qsub_extra -N $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n";
+            }else{
+            $master_script.= "qsub -S /bin/bash -w e -l $qsub_extra -N $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n";
+                
+            }
+        
+        
+        
         }elsif($bqs eq "SLURM"){
-            
-            $master_script.="sbatch --mem=$mem --time=$runtime $qsub_extra -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
-            
+
+            if($qSubmitDefault){
+             $master_script.="sbatch --mem=$mem --time=$runtime $qsub_extra -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
+            }else{
+             $master_script.="sbatch $qsub_extra -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
+            }
         }else{
             &CJ::err("unknown BQS");
         }

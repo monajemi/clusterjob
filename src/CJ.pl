@@ -24,7 +24,7 @@ use Digest::SHA qw(sha1_hex); # generate hexa-decimal SHA1 PID
 #use Term::ANSIColor qw(:constants); # for changing terminal text colors
 #use Term::ReadKey;
 
-use vars qw( $sync_status $message $mem $runtime $dep_folder $verbose $log_script $text_header_lines $show_tag $log_tag $force_tag $qsub_extra $cmdline);  # options
+use vars qw( $submit_defaults $qSubmitDefault $sync_status $message $dep_folder $verbose $log_script $text_header_lines $show_tag $log_tag $force_tag $qsub_extra $cmdline);  # options
 
 
 $::VERSION = &CJ::version_info();
@@ -48,22 +48,27 @@ if( (!-d "$info_dir" || !defined($AgentID)) & ($cjcmd0 ne "init") ){
 
 
 
-#====================================
+#=========================================
 #         INITIALIZE VARIABLEs
-#====================================
-$dep_folder = ".";
-$mem        = "8G";      # default memeory
-$runtime    = "40:00:00";      # default memeory
-$message    = "";        # default message
-$verbose    = 0;	     # default - redirect to CJlog
+#=========================================
+
+$message           = "";
+$dep_folder        = ".";
+$verbose           = 0;         # default - redirect to CJlog
 $text_header_lines = undef;
 $show_tag          = "program";
 $qsub_extra        = "";
 $log_tag           = "all";
-$force_tag           = 0;
+$force_tag         = 0;
 $log_script        = undef;
 $sync_status 	   = 0;
+$qSubmitDefault    = 1;
 
+#=========================================
+#        CJ SUMBMIT DEFAULTS
+#=========================================
+
+$submit_defaults = &CJ::submit_defaults();
 
 
 
@@ -108,6 +113,8 @@ my $spec = <<'EOSPEC';
      -v 	          [ditto] [undocumented]
      --v[erbose]	                                  verbose mode [nocase]
                                                               {$verbose=1}
+     --no-submit-default	                          turns off default submit parameters [nocase]
+                                                              {$qSubmitDefault=0}
      --err[or]	                                          error tag for show [nocase] [requires: show]
                                                               {$show_tag="error"}
      --less      	                                  less tag for show [nocase]  [requires: show]
@@ -127,9 +134,9 @@ my $spec = <<'EOSPEC';
      -m            <msg>	                          reminder message
                                                                 {$message=$msg}
      -mem          <memory>	                          memory requested [nocase]
-                                                                {$mem=$memory}
-     -runtime      <r_time>	                          run time requested (default=40:00:00) [nocase]
-                                                                {$runtime=$r_time}
+                                                                {$submit_defaults->{'mem'}=$memory}
+     -runtime      <r_time>	                          run time requested (default=48:00:00) [nocase]
+                                                                {$submit_defaults->{'runtime'}=$r_time}
      -alloc[ate]   <resources>	                          machine specific allocation [nocase]
                                                                 {$qsub_extra=$resources}
      init 	    					  initiates CJ installation [nocase]
@@ -157,7 +164,7 @@ my $spec = <<'EOSPEC';
      less        [<pid> [[/] [<counter>] [[/] <file>]] ]	  shortcut for '--less show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,"less") }}
      rerun        [<pid> [[/] [<counter>...]]]	          rerun certain (failed) job [nocase]
-                                                                 {defer{&CJ::add_cmd($cmdline);&CJ::rerun($pid,\@counter,$mem,$runtime,$qsub_extra,$verbose) }}
+                                                                 {defer{&CJ::add_cmd($cmdline);&CJ::rerun($pid,\@counter,$submit_defaults,$qSubmitDefault,$qsub_extra,$verbose) }}
      run          <code> <cluster>	                  run code on the cluster [nocase] [requires: -m]
                                                                  {my $runflag = "run";
                                                                  {defer{&CJ::add_cmd($cmdline); run($cluster,$code,$runflag,$qsub_extra)}}
@@ -445,7 +452,7 @@ my $local_sh_path = "$local_sep_Dir/bashMain.sh";
 
 # Build master-script for submission
 my $master_script;
-$master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_sep_Dir,$qsub_extra);
+$master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra);
     
     
 
@@ -471,7 +478,7 @@ my $cmd = "rsync -avz  ${localDir}/${tarfile} ${account}:$remoteDir/";
 
 
 &CJ::message("Submitting job");
-my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep 2'";
+my $cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep 3'";
 &CJ::my_system($cmd,$verbose) unless ($runflag eq "deploy");
     
 
@@ -492,14 +499,18 @@ if($runflag eq "run"){
 my $local_qsub_info_file = "$info_dir/"."qsub.info";
     
     my $local_qsub_info_file = "$info_dir/"."qsub.info";
-    my $job_ids = &CJ::read_qsub($local_qsub_info_file);
+    my ($job_ids,$errors) = &CJ::read_qsub($local_qsub_info_file);
     $job_id = $job_ids->[0]; # there is only one in this case
     my $numJobs = $#{$job_ids}+1;
     CJ::message("$numJobs job(s) submitted ($job_id)");
     
+    foreach my $error (@{$errors}) {
+        CJ::warning($error);
+    }
+    
 #delete the local qsub.info after use
-my $cmd = "rm $local_qsub_info_file";
-&CJ::my_system($cmd,$verbose);
+    #my $cmd = "rm $local_qsub_info_file";
+    #&CJ::my_system($cmd,$verbose);
 }else{
         $job_id ="";
 }
@@ -585,10 +596,11 @@ $extra->{program}= $program;
 $extra->{date}= $date;
 $extra->{pid}= $pid;
 $extra->{bqs}= $bqs;
-$extra->{mem}= $mem;
+$extra->{submit_defaults}=$submit_defaults;
 $extra->{qsub_extra}=$qsub_extra;
-$extra->{runtime}=$runtime;
+$extra->{runtime}=$submit_defaults->{runtime};
 $extra->{ssh}=$ssh;
+$extra->{qSubmitDefault}=$qSubmitDefault;
 
 # Recursive loop for arbitrary number of loops.
 my $master_script = &CJ::Scripts::build_nloop_master_script($nloops, $idx_tags,$ranges,$extra);
@@ -637,16 +649,22 @@ my $job_ids;
 my $job_id;
 if($runflag eq "parrun"){
     # read run info
+    my $errors;
     my $local_qsub_info_file = "$info_dir/"."qsub.info";
-    $job_ids = &CJ::read_qsub($local_qsub_info_file);
+    ($job_ids,$errors) = &CJ::read_qsub($local_qsub_info_file);
     $job_id = join(',', @{$job_ids});
     my $numJobs = $#{$job_ids}+1;
 
     CJ::message("$numJobs job(s) submitted ($job_ids->[0]-$job_ids->[-1])");
     
+    foreach my $error (@{$errors}) {
+        CJ::warning($error);
+    }
+    
+    
 #delete the local qsub.info after use
-my $cmd = "rm $local_qsub_info_file";
-&CJ::my_system($cmd,$verbose);
+    #my $cmd = "rm $local_qsub_info_file";
+    #&CJ::my_system($cmd,$verbose);
     
 }else{
 $job_ids = "";

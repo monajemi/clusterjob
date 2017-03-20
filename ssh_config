@@ -8,11 +8,20 @@ MATlib
 [osg]
 
 
+[psc-bridges]
+Host	bridges.psc.edu
+User	monajemi
+Bqs	SLURM
+Repo	/pylon2/cc3l6jp/monajemi/
+MAT	matlab/R2016a
+MATlib	~/cvx
+[psc-bridges]
+
 [tacc-ls5]
 Host	ls5.tacc.utexas.edu
 User	tg840998
 Bqs	SLURM
-Repo	/scratch/users/tg840998/CJRepo_Remote
+Repo	/work/04800/tg840998/CJRepo_Remote
 MAT	matlab/2016b
 MATlib	~/BPDN/CVX/cvx
 [tacc-ls5]

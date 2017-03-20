@@ -366,7 +366,7 @@ sub getLastSync
 
 sub rerun
 {
-    my ($pid,$counter,$mem,$runtime,$qsub_extra,$verbose) = @_;
+    my ($pid,$counter,$submit_defaults,$qSubmitDefault,$qsub_extra,$verbose) = @_;
    
    
     my $info;
@@ -419,17 +419,17 @@ sub rerun
     my $master_script;
     if ($#job_ids eq 0) { # if there is only one job
         #run
-        $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra);
+        $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$submit_defaults,$qSubmitDefault,$remote_path,$qsub_extra);
     }else{
         #parrun
         if(@$counter){
             foreach my $count (@$counter){
-                $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$count);
+                $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$submit_defaults,$qSubmitDefault,$remote_path,$qsub_extra,$count);
             }
         }else{
             # Package is parrun, run the whole again!
             foreach my $i (0..$#job_ids){
-               $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$i);
+               $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$submit_defaults,$qSubmitDefault,$remote_path,$qsub_extra,$i);
             }
         }
     }
@@ -467,9 +467,11 @@ my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
     
     
     my $rerun_qsub_info_file = "$install_dir/.info/"."rerun_qsub.info";
-    my $rerun_job_ids = &CJ::read_qsub($rerun_qsub_info_file); # array ref
+    my ($rerun_job_ids,$errors) = &CJ::read_qsub($rerun_qsub_info_file); # array ref
     #my $rerun_job_id = join(',', @{$rerun_job_ids});
-
+    foreach my $error (@{$errors}) {
+        CJ::warning($error);
+    }
    
 
 #=======================================
@@ -947,10 +949,19 @@ sub clean
         #$job_id = join(' ',@job_ids);
 
 		# make sure that all are deleted. Sometimes we dont catch a jobID locally because of a failure
-		# So this really cleans the mess
+		# So this really cleans up the mess
 		
-			#print $job_id . "\n";
-        my $cmd = "rm -rf $local_clean; rm -rf $save_clean; ssh ${account} 'qdel $avail_ids; rm -rf $remote_clean' " ;
+        #print $job_id . "\n";
+        
+        my $cmd;
+        if($bqs eq "SGE"){
+        $cmd = "rm -rf $local_clean; rm -rf $save_clean; ssh ${account} 'qdel $avail_ids; rm -rf $remote_clean' " ;
+        }elsif($bqs eq "SLURM"){
+        $cmd = "rm -rf $local_clean; rm -rf $save_clean; ssh ${account} 'scancel $avail_ids; rm -rf $remote_clean' " ;
+        }else{
+            &CJ::err("Unknown batch queueing system");
+        }
+        
         &CJ::my_system($cmd,$verbose);
 			
     }else {
@@ -2099,7 +2110,16 @@ sub read_record{
 }
 
 
+sub submit_defaults {
 
+    my $submit_defaults={};
+    
+    $submit_defaults->{mem}               = "8G";       # default memeory
+    $submit_defaults->{runtime}           = "48:00:00"; # default memeory
+    $submit_defaults->{numberTasks}       = 1        ;  # default value for number of task
+    
+    return $submit_defaults;
+}
 
 sub read_qsub{
     my ($qsub_file) = @_;
@@ -2107,14 +2127,17 @@ sub read_qsub{
     open my $FILE, '<', $qsub_file or CJ::err("Job submission failed. Try --verbose for error explanation.");
 
 my @job_ids;
+my @errors;
 while(<$FILE>){
     my $job_id_info = $_;chomp($job_id_info);
-    my ($this_job_id) = $job_id_info =~/(\d+)/; # get the first string of integer, i.e., job_id
-    push @job_ids, $this_job_id;
+    push @errors, $job_id_info if ($job_id_info =~ m/.*[eE]rror.*/ );
+    my ($this_job_id) = $job_id_info =~/job\D*(\d+)/i; # get the first string of integer, i.e., job_id
+    push @job_ids, $this_job_id unless !defined($this_job_id);
+    
 }
 close $FILE;
 
-return \@job_ids;
+return (\@job_ids,\@errors);
 }
 
 
