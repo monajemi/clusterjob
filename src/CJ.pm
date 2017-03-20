@@ -2144,7 +2144,7 @@ return (\@job_ids,\@errors);
 sub remove_white_space
 {
     my ($string) = @_;
-    $string =~ s/^\s+|\s+$//g unless ($string eq "");
+    $string =~ s/^\s+|\s+$//g unless not defined($string);
     return $string;
 }
 sub remove_extension
