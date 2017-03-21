@@ -35,11 +35,15 @@ our $install_dir  = join '/', @CJ_dir_array;
 our $info_dir     = "$install_dir/.info";
 
 our $HOME            = $ENV{"HOME"};
-our $localPrefix     = "$HOME/RunRepo_local/";
-our $savePrefix      = "$HOME/Dropbox/clusterjob_saveRepo/";
+our $localPrefix     = "$HOME/CJRepo_Local/";
+our $savePrefix      = "$HOME/CJRepo_Save/";
 
 our $last_instance_file = "$install_dir/.info/last_instance.info";
-our $CJlog              = "$install_dir/.info/CJcall.log";
+
+our $CJlog_dir              = "$install_dir/CJlog";
+our $CJlog_out              = "$CJlog_dir/call.log";
+our $CJlog_error            = "$CJlog_dir/errors.log";
+
 our $AgentIDPATH	 	= "$install_dir/.info/agent_id";  # The UUID of installation
 
 our $get_tmp_dir        = "$HOME/CJ_get_tmp";
@@ -97,7 +101,7 @@ if($KEY){
 
 
 # Export global variables
-our @EXPORT = qw( $lastSync_file $local_push_timestamp_file $pid_timestamp_file $firebase_name $AgentIDPATH $AgentID $CJID $CJKEY $info_dir $src_dir $install_dir $remotePrefix $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $remote_config_file $CJlog $localIP $localHostName $localUserName);
+our @EXPORT = qw( $lastSync_file $local_push_timestamp_file $pid_timestamp_file $firebase_name $AgentIDPATH $AgentID $CJID $CJKEY $info_dir $src_dir $install_dir $remotePrefix $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $remote_config_file $CJerrorlog $CJlog_dir $CJlog_out $CJlog_error $localIP $localHostName $localUserName);
 
 
 

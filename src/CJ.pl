@@ -76,16 +76,15 @@ if( -d "$info_dir" ){
 #=========================================
 # refresh CJlog before declaring options.
 # it keeps updated for each new run
-&CJ::my_system("rm $CJlog") unless (! -f $CJlog);
+&CJ::my_system("rm $CJlog_out") unless (! -f $CJlog_out);
+&CJ::my_system("rm $CJlog_error") unless (! -f $CJlog_error);
+
 #=========================================
 
 
 # Dont sync if the command is one of these.
 my @nosync_cmds = qw ( init who help -help -h -Help -HELP prompt version -v install-update);
 my %nosync = map { $_ => 1 } @nosync_cmds;
-
-
-
 
 if($CJKEY && (!exists($nosync{$cjcmd0})) ){	
 		&CJ::add_agent_to_remote();  # if there is no agent, add it.
@@ -177,6 +176,10 @@ my $spec = <<'EOSPEC';
                                                                 {my $runflag = "parrun";
                                                                 {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                                 }
+     rrun         <code> <cluster>	                  array run code on the cluster [nocase] [requires: -m]
+                                                                {my $runflag = "rrun";
+                                                                {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
+                                                                }
      pardeploy    <code> <cluster>	                  pardeploy code on the cluster [nocase] [requires: -m]
                                                                {my $runflag = "pardeploy";
                                                                 {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
@@ -188,7 +191,7 @@ my $spec = <<'EOSPEC';
      get          [<pid> [/] [<subfolder>]]	          bring results (fully/partially) back to local machine [nocase]
                                                              {defer{&CJ::add_cmd($cmdline);&CJ::Get::get_results($pid,$subfolder,$verbose)}}
      summary      <cluster>	                          gives a summary of the number of jobs on particlur cluster with their states [nocase]
-                                                              {defer{&CJ::add_cmd($cmdline); &CJ::get_summary($cluster)}}
+                                                        {defer{&CJ::add_cmd($cmdline); &CJ::CheckConnection($cluster);&CJ::get_summary($cluster)}}
      save         <pid> [<path>]	                  save a package in path [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
      @<cmd_num:+i>	                                  re-executes a previous command avaiable in command history [nocase]
@@ -321,22 +324,19 @@ sub run{
 #===================
 #  Check connection
 #===================
+&CJ::CheckConnection($machine);
+
+#====================================
+#        CREATE PID
+#====================================
 my $ssh      = &CJ::host($machine);
 my $account  = $ssh->{account};
 my $bqs      = $ssh->{bqs};
 my $remotePrefix    = $ssh->{remote_repo};
 my $date = &CJ::date();
 
-# create remote directory  using outText
-my $check = $date->{year}.$date->{month}.$date->{min}.$date->{sec};
-my $sshres = `ssh $account 'mkdir CJsshtest_$check; rm -rf CJsshtest_$check; exit;'  2>&1`;
-&CJ::err("Cannot connect to $account: $sshres") if($sshres);
     
-
-#====================================
-#         DATE OF CALL
-#====================================
-
+    
 # PID
 my $sha_expr = "$CJID:$localHostName:$program:$account:$date->{datestr}";
 my $pid  = sha1_hex("$sha_expr");

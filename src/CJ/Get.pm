@@ -53,6 +53,12 @@ sub gather_results{
     my $program    = $info->{'program'};
     
     
+    
+    # Check Connection;
+    &CJ::CheckConnection($machine);
+
+    
+    
     # gather IS ONLY FOR PARRUN
     if(! $runflag =~ m/^par*/){
         CJ::err("GATHER must be called for a 'parrun' package. Please use GET instead.");
@@ -207,6 +213,13 @@ sub reduce_one_pid{
     my $job_id        = $info->{'job_id'};
     my $program       = $info->{'program'};
    
+    
+    
+    # Check Connection;
+    &CJ::CheckConnection($machine);
+ 
+    
+    
   # REDUCE IS ONLY FOR PARRUN
   if(! $runflag =~ m/^par*/){
       CJ::err("REDUCE must be called for a 'parrun' package. Please use GET instead.");
@@ -370,7 +383,9 @@ sub get_results{
     my $program       = $info->{'program'};
     
     
-    
+    # Check Connection;
+    &CJ::CheckConnection($machine);
+
 
     
     # Get current remote directory from .ssh_config

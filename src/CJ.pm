@@ -59,6 +59,8 @@ sub init{
     #my $cmd="sed -i '' 's|.*<<AgentID>>.*|$agent_line|'  $CJVars_file";
     #system($cmd);
 
+    mkdir "$CJlog_dir"; # this if for logging
+    
 	mkdir "$info_dir";
 	&CJ::writeFile($AgentIDPATH, $AgentID);  # Record the AgentID in a file. 
 	&CJ::create_info_files();
@@ -102,6 +104,18 @@ return $args;
 }
 
 
+sub CheckConnection{
+    my ($cluster) = @_;
+    my $ssh      = &CJ::host($cluster);
+    my $date     = &CJ::date();
+    
+    # create remote directory  using outText
+    my $check = $date->{year}.$date->{month}.$date->{min}.$date->{sec};
+    my $sshres = `ssh $ssh->{account}  'mkdir CJsshtest_$check; rm -rf CJsshtest_$check; exit;'  2>$CJlog_error`;
+    &CJ::err("Cannot connect to $ssh->{account}: $sshres") if($sshres);
+    
+    return 1;
+}
 
 
 sub max_jobs_allowed{
@@ -146,12 +160,13 @@ if($bqs eq "SLURM"){
     my $live_jobs;
     if($bqs eq "SGE"){
 		$max_u_jobs = `ssh $account 'qconf -sconf | grep max_u_jobs' | awk \'{print \$2}\' `; chomp($max_u_jobs);
-        $live_jobs = (`ssh ${account} 'qstat | grep "\\b$user\\b"  | wc -l'`); chomp($live_jobs);
+        $live_jobs = (`ssh ${account} 'qstat | grep "\\b$user\\b"  | wc -l'  2>$CJlog_error`); chomp($live_jobs);
 
     }elsif($bqs eq "SLURM"){
 		$max_u_jobs = `ssh $account 'sacctmgr show qos -n format=Name,MaxSubmitJobs | grep "\\b$qos\\b"' | awk \'{print \$2}\' `; chomp($max_u_jobs);
         #currently live jobs
-        $live_jobs = (`ssh ${account} 'qstat | grep "\\b$qos\\b" | grep "\\b$user\\b"  | wc -l'`); chomp($live_jobs);
+        $live_jobs = (`ssh ${account} 'qstat | grep "\\b$qos\\b" | grep "\\b$user\\b"  | wc -l'  2>$CJlog_error`); chomp($live_jobs);
+
     }else{
         &CJ::err("Unknown batch queueing system");
     }
@@ -1167,21 +1182,21 @@ sub show_info
 sub get_summary
 {
 	my ($machine) = @_;
-	
-	
 
-	
-	
 	my $ssh      = &CJ::host($machine);
 	my $account  = $ssh->{'account'};
 	my $bqs  = $ssh->{'bqs'};
-	
 	my $user 	 = $ssh->{'user'};
 	
+    
+    
 	#my $remoteinfo  = &CJ::remote();
 	
-	my $live_jobs = (`ssh ${account} 'qstat | grep $user  | wc -l'`); chomp($live_jobs );
-
+    my $qstat = "qstat";
+    $qstat = "squeue" if($bqs eq "SLURM");
+    
+    
+	my $live_jobs = (`ssh ${account} '$qstat | grep $user  | wc -l' 2>$CJlog_error` ); chomp($live_jobs);
 
 	#my 	 $REC_STATES = "";
 	my 	 $REC_PIDS_STATES = "";
@@ -1192,7 +1207,7 @@ sub get_summary
 
  	  # This now works for SGE 
   	  my $expr = "qstat -xml | tr \'\n\' \' \' | sed \'s#<job_list[^>]*>#\\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t";
- 	  $REC_PIDS_STATES = (`ssh ${account} $expr | awk \'{print \$3,\$5}\' `) ;chomp($REC_PIDS_STATES);
+ 	  $REC_PIDS_STATES = (`ssh ${account} $expr | awk \'{print \$3,\$5}\'  2>$CJlog_error `) ;chomp($REC_PIDS_STATES);
  	  #print $REC_PIDS_STATES . "\n";
  	  #print $expr . "\n";
 	  
@@ -1202,7 +1217,7 @@ sub get_summary
 		
     }elsif($bqs eq "SLURM"){
        # $REC_STATES = (`ssh ${account} 'sacct --format=state | grep -v "^[0-9]*\\."'`) ;chomp($REC_STATES);
-        $REC_PIDS_STATES = (`ssh ${account} 'sacct -n --format=jobname%15,state | grep -v "^[0-9]*\\."'`);chomp($REC_PIDS_STATES);
+        $REC_PIDS_STATES = (`ssh ${account} 'sacct -n --format=jobname%15,state | grep -v "^[0-9]*\\."'     2>$CJlog_error`);chomp($REC_PIDS_STATES);
 		
     }else{
         &CJ::err("Unknown batch queueing system");
@@ -1332,9 +1347,9 @@ sub get_state
         
     }
    
-	
-    my $short_pid = substr($info->{pid},0,8);
+    &CJ::CheckConnection($info->{'machine'});
     
+    my $short_pid = substr($info->{pid},0,8);
     my $account = $info->{'account'};
     my $job_id  = $info->{'job_id'};
     my $bqs     = $info->{'bqs'};
@@ -1889,8 +1904,10 @@ sub my_system
         system("$cmd");
         
     }else{
-		system("touch $CJlog") unless (-f $CJlog);
-        system("$cmd >> $CJlog  2>&1") ;#Error messages get sent to same place as standard output.
+		system("touch $CJlog_out") unless (-f $CJlog_out);
+        system("touch $CJlog_error") unless (-f $CJlog_error);
+        &CJ::writeFile($CJlog_out,"system: $cmd\n", "-a");
+        system("$cmd >> $CJlog_out 2> $CJlog_error") ;
     }
 
 }
@@ -1911,13 +1928,19 @@ sub touch
 
 sub writeFile
 {
-    
     # it should generate a bak up later!
-    my ($path, $contents) = @_;
-    open(FILE,">$path") or die "can't create file $path";
+    my ($path, $contents, $flag) = @_;
+    
+    open(FILE,">$path") or die "can't create file $path" if not defined($flag);
+    
+    if(defined($flag) && $flag eq '-a'){
+    open(FILE,">>$path") or die "can't create file $path";
+    }
+        
     print FILE $contents;
     close FILE;
 }
+
 
 sub readFile
 {
