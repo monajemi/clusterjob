@@ -7,6 +7,7 @@ use HTTP::Request::Common qw(DELETE PUT GET POST);
 use Ouch;
 use JSON;
 use URI;
+use Data::Dumper;
 
 
 
@@ -135,6 +136,7 @@ sub process_response {
         }
     }
     else {
+		print Dumper($response);
         ouch 500, $response->status_line, $response->decoded_content;
     }
 }
