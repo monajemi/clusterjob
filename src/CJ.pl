@@ -102,9 +102,7 @@ my $spec = <<'EOSPEC';
       hi	    prints out CJ welcome [undocumented]                     
 		     {defer{cj_heart}}
       nihao	    [ditto]  [undocumented]
-      mimi	    print out mimi    [undocumented] 
-{print $/;print $"x(15&ord), "Mimi", $/x/\D/ for'3h112a05e0n1l2j4f6b9'=~/./g; print $/;}
-     -help 	      Show usage information [undocumented]
+    -help 	      Show usage information [undocumented]
                     {defer{&CJ::add_cmd($cmdline);$self->usage(0);exit;}}
      help  	 	  [ditto]  [undocumented]
 
@@ -249,6 +247,8 @@ if($opts->{who})
 #    print "$text_header_lines\n";
 #$opts->usage();
 
+#mimi	    print out mimi    [undocumented]
+#{print $/;print $"x(15&ord), "Mimi", $/x/\D/ for'3h112a05e0n1l2j4f6b9'=~/./g; print $/;}
 
 
 sub cj_heart{
