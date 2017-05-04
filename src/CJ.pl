@@ -98,7 +98,10 @@ if($CJKEY && (!exists($nosync{$cjcmd0})) ){
 my $spec = <<'EOSPEC';
       prompt 	    opens CJ prompt command [undocumented]
                      {defer{cj_prompt}}
-     -help 	      Show usage information [undocumented]
+      hi	    prints out CJ welcome [undocumented]                     
+		     {defer{cj_heart}}
+      nihao	    [ditto]  [undocumented]
+    -help 	      Show usage information [undocumented]
                     {defer{&CJ::add_cmd($cmdline);$self->usage(0);exit;}}
      help  	 	  [ditto]  [undocumented]
 
@@ -247,7 +250,28 @@ if($opts->{who})
 #    print "$text_header_lines\n";
 #$opts->usage();
 
+#mimi	    print out mimi    [undocumented]
+#{print $/;print $"x(15&ord), "Mimi", $/x/\D/ for'3h112a05e0n1l2j4f6b9'=~/./g; print $/;}
 
+
+sub cj_heart{
+    
+    my @myString = split //,'cjccjjccjcjcjcjcjcjj'	;
+    my @myChr	 = split //, '4g143d07g0o1m2k4g6c8';
+    
+    my $counter = 0 ;
+    print $/, " "x4;
+    foreach my $chr (@myChr){
+        
+        my $space = ord($chr) % 16;
+        print $" x $space , $myString[$counter];
+        print $/, " "x4 if ($chr =~ /\D/);
+        $counter = $counter + 1;
+    }
+    
+    print "\n";
+    print "\n";
+}
 
 
 

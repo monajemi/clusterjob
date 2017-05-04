@@ -74,7 +74,7 @@ sub init{
 			if($@->message eq '401 Unauthorized'){
 			CJ::warning("Your CJKEY is invalid. Please provide a valid one and then issue 'cj sync' ");
 			}else{
-			CJ::warning("Unable to connect to CJ database");	
+			CJ::warning("Unable to connect to CJ database $@");	
 			}
 		}
 		&CJ::AutoSync() unless ($@);

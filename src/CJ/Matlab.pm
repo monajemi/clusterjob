@@ -425,12 +425,17 @@ MATLAB
 
     
     
+    
 my $matlab_interpreter_bash = <<BASH;
 #!/bin/bash -l
 # dump everything user-generated from top in /tmp
 cd /tmp/
-    matlab -nodisplay -nodesktop -nosplash  <'$path/$name' &>$junk   # dump matlab output
+matlab -nodisplay -nodesktop -nosplash  <<HERE &>$junk;
+addpath(genpath('$self->{path}'));
+run('$path/$name')
+HERE
 BASH
+
 
     #my $bash_name = "CJ_matlab_interpreter_bash.sh";
     #my $bash_path = "/tmp";
