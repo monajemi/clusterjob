@@ -1,8 +1,0 @@
-#!/bin/bash
-if [ "$1" == "run" ] && [ "$2" == "default" ];then
-perl ../../src/CJ.pl  run  myMatlabJob.m sherlock -dep ./ -m "test of CJ run" -mem "2G"
-elif [ "$1" == "parrun" ] && [ "$2" == "default" ];then
-perl ../../src/CJ.pl  parrun  myMatlabJob.m sherlock -dep ./ -m "test of CJ parrun" -mem "2G"
-else
-perl ../../src/CJ.pl "$@" 
-fi   

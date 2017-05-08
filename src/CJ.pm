@@ -16,18 +16,16 @@ use feature 'say';
 
 
 sub version_info{
-my $version_script="\n\n          This is ClusterJob (CJ) version V0.0.3";
-$version_script .=  "\n          Copyright (c) 2015 Hatef Monajemi (monajemi\@stanford.edu)";
-$version_script .="\n          CJ may be copied only under the terms and conditions of";
-$version_script .=  "\n          the GNU General Public License, which may be found in the CJ";
-$version_script .=  "\n          source code. For more info please visit";
-$version_script .=  "\n          https://github.com/monajemi/clusterjob";
-$version_script .=  "\n          https://clusterjob.org";
+my $version_script="\n\n          This is ClusterJob (CJ) version V0.0.4";
+$version_script  .=  "\n          Copyright (c) 2015 Hatef Monajemi (monajemi\@stanford.edu)";
+$version_script  .=  "\n          CJ may be copied only under the terms and conditions of";
+$version_script  .=  "\n          the GNU General Public License, which may be found in the CJ";
+$version_script  .=  "\n          source code. For more info please visit";
+$version_script  .=  "\n          https://github.com/monajemi/clusterjob";
+$version_script  .=  "\n          https://clusterjob.org";
 
     return $version_script ;
 }
-
-
 
 
 
