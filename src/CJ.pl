@@ -184,8 +184,7 @@ my $spec = <<'EOSPEC';
                                                                {my $runflag = "pardeploy";
                                                                 {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                                }
-     reduce [-f[<orce>]] <filename> [<pid>...] 	         reduce results of parrun [nocase]
-
+     reduce [-f[<orce>]] <filename> [<pid>...] 	          reduce results of parrun [nocase]
      gather       <pattern>  <dir_name> [<pid>]	          gather results of parrun [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);&CJ::Get::gather_results($pid,$pattern,$dir_name,$verbose)}}
      get          [<pid> [/] [<subfolder>]]	          bring results (fully/partially) back to local machine [nocase]
