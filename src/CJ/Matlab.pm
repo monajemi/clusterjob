@@ -492,11 +492,11 @@ sub make_MAT_collect_script
 	
 my ($res_filename, $completed_filename, $bqs) = @_;
     
-my $collect_filename = "collect_list.txt";
+my $collect_filename = "collect_list.cjr";
     
 my $matlab_collect_script=<<MATLAB;
-\% READ completed_list.txt and FIND The counters that need
-\% to be read
+\% READ completed_list.cjr and FIND The counters that need
+\% to be collected
 completed_list = load('$completed_filename');
 
 if(~isempty(completed_list))

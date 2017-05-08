@@ -59,7 +59,6 @@ $text_header_lines = undef;
 $show_tag          = "program";
 $qsub_extra        = "";
 $log_tag           = "all";
-$force_tag         = 0;
 $log_script        = undef;
 $sync_status 	   = 0;
 $qSubmitDefault    = 1;
@@ -125,8 +124,6 @@ my $spec = <<'EOSPEC';
                                                                {$show_tag="ls";}
      --clean      	                                  show cleaned packages in log [nocase]  [requires: log]
                                                                {$log_tag="showclean";}
-     --f[orce]     	                                  force an action [nocase]  [requires: reduce]
-														       {$force_tag=1;}															   
      --script [=] <pattern>	                          shows log of specific script [requires: log]
                                                                {$log_script=$pattern;}
      --header [=] <num_lines:+i>	                  number of header lines for reducing text files [requires: reduce]
@@ -187,8 +184,8 @@ my $spec = <<'EOSPEC';
                                                                {my $runflag = "pardeploy";
                                                                 {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                                }
-     reduce       <filename> [<pid>...] 	                  reduce results of parrun [nocase]
-                                                              {defer{&CJ::add_cmd($cmdline);&CJ::Get::reduce_results(\@pid,$filename,$verbose,$text_header_lines,$force_tag)}}
+     reduce [-f[<orce>]] <filename> [<pid>...] 	         reduce results of parrun [nocase]
+
      gather       <pattern>  <dir_name> [<pid>]	          gather results of parrun [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);&CJ::Get::gather_results($pid,$pattern,$dir_name,$verbose)}}
      get          [<pid> [/] [<subfolder>]]	          bring results (fully/partially) back to local machine [nocase]
@@ -252,6 +249,18 @@ if($opts->{who})
 
 #mimi	    print out mimi    [undocumented]
 #{print $/;print $"x(15&ord), "Mimi", $/x/\D/ for'3h112a05e0n1l2j4f6b9'=~/./g; print $/;}
+
+
+
+if($opts->{'reduce'})
+{
+    &CJ::add_cmd($cmdline);
+    my $force_tag = defined($opts->{'reduce'}{'-f'}) ? 1 : 0;
+    #print Dumper($opts->{'reduce'}) . "\n";
+    &CJ::Get::reduce_results($opts->{'reduce'}{'<pid>'},$opts->{'reduce'}{'<filename>'},$verbose,$text_header_lines, $force_tag);
+}
+
+
 
 
 sub cj_heart{

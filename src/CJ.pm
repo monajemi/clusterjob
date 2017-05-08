@@ -2323,4 +2323,21 @@ sub create_run_history_file{
 
 
 
+
+
+
+sub getExtension{
+    my ($filename) = @_;
+    #print "$filename\n";
+    
+    my ($ext) = $filename =~ /\.([^.]+)$/;
+    return $ext;
+}
+
+
+
+
+
+
+
 1;
