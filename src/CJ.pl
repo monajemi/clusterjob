@@ -296,9 +296,9 @@ sub cj_prompt{
     my $COLOR = "\033[47;30m";
     my $RESET = "\033[0m";
     
-    #my $prompt = "${COLOR}[$localHostName:$localUserName] CJ>$RESET ";
+    #my $prompt = "${COLOR}[$localUserName] CJ>$RESET ";
 
-    my $prompt = "[$localHostName:$localUserName] CJ> ";
+    my $prompt = "[$localUserName] CJ> ";
     print  "$::VERSION\n \n \n";
     
     

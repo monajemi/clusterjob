@@ -56,7 +56,8 @@ my $remotePrefix    = $ssh->{remote_repo};
 my $date = &CJ::date();
 
 # PID
-my $sha_expr = "$CJID:$localHostName:$self->{program}:$account:$date->{datestr}";
+my $sha_expr = "$CJID:$localIP:$self->{program}:$account:$date->{datestr}";
+
 my $pid  = sha1_hex("$sha_expr");
 my $short_pid = substr($pid, 0, 8);  # we use an 8 character abbrviation
 
@@ -236,7 +237,7 @@ my $runinfo={
     agent		  => ${AgentID},
     user          => ${CJID},
     local_ip      => ${localIP},
-    local_host    => ${localHostName},
+    local_un      => ${localUserName},
     date          => ${date},
     machine       => $self->{machine},
     account       => ${account},
@@ -286,7 +287,7 @@ my $remotePrefix    = $ssh->{remote_repo};
 my $date = &CJ::date();
 
 # PID
-my $sha_expr = "$CJID:$localHostName:$self->{program}:$account:$date->{datestr}";   #####FIX
+my $sha_expr = "$CJID:$localIP:$self->{program}:$account:$date->{datestr}";
 my $pid  = sha1_hex("$sha_expr");
 my $short_pid = substr($pid, 0, 8);  # we use an 8 character abbrviation
 
@@ -504,7 +505,7 @@ my $runinfo={
     user          => ${CJID},  # will be changed to CJusername later
     agent		  => ${AgentID},
     local_ip      => ${localIP},
-    local_host    => ${localHostName},
+    local_un      => ${localUserName},
     date          => ${date},
     machine       => $self->{machine},
     account       => ${account},
