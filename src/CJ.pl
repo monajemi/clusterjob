@@ -251,8 +251,8 @@ if($opts->{who})
 
 if($opts->{'reduce'})
 {
-        &CJ::add_cmd($cmdline);
-        my $force_tag = defined($opts->{'reduce'}{'-f'}) ? 1 : 0;
+    &CJ::add_cmd($cmdline);
+    my $force_tag = defined($opts->{'reduce'}{'-f'}) ? 1 : 0;
     #print Dumper($opts->{'reduce'}) . "\n";
     &CJ::Get::reduce_results($opts->{'reduce'}{'<pid>'},$opts->{'reduce'}{'<filename>'},$verbose,$text_header_lines, $force_tag);
 }
