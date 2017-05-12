@@ -101,7 +101,7 @@ if($KEY){
 
 
 # Export global variables
-our @EXPORT = qw( $lastSync_file $local_push_timestamp_file $pid_timestamp_file $firebase_name $AgentIDPATH $AgentID $CJID $CJKEY $info_dir $src_dir $install_dir $remotePrefix $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $remote_config_file $CJerrorlog $CJlog_dir $CJlog_out $CJlog_error $localIP $localUserName);
+our @EXPORT = qw( $lastSync_file $local_push_timestamp_file $pid_timestamp_file $firebase_name $AgentIDPATH $AgentID $CJID $CJKEY $info_dir $src_dir $install_dir $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $remote_config_file $CJerrorlog $CJlog_dir $CJlog_out $CJlog_error $localIP $localUserName);
 
 
 

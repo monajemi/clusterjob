@@ -176,7 +176,7 @@ my $spec = <<'EOSPEC';
                                                                 {my $runflag = "parrun";
                                                                 {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                                 }
-     rrun         <code> <cluster>	                  array run code on the cluster [nocase] [requires: -m]
+     rrun         <code> <cluster>	                  array run code on the cluster [nocase] [requires: -m][undocumented]
                                                                 {my $runflag = "rrun";
                                                                 {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                                 }
@@ -359,7 +359,7 @@ sub run{
     }elsif($runflag eq "parrun"  || $runflag eq "pardeploy"){
         $run->PAR_DEPLOY_RUN();
     }elsif($runflag eq "rrun"  || $runflag eq "rdeploy"){
-        $run->ARRAY_DEPLOY_RUN();
+        $run->SLURM_ARRAY_DEPLOY_RUN();
     }else{
         &CJ::err("Runflag $runflag was not recognized");
     }

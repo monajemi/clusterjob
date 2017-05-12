@@ -116,6 +116,24 @@ sub CheckConnection{
 }
 
 
+
+
+
+sub max_slurm_arraySize{
+
+    my($ssh) = @_;
+    
+    my $max_array_size = ` ssh $ssh->{account} 'scontrol show config | grep MaxArraySize' | awk \'{print \$3}\'  `;
+    chomp($max_array_size);
+
+    
+    $max_array_size = int(1) unless &CJ::isnumeric($max_array_size);  # default max size allowed!
+
+    return $max_array_size;
+    
+}
+
+
 sub max_jobs_allowed{
 	my ($ssh, $qsub_extra) = @_;
 
@@ -145,13 +163,11 @@ if($bqs eq "SLURM"){
     }else{
         $qos = `ssh $account 'sacctmgr -n list assoc where user=$user format=defaultqos'`; chomp($qos);
         $qos = &CJ::remove_white_space($qos);
-        &CJ::message("No SLURM partition specified. CJ is using default partition: $qos");
-
+        &CJ::message("no SLURM partition specified. CJ is using default partition: $qos");
     }
-
+    
     $qos = (split(/,/, $qos))[0];    # if multiple get the first one
     $qos = &CJ::remove_white_space($qos);
-
 }
 
 	my $max_u_jobs;
@@ -176,6 +192,10 @@ if($bqs eq "SLURM"){
     
 	return $jobs_allowed;
 }
+
+
+
+
 
 
 
@@ -1629,7 +1649,7 @@ sub host{
         $bqs  =remove_white_space($bqs);
     
     my ($remote_repo)  = $this_host =~ /Repo[\t\s]*(.*)/ ;
-        $remote_repo =remove_white_space($remote_repo);
+        $remote_repo   = remove_white_space($remote_repo);
     
     my ($remote_matlab_lib)  = $this_host =~ /MATlib[\t\s]*(.*)/;
         $remote_matlab_lib =remove_white_space($remote_matlab_lib);

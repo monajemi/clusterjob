@@ -3,8 +3,8 @@
 
 file = 'results.txt';
 
-for i = 1:3
-	for j = 1:5
+for i = 1:2
+	for j = 1:4
 				% write to a text file for testing reduce 	        
 		        fid = fopen(file,'at');
 		        fprintf(fid, '%i,%i,%i\n', i,j,i+j);

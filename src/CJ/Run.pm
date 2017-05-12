@@ -12,8 +12,9 @@ use Digest::SHA qw(sha1_hex); # generate hexa-decimal SHA1 PID
 
 
 
-
+#===================
 # class constructor
+#===================
 sub new {
  	my $class= shift;
  	my ($path,$program,$machine, $runflag,$dep_folder,$message,$qsub_extra, $qSubmitDefault, $submit_defaults,  $verbose) = @_;
@@ -37,27 +38,41 @@ sub new {
 
 
 
-sub SERIAL_DEPLOY_RUN{
 
-my $self = shift;
-    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#==================================================================================
+# This should be called at the beginning of run for all run options. Common to all
+#==================================================================================
+sub run_common{
+my ($self) = @_;
 #===================
 #  Check connection
 #===================
-    &CJ::CheckConnection($self->{machine});
+&CJ::CheckConnection($self->{machine});
 
 #====================================
 #        CREATE PID
 #====================================
 my $ssh             = &CJ::host($self->{machine});
-my $account         = $ssh->{account};
-my $bqs             = $ssh->{bqs};
-my $remotePrefix    = $ssh->{remote_repo};
 my $date = &CJ::date();
 
 # PID
-my $sha_expr = "$CJID:$localIP:$self->{program}:$account:$date->{datestr}";
-
+my $sha_expr = "$CJID:$localIP:$self->{program}:$ssh->{account}:$date->{datestr}";
 my $pid  = sha1_hex("$sha_expr");
 my $short_pid = substr($pid, 0, 8);  # we use an 8 character abbrviation
 
@@ -78,11 +93,11 @@ my ($program_name,$ext) = &CJ::remove_extension($self->{program});
 
 my $programType;
 if(lc($ext) eq "m"){
-    $programType = "matlab";
+$programType = "matlab";
 }elsif(lc($ext) eq "r"){
-    $programType = "R";
+$programType = "R";
 }else{
-    CJ::err("Code type .$ext is not recognized");
+CJ::err("Code type .$ext is not recognized");
 }
 
 CJ::message("$self->{runflag}"."ing [$self->{program}] on [$self->{machine}]");
@@ -91,8 +106,8 @@ CJ::message("$self->{runflag}"."ing [$self->{program}] on [$self->{machine}]");
 
 
 my $localDir       = "$localPrefix/"."$program_name";
-my $local_sep_Dir = "$localDir/" . "$pid"  ;
-my $saveDir       = "$savePrefix"."$program_name";
+my $local_sep_Dir  = "$localDir/" . "$pid"  ;
+my $saveDir        = "$savePrefix"."$program_name";
 
 
 #====================================
@@ -100,50 +115,49 @@ my $saveDir       = "$savePrefix"."$program_name";
 #====================================
 # create local directories
 if(-d $localPrefix){
-    
-    mkdir "$localDir" unless (-d $localDir);
-    mkdir "$local_sep_Dir" unless (-d $local_sep_Dir);
-    
+
+mkdir "$localDir" unless (-d $localDir);
+mkdir "$local_sep_Dir" unless (-d $local_sep_Dir);
+
 }else{
-    # create local Prefix
-    mkdir "$localPrefix";
-    mkdir "$localDir" unless (-d $localDir);
-    mkdir "$local_sep_Dir" unless (-d $local_sep_Dir);
+# create local Prefix
+mkdir "$localPrefix";
+mkdir "$localDir" unless (-d $localDir);
+mkdir "$local_sep_Dir" unless (-d $local_sep_Dir);
 }
 
 
 # cp code
 my $cmd = "cp $self->{path}/$self->{program} $local_sep_Dir/";
-    &CJ::my_system($cmd,$self->{verbose});
+&CJ::my_system($cmd,$self->{verbose});
 # cp dependencies
 $cmd   = "cp -r $self->{dep_folder}/* $local_sep_Dir/";
 &CJ::my_system($cmd,$self->{verbose});
 
 
-
 #=====================
 #  REMOTE DIRECTORIES
 #=====================
-my $remoteDir       = "$remotePrefix/"."$program_name";
-my $remote_sep_Dir = "$remoteDir/" . "$pid"  ;
+my $remoteDir       = "$ssh->{remote_repo}/"."$program_name";
+my $remote_sep_Dir  = "$remoteDir/" . "$pid"  ;
 
 # for creating remote directory
 my $outText;
-if($bqs eq "SLURM"){
+if($ssh->{bqs} eq "SLURM"){
 $outText=<<TEXT;
 #!/bin/bash -l
-if [ ! -d "$remotePrefix" ]; then
-mkdir $remotePrefix
+if [ ! -d "$ssh->{remote_repo}" ]; then
+mkdir $ssh->{remote_repo}
 fi
 mkdir $remoteDir
 TEXT
-}elsif($bqs eq "SGE"){
+}elsif($ssh->{bqs} eq "SGE"){
 $outText=<<TEXT;
 #!/bin/bash
 #\$ -cwd
 #\$ -S /bin/bash
-if [ ! -d "$remotePrefix" ]; then
-mkdir $remotePrefix
+if [ ! -d "$ssh->{remote_repo}" ]; then
+mkdir $ssh->{remote_repo}
 fi
 mkdir $remoteDir
 TEXT
@@ -151,9 +165,45 @@ TEXT
 &CJ::err("unknown BQS");
 }
 
+return ($date,$ssh,$pid,$short_pid,$programType,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText);
+
+}
 
 
-############# Specific to runSerial
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#========================================================
+#   clusterjob run myscript.m -dep DEP -m "message"
+#   Serial run
+#========================================================
+
+sub SERIAL_DEPLOY_RUN{
+
+my $self = shift;
+    
+# create directories etc.
+my ($date,$ssh,$pid,$short_pid,$programType,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
+
+
+
 CJ::message("Creating reproducible script(s) reproduce_$self->{program}");
 CJ::Scripts::build_reproducible_script($programType,$self->{program}, $local_sep_Dir,$self->{runflag});
 
@@ -163,13 +213,13 @@ CJ::Scripts::build_reproducible_script($programType,$self->{program}, $local_sep
 
 
 
-my $sh_script = &CJ::Scripts::make_shell_script($ssh,$self->{program},$pid,$bqs);
+my $sh_script = &CJ::Scripts::make_shell_script($ssh,$self->{program},$pid,$ssh->{bqs});
 my $local_sh_path = "$local_sep_Dir/bashMain.sh";
 &CJ::writeFile($local_sh_path, $sh_script);
 
 # Build master-script for submission
 my $master_script;
-    $master_script =  &CJ::Scripts::make_master_script($master_script,$self->{runflag},$self->{program},$date,$pid,$bqs,$self->{submit_defaults},$self->{qSubmitDefault},$remote_sep_Dir,$self->{qsub_extra});
+    $master_script =  &CJ::Scripts::make_master_script($master_script,$self->{runflag},$self->{program},$date,$pid,$ssh->{bqs},$self->{submit_defaults},$self->{qSubmitDefault},$remote_sep_Dir,$self->{qsub_extra});
 
 
 
@@ -181,28 +231,28 @@ my $local_master_path="$local_sep_Dir/master.sh";
 #    PROPAGATE THE FILES AND RUN ON CLUSTER
 #==============================================
 my $tarfile="$pid".".tar.gz";
-$cmd="cd $localDir; tar  --exclude '.git' --exclude '*~' --exclude '*.pdf'  -czf $tarfile $pid/  ; rm -rf $local_sep_Dir  ; cd $self->{path}";
+my $cmd="cd $localDir; tar  --exclude '.git' --exclude '*~' --exclude '*.pdf'  -czf $tarfile $pid/  ; rm -rf $local_sep_Dir  ; cd $self->{path}";
 &CJ::my_system($cmd,$self->{verbose});
 
 # create remote directory  using outText
-$cmd = "ssh $account 'echo `$outText` '  ";
+$cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
 &CJ::my_system($cmd,$self->{verbose});
 
 &CJ::message("Sending package \033[32m$short_pid\033[0m");
 # copy tar.gz file to remoteDir
-$cmd = "rsync -avz  ${localDir}/${tarfile} ${account}:$remoteDir/";
+$cmd = "rsync -avz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
 &CJ::my_system($cmd,$self->{verbose});
 
 
 &CJ::message("Submitting job");
-$cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep 3'";
+$cmd = "ssh $ssh->{account} 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep 3'";
 &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "deploy");
 
 
 
 # bring the log file
 my $qsubfilepath="$remote_sep_Dir/qsub.info";
-$cmd = "rsync -avz $account:$qsubfilepath  $info_dir";
+$cmd = "rsync -avz $ssh->{account}:$qsubfilepath  $info_dir";
 &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "deploy");
 
 
@@ -240,13 +290,13 @@ my $runinfo={
     local_un      => ${localUserName},
     date          => ${date},
     machine       => $self->{machine},
-    account       => ${account},
+    account       => $ssh->{account},
     local_prefix  => ${localPrefix},
     local_path    => "${localDir}/${pid}",
-    remote_prefix => ${remotePrefix},
+    remote_prefix => $ssh->{remote_repo},
     remote_path   => "${remoteDir}/${pid}",
     job_id        => $job_id,
-    bqs           => $bqs,
+    bqs           => $ssh->{bqs},
     save_prefix   => ${savePrefix},
     save_path     => "${saveDir}/${pid}",
     runflag       => $self->{runflag},
@@ -258,9 +308,20 @@ my $runinfo={
 &CJ::add_record($runinfo);
 # write runinfo to FireBaee as well
 &CJ::write2firebase($pid,$runinfo,$date->{epoch},0);
-    
-
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #========================================================
@@ -272,118 +333,10 @@ my $runinfo={
 sub PAR_DEPLOY_RUN{
 my $self = shift;
 
-#===================
-#  Check connection
-#===================
-&CJ::CheckConnection($self->{machine});
-
-#====================================
-#        CREATE PID
-#====================================
-my $ssh             = &CJ::host($self->{machine});
-my $account         = $ssh->{account};
-my $bqs             = $ssh->{bqs};
-my $remotePrefix    = $ssh->{remote_repo};
-my $date = &CJ::date();
-
-# PID
-my $sha_expr = "$CJID:$localIP:$self->{program}:$account:$date->{datestr}";
-my $pid  = sha1_hex("$sha_expr");
-my $short_pid = substr($pid, 0, 8);  # we use an 8 character abbrviation
+# create directories etc.
+my ($date,$ssh,$pid,$short_pid,$programType,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
 
 
-# Check to see if the file and dep folder exists
-&CJ::err("$self->{path}/$self->{program} not found") if(! -e "$self->{path}/$self->{program}" );
-&CJ::err("Dependency folder $self->{path}/$self->{dep_folder} not found") if(! -d "$self->{path}/$self->{dep_folder}" );
-
-
-#=======================================
-#    BUILD DOCSTRING
-#    WE NAME THE REMOTE FOLDERS
-#    BY PROGRAM AND PID
-#    EXAMPLE : MaxEnt/20dd3203e29ec29...
-#=======================================
-
-my ($program_name,$ext) = &CJ::remove_extension($self->{program});
-
-my $programType;
-if(lc($ext) eq "m"){
-    $programType = "matlab";
-}elsif(lc($ext) eq "r"){
-    $programType = "R";
-}else{
-    CJ::err("Code type .$ext is not recognized");
-}
-
-CJ::message("$self->{runflag}"."ing [$self->{program}] on [$self->{machine}]");
-&CJ::message("Sending from: $self->{path}");
-
-
-
-my $localDir       = "$localPrefix/"."$program_name";
-my $local_sep_Dir = "$localDir/" . "$pid"  ;
-my $saveDir       = "$savePrefix"."$program_name";
-
-
-#====================================
-#     CREATE LOCAL DIRECTORIES
-#====================================
-# create local directories
-if(-d $localPrefix){
-    
-    mkdir "$localDir" unless (-d $localDir);
-    mkdir "$local_sep_Dir" unless (-d $local_sep_Dir);
-    
-}else{
-    # create local Prefix
-    mkdir "$localPrefix";
-    mkdir "$localDir" unless (-d $localDir);
-    mkdir "$local_sep_Dir" unless (-d $local_sep_Dir);
-}
-
-
-# cp code
-my $cmd = "cp $self->{path}/$self->{program} $local_sep_Dir/";
-&CJ::my_system($cmd,$self->{verbose});
-# cp dependencies
-$cmd   = "cp -r $self->{dep_folder}/* $local_sep_Dir/";
-&CJ::my_system($cmd,$self->{verbose});
-
-
-
-#=====================
-#  REMOTE DIRECTORIES
-#=====================
-my $remoteDir       = "$remotePrefix/"."$program_name";
-my $remote_sep_Dir = "$remoteDir/" . "$pid"  ;
-
-# for creating remote directory
-my $outText;
-if($bqs eq "SLURM"){
-$outText=<<TEXT;
-#!/bin/bash -l
-if [ ! -d "$remotePrefix" ]; then
-mkdir $remotePrefix
-fi
-mkdir $remoteDir
-TEXT
-}elsif($bqs eq "SGE"){
-$outText=<<TEXT;
-#!/bin/bash
-#\$ -cwd
-#\$ -S /bin/bash
-if [ ! -d "$remotePrefix" ]; then
-mkdir $remotePrefix
-fi
-mkdir $remoteDir
-TEXT
-}else{
-&CJ::err("unknown BQS");
-}
-
-
-
-############# Specific to Parrrun
 # read the script, parse it out and
 # find the for loops
 my $matlab = CJ::Matlab->new($self->{path},$self->{program});
@@ -421,7 +374,7 @@ $extra->{runflag}= $self->{runflag};
 $extra->{program}= $self->{program};
 $extra->{date}= $date;
 $extra->{pid}= $pid;
-$extra->{bqs}= $bqs;
+$extra->{bqs}= $ssh->{bqs};
 $extra->{submit_defaults}=$self->{submit_defaults};
 $extra->{qsub_extra}=$self->{qsub_extra};
 $extra->{runtime}=$self->{submit_defaults}->{runtime};
@@ -443,30 +396,29 @@ my $local_master_path="$local_sep_Dir/master.sh";
 #       AND RUN ON CLUSTER
 #==================================
 my $tarfile="$pid".".tar.gz";
-$cmd="cd $localDir; tar --exclude '.git' --exclude '*~' --exclude '*.pdf' -czf  $tarfile $pid/   ; rm -rf $local_sep_Dir  ; cd $self->{path}";
+my $cmd="cd $localDir; tar --exclude '.git' --exclude '*~' --exclude '*.pdf' -czf  $tarfile $pid/   ; rm -rf $local_sep_Dir  ; cd $self->{path}";
 &CJ::my_system($cmd,$self->{verbose});
 
-
 # create remote directory  using outText
-$cmd = "ssh $account 'echo `$outText` '  ";
+$cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
 &CJ::my_system($cmd,$self->{verbose});
 
 &CJ::message("Sending package \033[32m$short_pid\033[0m");
 # copy tar.gz file to remoteDir
-$cmd = "rsync -arvz  ${localDir}/${tarfile} ${account}:$remoteDir/";
+$cmd = "rsync -arvz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
 &CJ::my_system($cmd,$self->{verbose});
 
 
 &CJ::message("Submitting job(s)");
 my $wait = int($totalJobs/300) + 2 ; # add more wait time for large jobs so the other server finish writing.
-$cmd = "ssh $account 'source ~/.bashrc;cd $remoteDir; tar -xzf ${tarfile} ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep $wait'";
+$cmd = "ssh $ssh->{account} 'source ~/.bashrc;cd $remoteDir; tar -xzf ${tarfile} ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep $wait'";
 &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "pardeploy");
 
 
 
 # bring the log file
 my $qsubfilepath="$remote_sep_Dir/qsub.info";
-$cmd = "rsync -avz $account:$qsubfilepath  $info_dir/";
+$cmd = "rsync -avz $ssh->{account}:$qsubfilepath  $info_dir/";
 &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "pardeploy");
 
 
@@ -508,13 +460,13 @@ my $runinfo={
     local_un      => ${localUserName},
     date          => ${date},
     machine       => $self->{machine},
-    account       => ${account},
+    account       => $ssh->{account},
     local_prefix  => ${localPrefix},
     local_path    => "${localDir}/${pid}",
-    remote_prefix => ${remotePrefix},
+    remote_prefix => $ssh->{remote_repo},
     remote_path   => "${remoteDir}/${pid}",
     job_id        => $job_id,
-    bqs           => $bqs,
+    bqs           => $ssh->{bqs},
     save_prefix   => ${savePrefix},
     save_path     => "${saveDir}/${pid}",
     runflag       => $self->{runflag},
@@ -526,6 +478,250 @@ my $runinfo={
 &CJ::add_record($runinfo);
 &CJ::write2firebase($pid,$runinfo, $date->{epoch},0);  # send to CJ server
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#========================================================
+#   clusterjob rrun myscript.m -dep DEP -m "message"
+#   this implements parrallel for using SLUMR array
+#   so for each grid point, we will have
+#   one separate job
+#   This is very fast in submission as there will be only
+#   one submission for multiple jobs
+#   This only works in SLURM.
+#
+#    THIS IS INCOMPLETE. NEED TO ADD
+#    compatible ARRAY_BASHMAIN and MASTER
+#========================================================
+sub SLURM_ARRAY_DEPLOY_RUN{
+my $self = shift;
+
+# create directories etc.
+my ($date,$ssh,$pid,$short_pid,$programType,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
+
+&CJ::err("RRUN works for SLURM batch queueing system only. Use parrun instead.") unless ($ssh->{bqs} eq "SLURM");
+    
+
+# Check max allowable jobs
+# read the script, parse it out and
+# find the for loops
+my $matlab = CJ::Matlab->new($self->{path},$self->{program});
+my $parser = $matlab->parse();
+my ($idx_tags,$ranges) = $matlab->findIdxTagRange($parser,$self->{verbose});
+
+#  Check that number of jobs doesnt exceed Maximum jobs for user on chosen cluster
+#  later check all resources like mem, etc.
+my @keys  = keys %$ranges;
+my $totalJobs = 1;
+foreach my $i (0..$parser->{nloop}-1){
+my @range = split(',', $ranges->{$keys[$i]});
+$totalJobs = (0+@range) * ($totalJobs);
+}
+    
+
+# find max array size allowed
+my $max_arraySize   = &CJ::max_slurm_arraySize($ssh);
+my $max_array_jobs  = &CJ::max_jobs_allowed($ssh,$self->{qsub_extra});
+
+my $max_jobs = $max_array_jobs * $max_arraySize;
+&CJ::err("Maximum jobs allowed on $self->{machine} ($max_jobs) exceeded by your request ($totalJobs). Rewrite FOR loops to submit in smaller chunks.") unless  ($max_jobs >= $totalJobs);
+    
+# Check that user has initialized for loop vars
+$matlab->check_initialization($parser,$idx_tags,$self->{verbose});
+
+#==============================================
+#        MASTER SCRIPT
+#==============================================
+
+my $nloops = $parser->{nloop};
+my $counter = 0;   # counter gives the total number of jobs submited: (1..$counter)
+my $extra={};
+$extra->{TOP}= $parser->{TOP};
+$extra->{FOR}= $parser->{FOR};
+$extra->{BOT}= $parser->{BOT};
+$extra->{local_sep_Dir}= $local_sep_Dir;
+$extra->{remote_sep_Dir}= $remote_sep_Dir;
+$extra->{runflag}= $self->{runflag};
+$extra->{program}= $self->{program};
+$extra->{date}= $date;
+$extra->{pid}= $pid;
+$extra->{bqs}= $ssh->{bqs};
+$extra->{submit_defaults}=$self->{submit_defaults};
+$extra->{qsub_extra}=$self->{qsub_extra};
+$extra->{runtime}=$self->{submit_defaults}->{runtime};
+$extra->{ssh}=$ssh;
+$extra->{qSubmitDefault}=$self->{qSubmitDefault};
+
+# Recursive loop for arbitrary number of loops.
+my $master_script = &CJ::Scripts::build_nloop_master_script($nloops, $idx_tags,$ranges,$extra);
+print $master_script . "\n";
+    
+#===================================
+# write out master_script
+#===================================
+my $local_master_path="$local_sep_Dir/master.sh";
+&CJ::writeFile($local_master_path, $master_script);
+
+
+#==================================
+#       PROPAGATE THE FILES
+#       AND RUN ON CLUSTER
+#==================================
+my $tarfile="$pid".".tar.gz";
+my $cmd="cd $localDir; tar --exclude '.git' --exclude '*~' --exclude '*.pdf' -czf  $tarfile $pid/   ; rm -rf $local_sep_Dir  ; cd $self->{path}";
+&CJ::my_system($cmd,$self->{verbose});
+
+# create remote directory  using outText
+$cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
+&CJ::my_system($cmd,$self->{verbose});
+
+&CJ::message("Sending package \033[32m$short_pid\033[0m");
+# copy tar.gz file to remoteDir
+$cmd = "rsync -arvz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
+&CJ::my_system($cmd,$self->{verbose});
+
+
+&CJ::message("Submitting job(s)");
+my $wait = int($totalJobs/300) + 2 ; # add more wait time for large jobs so the other server finish writing.
+$cmd = "ssh $ssh->{account} 'source ~/.bashrc;cd $remoteDir; tar -xzf ${tarfile} ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep $wait'";
+&CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "pardeploy");
+
+
+
+# bring the log file
+my $qsubfilepath="$remote_sep_Dir/qsub.info";
+$cmd = "rsync -avz $ssh->{account}:$qsubfilepath  $info_dir/";
+&CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "pardeploy");
+
+
+
+my $job_ids;
+my $job_id;
+if($self->{runflag} eq "parrun"){
+# read run info
+my $errors;
+my $local_qsub_info_file = "$info_dir/"."qsub.info";
+($job_ids,$errors) = &CJ::read_qsub($local_qsub_info_file);
+$job_id = join(',', @{$job_ids});
+my $numJobs = $#{$job_ids}+1;
+
+CJ::message("$numJobs job(s) submitted ($job_ids->[0]-$job_ids->[-1])");
+
+foreach my $error (@{$errors}) {
+    CJ::warning($error);
+}
+
+
+#delete the local qsub.info after use
+#my $cmd = "rm $local_qsub_info_file";
+#&CJ::my_system($cmd,$self->{verbose});
+
+}else{
+$job_ids = "";
+$job_id = "";
+}
+
+
+
+
+my $runinfo={
+pid           => ${pid},
+user          => ${CJID},  # will be changed to CJusername later
+agent		  => ${AgentID},
+local_ip      => ${localIP},
+local_un      => ${localUserName},
+date          => ${date},
+machine       => $self->{machine},
+account       => $ssh->{account},
+local_prefix  => ${localPrefix},
+local_path    => "${localDir}/${pid}",
+remote_prefix => $ssh->{remote_repo},
+remote_path   => "${remoteDir}/${pid}",
+job_id        => $job_id,
+bqs           => $ssh->{bqs},
+save_prefix   => ${savePrefix},
+save_path     => "${saveDir}/${pid}",
+runflag       => $self->{runflag},
+program       => $self->{program},
+message       => $self->{message},
+};
+
+
+&CJ::add_record($runinfo);
+&CJ::write2firebase($pid,$runinfo, $date->{epoch},0);  # send to CJ server
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
