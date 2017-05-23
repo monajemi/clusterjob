@@ -125,8 +125,7 @@ sub max_slurm_arraySize{
     
     my $max_array_size = ` ssh $ssh->{account} 'scontrol show config | grep MaxArraySize' | awk \'{print \$3}\'  `;
     chomp($max_array_size);
-
-    
+    $max_array_size = $max_array_size - 1; # last number not allowed
     $max_array_size = int(1) unless &CJ::isnumeric($max_array_size);  # default max size allowed!
 
     return $max_array_size;

@@ -536,14 +536,18 @@ $totalJobs = (0+@range) * ($totalJobs);
 
 # find max array size allowed
 my $max_arraySize   = &CJ::max_slurm_arraySize($ssh);
-my $max_array_jobs  = &CJ::max_jobs_allowed($ssh,$self->{qsub_extra});
+    
+#my $max_array_jobs  = &CJ::max_jobs_allowed($ssh,$self->{qsub_extra});
 
-my $max_jobs = $max_array_jobs * $max_arraySize;
-&CJ::err("Maximum jobs allowed on $self->{machine} ($max_jobs) exceeded by your request ($totalJobs). Rewrite FOR loops to submit in smaller chunks.") unless  ($max_jobs >= $totalJobs);
+&CJ::err("Maximum jobs allowed in array mode on $self->{machine} ($max_arraySize) exceeded by your request ($totalJobs). Rewrite FOR loops to submit in smaller chunks.") unless  ($max_arraySize >= $totalJobs);
     
 # Check that user has initialized for loop vars
 $matlab->check_initialization($parser,$idx_tags,$self->{verbose});
 
+
+    
+    
+    
 #==============================================
 #        MASTER SCRIPT
 #==============================================
@@ -566,18 +570,22 @@ $extra->{qsub_extra}=$self->{qsub_extra};
 $extra->{runtime}=$self->{submit_defaults}->{runtime};
 $extra->{ssh}=$ssh;
 $extra->{qSubmitDefault}=$self->{qSubmitDefault};
-
+$extra->{totalJobs}=$totalJobs;
 # Recursive loop for arbitrary number of loops.
-my $master_script = &CJ::Scripts::build_nloop_master_script($nloops, $idx_tags,$ranges,$extra);
-print $master_script . "\n";
-    
+my $master_script = &CJ::Scripts::build_rrun_master_script($nloops, $idx_tags,$ranges,$extra);
+#print $master_script . "\n";
+ 
 #===================================
 # write out master_script
 #===================================
 my $local_master_path="$local_sep_Dir/master.sh";
 &CJ::writeFile($local_master_path, $master_script);
 
-
+#===================================
+# write out array_bashMain
+#===================================
+my $array_bashMain_script = &CJ::Scripts::build_rrun_bashMain_script($extra);
+&CJ::writeFile("$local_sep_Dir/array_bashMain.sh", $array_bashMain_script);
 #==================================
 #       PROPAGATE THE FILES
 #       AND RUN ON CLUSTER

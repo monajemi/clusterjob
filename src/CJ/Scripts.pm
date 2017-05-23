@@ -30,7 +30,71 @@ sub build_reproducible_script{
 }
 
 
+sub build_rrun_bashMain_script{
+my ($extra) = @_;
+    
+my $date = $extra->{date};
+my $remote_sep_Dir = $extra->{remote_sep_Dir};
+my $bqs = $extra->{bqs};
 
+my $docstring=<<DOCSTRING;
+# SLURM ARRAY HANDLER
+# COPYRIGHT  2014 CLUSTERJOB (CJ)
+# CONTACT:   Hatef Monajemi (monajemi AT stanford DOT edu)
+# DATE   :   $date->{datestr}
+DOCSTRING
+    
+my $HEADER = &CJ::bash_header($bqs);
+my $array_bashMain_script=$HEADER;
+$array_bashMain_script.="$docstring";
+    
+    
+if($bqs eq "SLURM"){
+        
+$array_bashMain_script.="mkdir ${remote_sep_Dir}/\$SLURM_ARRAY_TASK_ID/logs\n";
+$array_bashMain_script.="mkdir ${remote_sep_Dir}/\$SLURM_ARRAY_TASK_ID/scripts\n";
+$array_bashMain_script.="bash  ${remote_sep_Dir}/\$SLURM_ARRAY_TASK_ID/bashMain.sh\n";
+    
+}else{
+        &CJ::err("Unknown BQS for RRUN/RDEPLOY");
+}
+    
+return $array_bashMain_script;
+    
+}
+
+
+
+sub build_rrun_master_script
+{
+    my ($nloop, $idx_tags,$ranges,$extra) = @_;
+    
+    
+    # Run this to create the directories, etc.
+    my $loop_script = build_nloop_master_script($nloop, $idx_tags,$ranges,$extra);
+    
+    
+    
+    
+    my $TOP = $extra->{TOP};
+    my $FOR = $extra->{FOR};
+    my $BOT = $extra->{BOT};
+    my $local_sep_Dir = $extra->{local_sep_Dir};
+    my $remote_sep_Dir=$extra->{remote_sep_Dir};
+    my $runflag = $extra->{runflag};
+    my $program = $extra->{program};
+    my $date = $extra->{date} ;
+    my $pid =$extra->{pid} ;
+    my $bqs = $extra->{bqs};
+    my $submit_defaults=$extra->{submit_defaults};
+    my $qSubmitDefault = $extra->{qSubmitDefault};
+    my $qsub_extra = $extra->{qsub_extra};
+    my $ssh = $extra->{ssh};
+    my $total_jobs = $extra->{totalJobs};
+    my $master_script;
+     $master_script = &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$total_jobs);
+    return  $master_script;
+}
 
 
 
@@ -89,7 +153,7 @@ sub build_nloop_matlab_code
 
        
        #============================================
-       #     BUILD EXP FOR this (v0,v1)
+       #     BUILD EXP FOR this (v0,v1,...)
        #============================================
 	   my @str;
 	   while(@rest){
@@ -125,7 +189,11 @@ sub build_nloop_matlab_code
        my $sh_script = &CJ::Scripts::make_par_shell_script($ssh,$program,$pid,$bqs,$counter, $remote_par_sep_dir);
        my $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
        &CJ::writeFile($local_sh_path, $sh_script);
-       
+    
+       # build logs and scripts directories
+        #my $cmd = "mkdir  $local_sep_Dir/$counter/logs; mkdir  $local_sep_Dir/$counter/scripts";
+        #&CJ::my_system($cmd,0);
+    
        $master_script = &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$counter);
 	   return ($counter,$master_script);
 }
@@ -134,13 +202,10 @@ sub build_nloop_matlab_code
 
 
 
-
-
-
 # ======
 # Build master script
 sub make_master_script{
-    my($master_script,$runflag,$program,$date,$pid,$bqs,$submit_defaults,$qSubmitDefault, $remote_sep_Dir,$qsub_extra,$counter) = @_;
+    my($master_script,$runflag,$program,$date,$pid,$bqs,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$counter) = @_;
     
     my $mem = $submit_defaults->{mem};
     my $runtime = $submit_defaults->{runtime};
@@ -152,9 +217,9 @@ sub make_master_script{
 if( (!defined($master_script)) ||  ($master_script eq "")){
 my $docstring=<<DOCSTRING;
 # EXPERIMENT $program
-# COPYRIGHT 2014:
-# Hatef Monajemi (monajemi AT stanford DOT edu)
-# DATE : $date->{datestr}
+# COPYRIGHT  2014 CLUSTERJOB (CJ)
+# CONTACT:   Hatef Monajemi (monajemi AT stanford DOT edu)
+# DATE   :   $date->{datestr}
 DOCSTRING
 
 my $HEADER = &CJ::bash_header($bqs);
@@ -163,12 +228,29 @@ $master_script.="$docstring";
 }
 
 
-
+#my $pid_head = substr($pid,0,8);  #short_pid
 
     my ($programName,$ext) = &CJ::remove_extension($program);
 
 
-    if(!($runflag =~ /^par.*/) ){
+    if ($runflag  =~ /\brrun\b|\brdeploy\b/){
+    
+        my $tagstr="CJ_$pid\_\%a\_$programName";
+        if($bqs eq "SLURM"){
+            
+            my $totalArrayJobs = $counter;    # in RRUN CASE, $counter is the last job's counter.
+            
+            if($qSubmitDefault){
+                $master_script.="sbatch --array=1-$totalArrayJobs  --mem=$mem --time=$runtime $qsub_extra -J $tagstr -o ${remote_sep_Dir}/\%a/logs/${tagstr}.stdout -e ${remote_sep_Dir}/\%a/logs/${tagstr}.stderr ${remote_sep_Dir}/array_bashMain.sh \n"
+            }else{
+                $master_script.="sbatch --array=1-$totalArrayJobs $qsub_extra -J $tagstr -o ${remote_sep_Dir}/\%a/logs/${tagstr}.stdout -e ${remote_sep_Dir}/\%a/logs/${tagstr}.stderr ${remote_sep_Dir}/array_bashMain.sh \n"
+            }
+        }else{
+            &CJ::err("Unknown BQS for RRUN/RDEPLOY");
+        }
+        
+        
+    }elsif(!($runflag =~ /^par.*/) ){
         
         
         $master_script .= "mkdir ${remote_sep_Dir}"."/logs" . "\n" ;
@@ -200,7 +282,7 @@ $master_script.="$docstring";
     }elsif(defined($counter)){
     
     
-    
+        ### FIXME: THIS CAN BE DELETED IF WE BUILD THESE TWO FILDERS LOCALLY
         # Add QSUB to MASTER SCRIPT
         $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/logs"    . "\n" ;
         $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/scripts" . "\n" ;
