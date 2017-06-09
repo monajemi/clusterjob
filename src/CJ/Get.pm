@@ -140,7 +140,7 @@ GATHER
     &CJ::my_system($cmd,$verbose);
     
     my $short_pid = substr($info->{'pid'},0,8);
-    if ( ! -s "/tmp/cj_gather.out" ){
+    if ( ! -z "/tmp/cj_gather.out" ){
     &CJ::message("Gathering results done! Please use \"CJ get $short_pid \" to get your results.");
     }else{
     my $error = `cat "/tmp/cj_gather.out"`;
@@ -159,30 +159,31 @@ GATHER
 sub reduce_results{
 	my ($pids,$res_filename,$verbose, $text_header_lines, $force_tag) = @_;
 	
+    my $yesno = undef; # wether they need to reduce with qsub (for big reduction) or not;
+    
 	if(! @$pids){
 	    # just the last instance		
         my $info       = &CJ::retrieve_package_info();
         my $pid           = $info->{'pid'};
 		CJ::message("$pid");
-		reduce_one_pid($pid,$res_filename,$verbose, $text_header_lines,$force_tag);
+        
+		reduce_one_pid($pid,$res_filename,$verbose, $text_header_lines,$force_tag,$yesno);
 	}else{
   	  	# here $pids is a reference to an array
         foreach my $pid (@$pids){
 			CJ::message("$pid");
-           	reduce_one_pid($pid,$res_filename,$verbose, $text_header_lines,$force_tag);
+           	$yesno = reduce_one_pid($pid,$res_filename,$verbose, $text_header_lines,$force_tag,$yesno);
+           
         }
 	}
 	
 }
 
 
-
+###########################
 sub reduce_one_pid{
-    my ($pid,$res_filename,$verbose, $text_header_lines,$force_tag) = @_;
-    
-    
-    
-    
+###########################
+    my ($pid,$res_filename,$verbose, $text_header_lines,$force_tag,$yesno) = @_;
     
     
     my $info;
@@ -224,15 +225,24 @@ sub reduce_one_pid{
  
     
     
-  # REDUCE IS ONLY FOR PARRUN
-  if(! $runflag =~ m/^par*/){
+    
+    
+    
+    
+    # REDUCE IS ONLY FOR PARRUN
+    if(! $runflag =~ m/^par*/){
       CJ::err("REDUCE must be called for a 'parrun' package. Please use GET instead.");
-  }
+    }
 
+    # Check that job has been actually submitted.
+    my @job_ids = split(',', $job_id);
+    my $num_res = 1+$#job_ids;
+    my $short_pid = &CJ::short_pid($pid);
     
-    
-    
-    
+    if ( $num_res < 1 ){
+    CJ::message(" Nothing to reduce. no job id found. try 'cj rerun $short_pid' to resubmit this PID.");
+        exit 0;
+    }
     
     
     
@@ -313,27 +323,25 @@ sub reduce_one_pid{
    
     $cmd = "scp $collect_bash_path $CJ_reduce_matlab $account:$remote_path/";
     &CJ::my_system($cmd,$verbose);
-
-    
-    
-    
-	
-    my $short_pid=substr($info->{'pid'},0,8);
 	
     &CJ::message("Reducing $res_filename");
     if($bqs eq "SLURM"){
 		
-		
-	    CJ::message("Do you want to submit the reduce script to the queue via srun?(recommneded for big jobs) Y/N?");
-	    my $input =  <STDIN>; chomp($input);
-	    if(lc($input) eq "y" or lc($input) eq "yes"){
+        
+        if(not defined($yesno) ){
+            CJ::message("Do you want to submit the reduce script to the queue via srun? (recommneded for big jobs) Y/N?");
+            $yesno =  <STDIN>; chomp($yesno);
+        }
+    
+        
+        if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
 	        &CJ::message("Reducing results...");
 	        my $cmd = "ssh $account 'cd $remote_path; srun bash -l $collect_name'";
 	        #my $cmd = "ssh $account 'cd $remote_path; qsub $collect_name'";
 		    &CJ::my_system($cmd,1);
 		    &CJ::message("Reducing results done! Please use \"CJ get $short_pid \" to get your results.");
 		
-	    }elsif(lc($input) eq "n" or lc($input) eq "no"){
+	    }elsif(lc($yesno) eq "n" or lc($yesno) eq "no"){
 	        my $cmd = "ssh $account 'cd $remote_path; bash -l $collect_name'";
 		    &CJ::my_system($cmd,1);
 		    &CJ::message("Reducing results done! Please use \"CJ get $short_pid \" to get your results.");
@@ -345,8 +353,11 @@ sub reduce_one_pid{
     my $cmd = "ssh $account 'cd $remote_path; bash -l $collect_name'";
     &CJ::my_system($cmd,1);
     &CJ::message("Reducing results done! Please use \"CJ get $short_pid \" to get your results.");
+ 
     }
-   
+
+return $yesno;
+
 }
 
 
@@ -466,19 +477,6 @@ sub get_results{
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 sub make_parrun_check_script{
     
 my ($info,$res_filename) = @_;
@@ -498,6 +496,7 @@ my $completed_filename  = "completed_list.cjr";
 #find the number of folders with results in it
 my @job_ids = split(',', $job_id);
 my $num_res = 1+$#job_ids;
+
 
 # header for bqs's
 my $HEADER = &CJ::bash_header($bqs);
@@ -567,7 +566,7 @@ $HEADER
 #READ remaining_list.cjr and FIND The counters that need
 #to be collected
     
-if [ ! -s  $completed_filename ]; then
+if [ ! -s $completed_filename ]; then
     
     if [ ! -s  $remaining_filename ]; then
      echo "CJ::Reduce:: All results completed and collected. ";

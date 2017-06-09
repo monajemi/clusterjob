@@ -1984,9 +1984,17 @@ sub readFile
 
 
 
+#########################
+sub short_pid(){
+#########################
+    my ($pid) = @_;
+    return substr($pid,0,8);
+}
 
-sub add_to_history
-{
+
+##########################
+sub add_to_history{
+##########################
     my ($info, $date, $flag) = @_;
 	# create if it doesnt exist;
 	&CJ::create_history_file();
