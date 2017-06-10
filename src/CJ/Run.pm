@@ -12,10 +12,10 @@ use Digest::SHA qw(sha1_hex); # generate hexa-decimal SHA1 PID
 
 
 
-#===================
+####################
 # class constructor
-#===================
 sub new {
+####################
  	my $class= shift;
  	my ($path,$program,$machine, $runflag,$dep_folder,$message,$qsub_extra, $qSubmitDefault, $submit_defaults,  $verbose) = @_;
 	
@@ -38,29 +38,27 @@ sub new {
 
 
 
-#==================================================================================
-# This should be called at the beginning of run for all run options. Common to all
-#==================================================================================
+###########################################
+# This should be called at the beginning of
+# run for all run options. Common to all
 sub run_common{
-my ($self) = @_;
-#===================
+###########################################
+    my ($self) = @_;
+
 #  Check connection
-#===================
 &CJ::CheckConnection($self->{machine});
 
-#====================================
-#        CREATE PID
-#====================================
+#  CREATE PID
 my $ssh             = &CJ::host($self->{machine});
 my $date = &CJ::date();
 
-# PID
+#  PID
 my $sha_expr = "$CJID:$localIP:$self->{program}:$ssh->{account}:$date->{datestr}";
 my $pid  = sha1_hex("$sha_expr");
-my $short_pid = substr($pid, 0, 8);  # we use an 8 character abbrviation
+my $short_pid = &CJ::short_pid($pid);  # we use an 8 character abbrviation
 
 
-# Check to see if the file and dep folder exists
+#  Check to see if the file and dep folder exists
 &CJ::err("$self->{path}/$self->{program} not found") if(! -e "$self->{path}/$self->{program}" );
 &CJ::err("Dependency folder $self->{path}/$self->{dep_folder} not found") if(! -d "$self->{path}/$self->{dep_folder}" );
 
@@ -79,6 +77,8 @@ if(lc($ext) eq "m"){
 $programType = "matlab";
 }elsif(lc($ext) eq "r"){
 $programType = "R";
+}elsif(lc($ext) eq "py"){
+$programType = "python";
 }else{
 CJ::err("Code type .$ext is not recognized");
 }
@@ -149,7 +149,6 @@ TEXT
 }
 
 return ($date,$ssh,$pid,$short_pid,$programType,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText);
-
 }
 
 
