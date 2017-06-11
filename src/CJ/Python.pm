@@ -1,6 +1,6 @@
-package CJ::Matlab;
-# This is the Matlab class of CJ 
-# Copyright 2015 Hatef Monajemi (monajemi@stanford.edu) 
+package CJ::Python;
+# This is the Python class of CJ
+# Copyright 2017 Hatef Monajemi (monajemi@stanford.edu)
 
 use strict;
 use warnings;
@@ -10,9 +10,9 @@ use feature 'say';
 
 
 
-
-# class constructor
+####################
 sub new {
+####################
  	my $class= shift;
  	my ($path,$program) = @_;
 	
@@ -25,10 +25,10 @@ sub new {
 }
 
 
-
+#####################
 sub parse {
-	
-	my $self=shift;
+#####################
+	my $self = shift;
 	
 	# script lines will have blank lines or comment lines removed;
 	# ie., all remaining lines are effective codes
@@ -36,10 +36,10 @@ sub parse {
 	my $script_lines;
 	    open my $fh, "$self->{path}/$self->{program}" or CJ::err("Couldn't open file: $!");
 		while(<$fh>){
-	    $_ = $self->uncomment_matlab_line($_);
-	    if (!/^\s*$/){
-	        $script_lines .= $_;
-	    }
+            $_ = $self->uncomment_python_line($_);
+            if (!/^\s*$/){
+	         $script_lines .= $_;
+            }
 	}
 	close $fh;
     
@@ -53,11 +53,12 @@ sub parse {
 	        push @forlines_idx_set, $i;
 	    }
 	}
+    
 	# ==============================================================
 	# complain if for loops are not 
 	# consecutive. We do not allow it in clusterjob.
 	# ==============================================================
-	&CJ::err(" 'parrun' does not allow less than 1 parallel loops inside the MAIN script.") if($#forlines_idx_set+1 < 1);
+	&CJ::err(" 'parrun' does not allow less than 1 parallel loops inside the MAIN script.") if ($#forlines_idx_set+1 < 1);
 
 	foreach my $i (0..$#forlines_idx_set-1){
 	&CJ::err("CJ does not allow anything between the parallel for's. try rewriting your loops.") if($forlines_idx_set[$i+1] ne $forlines_idx_set[$i]+1);
@@ -92,7 +93,159 @@ sub parse {
 
 
 
+
+sub build_reproducible_script{
+
+my $self = shift;
+my ($runflag) = @_;
+#TODO: add dependecies like CVX, etc.
+
+my $program_script = CJ::readFile("$self->{path}/$self->{program}");
+
+my $rp_program_script =<<RP_PRGRAM;
+
+% CJ has its own randState upon calling
+% to reproduce results one needs to set
+% the internal State of the global stream
+% to the one saved when ruuning the code for
+% the fist time;
+
+load('CJrandState.mat');
+globalStream = RandStream.getGlobalStream;
+globalStream.State = CJsavedState;
+RP_PRGRAM
+
+if($runflag =~ /^par.*/){
+    $rp_program_script .= "addpath(genpath('../.'));\n";
+}else{
+    $rp_program_script .= "addpath(genpath('.'));\n";
+}
+
+$rp_program_script .= $program_script ;
+
+my $rp_program = "reproduce_$self->{program}";
+CJ::writeFile("$self->{path}/$rp_program", $rp_program_script);
+
+
+}
+
+
+
+
+############################## UP TO HERE EDITED #####################
+
+
+
+#######################
+sub CJrun_body_script{
+#######################
+    my $self = shift;
+    my ($ssh) = @_;
+    
+my $script =<<'BASH';
+
+module load <PYTHON_MODULE>
+
+# There must be some installation using pip here if Singulairty is not used
+    
+    
+python <<HERE
+
+<PYTHONPATH>
+    
+% make sure each run has different random number stream
+
+import os,sys;
+import numpy as np;
+myversion = sys.version;
+mydate    = np.datetime64('now');
+#sum(100*clock)
+seed = np.sum(100*np.array([mydate.astype(object).year, mydate.astype(object).month, mydate.astype(object).day, mydate.astype(object).hour, mydate.astype(object).minute, mydate.astype(object).second]));
+np.random.seed(seed);
+CJsavedState = np.random.get_state();
+
+fname = 'CJrandState.npz';
+np.savez(fname, 'myversion'=myversion, 'mydate'=mydate, 'CJsavedState'=CJsavedState)
+    
+os.chdir($DIR)
+import ${PROGRAM};
+exit();
+HERE
+
+BASH
+
+
+
+my $pathText.=<<MATLAB;
+% add user defined path
+addpath $ssh->{matlib} -begin
+
+% generate recursive path
+addpath(genpath('.'));
+
+try
+cvx_setup;
+cvx_quiet(true)
+% Find and add Sedumi Path for machines that have CVX installed
+    cvx_path = which('cvx_setup.m');
+oldpath = textscan( cvx_path, '%s', 'Delimiter', '/');
+newpath = horzcat(oldpath{:});
+sedumi_path = [sprintf('%s/', newpath{1:end-1}) 'sedumi'];
+addpath(sedumi_path)
+
+catch
+warning('CVX not enabled. Please set CVX path in .ssh_config if you need CVX for your jobs');
+end
+
+MATLAB
+
+$script =~ s|<MATPATH>|$pathText|;
+$script =~ s|<MATLAB_MODULE>|$ssh->{mat}|;
+
+
+return $script;
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##########################
 sub check_initialization{
+##########################
 	my $self = shift;
 	
     my ($parser,$tag_list,$verbose) = @_;
@@ -133,42 +286,6 @@ sub check_initialization{
 
 
 
-
-
-sub build_reproducible_script{
-	
-	my $self = shift;
-    my ($runflag) = @_;
-	#TODO: add dependecies like CVX, etc.
-
-my $program_script = CJ::readFile("$self->{path}/$self->{program}");
-	
-my $rp_program_script =<<RP_PRGRAM;
-
-% CJ has its own randState upon calling
-% to reproduce results one needs to set
-% the internal State of the global stream
-% to the one saved when ruuning the code for
-% the fist time;
-    
-load('CJrandState.mat');
-globalStream = RandStream.getGlobalStream;
-globalStream.State = CJsavedState;
-RP_PRGRAM
-  
-if($runflag =~ /^par.*/){
-$rp_program_script .= "addpath(genpath('../.'));\n";
-}else{
-$rp_program_script .= "addpath(genpath('.'));\n";
-}
-
-$rp_program_script .= $program_script ;
-    
-my $rp_program = "reproduce_$self->{program}";
-CJ::writeFile("$self->{path}/$rp_program", $rp_program_script);
-
-
-}
 
 
 
@@ -470,25 +587,16 @@ foreach my $tag (@$tag_list){
 
 
 
-sub uncomment_matlab_line{
+sub uncomment_python_line{
 	my $self = shift;
-	
     my ($line) = @_;
-    $line =~ s/^(?:(?!\').)*\K\%(.*)//;
+    # This uncomments useless comment lines.
+    # It doesnt however remove an comment followed by useful expression
+    
+    $line =~ s/^(?:(?![\"|\']).)*\K\#(.*)//;
     
     return $line;
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -636,97 +744,6 @@ BASH
     
     return $script;
 }
-
-
-
-
-
-
-
-
-
-########################
-sub CJrun_body_script{
-########################
-    my $self = shift;
-    my ($ssh) = @_;
-my $script =<<'BASH';
-    
-module load <MATLAB_MODULE>
-unset _JAVA_OPTIONS
-matlab -nosplash -nodisplay <<HERE
-<MATPATH>
-
-% make sure each run has different random number stream
-myversion = version;
-mydate = date;
-RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
-globalStream = RandStream.getGlobalStream;
-CJsavedState = globalStream.State;
-fname = sprintf('CJrandState.mat');
-save(fname,'myversion','mydate', 'CJsavedState');
-cd $DIR
-run('${PROGRAM}');
-quit;
-HERE
-    
-BASH
-
-    
-    
-my $pathText.=<<MATLAB;
-% add user defined path
-addpath $ssh->{matlib} -begin
-
-% generate recursive path
-addpath(genpath('.'));
-
-try
-cvx_setup;
-cvx_quiet(true)
-% Find and add Sedumi Path for machines that have CVX installed
-cvx_path = which('cvx_setup.m');
-oldpath = textscan( cvx_path, '%s', 'Delimiter', '/');
-newpath = horzcat(oldpath{:});
-sedumi_path = [sprintf('%s/', newpath{1:end-1}) 'sedumi'];
-addpath(sedumi_path)
-
-catch
-warning('CVX not enabled. Please set CVX path in .ssh_config if you need CVX for your jobs');
-end
-
-MATLAB
-
-$script =~ s|<MATPATH>|$pathText|;
-$script =~ s|<MATLAB_MODULE>|$ssh->{mat}|;
-
-
-    return $script;
-    
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

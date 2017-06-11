@@ -1866,6 +1866,7 @@ if($bqs eq "SGE"){
 $HEADER=<<SGE_HEADER;
 #!/bin/bash -l
 #\$ -cwd
+#\$ -R y
 #\$ -S /bin/bash
 SGE_HEADER
 }elsif($bqs eq "SLURM"){
@@ -1877,6 +1878,114 @@ die "unknown BQS"
 }
 return $HEADER;
 }
+
+
+
+
+
+##################
+sub shell_toe{
+###################
+    my ($bqs) = @_;
+my $shell_toe;
+if($bqs eq "SGE"){
+$shell_toe = <<'BASH_TOE';
+echo ending job \$SHELLSCRIPT
+echo JOB_ID \$JOB_ID
+date
+echo "done"
+BASH_TOE
+    
+}elsif($bqs eq "SLURM"){
+
+$shell_toe = <<'BASH_TOE';
+echo ending job \$SHELLSCRIPT
+echo JOB_ID \$SLURM_JOBID
+date
+echo "done"
+BASH_TOE
+    
+}else{
+    &CJ::err("unknown BQS $!");
+}
+
+return $shell_toe;
+
+    
+}
+
+######################################################
+# Bash header based on the Batch Queueing System (BQS)
+sub shell_head{
+######################################################
+my ($bqs) = @_;
+
+my $shell_head = bash_header($bqs);
+
+    
+if($bqs eq "SGE"){
+$shell_head.=<<'HEAD'
+echo JOB_ID $JOB_ID
+echo WORKDIR $SGE_O_WORKDIR
+DIR=`pwd`
+HEAD
+
+}elsif($bqs eq "SLURM"){
+$shell_head.=<<'HEAD'
+echo JOB_ID $SLURM_JOBID
+echo WORKDIR $SLURM_SUBMIT_DIR
+DIR=`pwd`
+HEAD
+}else{
+&CJ::err("unknown BQS $!");
+}
+    
+    return $shell_head;
+}
+
+
+################
+sub shell_neck{
+################
+my ($program,$pid) = @_;
+    
+my $shell_neck;
+$shell_neck = <<'MID';
+PROGRAM="<PROGRAM>";
+PID=<PID>;
+cd $DIR;
+mkdir scripts
+mkdir logs
+SHELLSCRIPT=${DIR}/scripts/CJrun.${PID}.sh;
+LOGFILE=${DIR}/logs/CJrun.${PID}.log;
+MID
+    
+$shell_neck =~ s|<PROGRAM>|$program|;
+$shell_neck =~ s|<PID>|$pid|;
+    
+    return $shell_neck;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Check Numeric
 sub isnumeric
@@ -2208,6 +2317,30 @@ sub remove_extension
 }
 
 
+sub program_type
+{
+    my ($program) = @_;
+    
+    my ($program_name,$ext) = &CJ::remove_extension($program);
+    
+    my $type;
+    if(lc($ext) eq "m"){
+        $type = "matlab";
+    }elsif(lc($ext) eq "r"){
+        $type = "R";
+    }elsif(lc($ext) eq "py"){
+        $type = "python";
+    }else{
+        CJ::err("Code type .$ext is not recognized $!");
+    }
+    
+    return $type;
+}
+
+
+
+
+
 sub reexecute_cmd{
     my ($cmd_num,$verbose) = @_;
     if (!$cmd_num){
@@ -2344,6 +2477,33 @@ sub create_pid_timestamp_file{
 sub create_run_history_file{
 &CJ::touch($run_history_file) unless ( -f $run_history_file);
 }
+
+
+
+
+sub CodeObj{
+    
+my ($path,$program) = @_;
+
+my $program_type  = &CJ::program_type($program);
+    
+my $code;
+if($program_type eq 'matlab'){
+    $code = CJ::Matlab->new($path,$program);
+}elsif($program_type eq 'r'){
+    $code = CJ::R->new($path,$program);
+}elsif($program_type eq 'python'){
+    $code = CJ::Python->new($path,$program);
+}else{
+    CJ::err("ProgramType $program_type is not recognized.$!")
+}
+    return $code;
+}
+
+
+
+
+
 
 
 
