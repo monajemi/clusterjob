@@ -71,17 +71,7 @@ my $short_pid = &CJ::short_pid($pid);  # we use an 8 character abbrviation
 #=======================================
 
 my ($program_name,$ext) = &CJ::remove_extension($self->{program});
-
-my $programType;
-if(lc($ext) eq "m"){
-$programType = "matlab";
-}elsif(lc($ext) eq "r"){
-$programType = "R";
-}elsif(lc($ext) eq "py"){
-$programType = "python";
-}else{
-CJ::err("Code type .$ext is not recognized");
-}
+my $program_type = CJ::program_type($self->{program});
 
 CJ::message("$self->{runflag}"."ing [$self->{program}] on [$self->{machine}]");
 &CJ::message("Sending from: $self->{path}");
@@ -148,7 +138,7 @@ TEXT
 &CJ::err("unknown BQS");
 }
 
-return ($date,$ssh,$pid,$short_pid,$programType,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText);
+return ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText);
 }
 
 
@@ -182,12 +172,12 @@ sub SERIAL_DEPLOY_RUN{
 my $self = shift;
     
 # create directories etc.
-my ($date,$ssh,$pid,$short_pid,$programType,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
+my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
 
 
 
 CJ::message("Creating reproducible script(s) reproduce_$self->{program}");
-CJ::Scripts::build_reproducible_script($programType,$self->{program}, $local_sep_Dir,$self->{runflag});
+CJ::Scripts::build_reproducible_script($program_type,$self->{program}, $local_sep_Dir,$self->{runflag});
 
 #===========================================
 # BUILD A BASH WRAPPER
@@ -316,7 +306,7 @@ sub PAR_DEPLOY_RUN{
 my $self = shift;
 
 # create directories etc.
-my ($date,$ssh,$pid,$short_pid,$programType,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
+my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
 
 
 # read the script, parse it out and
@@ -475,9 +465,6 @@ my $runinfo={
 
 
 
-
-
-
 #========================================================
 #   clusterjob rrun myscript.m -dep DEP -m "message"
 #   this implements parrallel for using SLUMR array
@@ -494,7 +481,7 @@ sub SLURM_ARRAY_DEPLOY_RUN{
 my $self = shift;
 
 # create directories etc.
-my ($date,$ssh,$pid,$short_pid,$programType,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
+my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
 
 &CJ::err("RRUN works for SLURM batch queueing system only. Use parrun instead.") unless ($ssh->{bqs} eq "SLURM");
     
