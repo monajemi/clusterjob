@@ -102,31 +102,31 @@ my ($runflag) = @_;
 
 my $program_script = CJ::readFile("$self->{path}/$self->{program}");
 
-my $rp_program_script =<<RP_PRGRAM;
+my $rp_program_script =<<'RP_PRGRAM';
 
-% CJ has its own randState upon calling
-% to reproduce results one needs to set
-% the internal State of the global stream
-% to the one saved when ruuning the code for
-% the fist time;
-
-load('CJrandState.mat');
-globalStream = RandStream.getGlobalStream;
-globalStream.State = CJsavedState;
+# CJ has its own randState upon calling
+# to reproduce results one needs to set
+# the internal State of the global stream
+# to the one saved when ruuning the code for
+# the fist time;
+import os,sys,pickle,numpy;
+CJsavedState = pickle.load(open('CJrandState.pickle','rb'));
+np.random.set_state(CJsavedState['CJsavedState']);
+    
 RP_PRGRAM
 
+    
 if($runflag =~ /^par.*/){
-    $rp_program_script .= "addpath(genpath('../.'));\n";
+    $rp_program_script .= "sys.path.append('../.');\n"
 }else{
-    $rp_program_script .= "addpath(genpath('.'));\n";
+    $rp_program_script .= "sys.path.append('.');\n"
 }
 
 $rp_program_script .= $program_script ;
 
 my $rp_program = "reproduce_$self->{program}";
 CJ::writeFile("$self->{path}/$rp_program", $rp_program_script);
-
-
+    
 }
 
 
@@ -142,69 +142,75 @@ sub CJrun_body_script{
     my $self = shift;
     my ($ssh) = @_;
     
-my $script =<<'BASH';
+    
+    
+# Determine Easy_install version
+my $python_version_tag = "";
+if( $ssh->{'Python'} =~ /python.?((\d.\d).\d)/ ) {
+    $python_version_tag = "-".$2;
+}
 
+my $user_required_pyLib = join (" ", split(":",$ssh->{'Pythonlib'}) );
+        
+my $script =<<'BASH';
+    
 module load <PYTHON_MODULE>
 
-# There must be some installation using pip here if Singulairty is not used
-    
-    
-python <<HERE
+<PYTHONLIB>
 
-<PYTHONPATH>
+python <<HERE
     
 % make sure each run has different random number stream
+import os,sys,pickle,numpy;
 
-import os,sys;
-import numpy as np;
-myversion = sys.version;
-mydate    = np.datetime64('now');
+mydate = numpy.datetime64('now');
 #sum(100*clock)
-seed = np.sum(100*np.array([mydate.astype(object).year, mydate.astype(object).month, mydate.astype(object).day, mydate.astype(object).hour, mydate.astype(object).minute, mydate.astype(object).second]));
-np.random.seed(seed);
-CJsavedState = np.random.get_state();
+seed = numpy.sum(100*numpy.array([mydate.astype(object).year, mydate.astype(object).month, mydate.astype(object).day, mydate.astype(object).hour, mydate.astype(object).minute, mydate.astype(object).second]));
+numpy.random.seed(seed);
+CJsavedState = {'myversion': sys.version, 'mydate':mydate, 'CJsavedState': np.random.get_state()}
+    
+fname = 'CJrandState.pickle';
+with open(fname, 'wb') as RandStateFile:
+    pickle.dump(CJsavedState, RandStateFile);
 
-fname = 'CJrandState.npz';
-np.savez(fname, 'myversion'=myversion, 'mydate'=mydate, 'CJsavedState'=CJsavedState)
+# CJsavedState = pickle.load(open('CJrandState.pickle','rb'));
     
 os.chdir($DIR)
 import ${PROGRAM};
 exit();
 HERE
 
+# Get out of virtual env and remove it
+deactivate
+rm -rf \$HOME/"python_venv_\$PID";
+    
 BASH
 
 
+    
+my $libs =<<LIB;
+# Install required software in a virtualenv
+# This can be different when Container used.
+    
+easy_install$python_version_tag --user pip
+python -m pip install --user --upgrade pip
+python -m virtualenv "python_venv_\$PID" ;
+source \$HOME/python_venv_\$PID/bin/activate
+pip install --user numpy $user_required_pyLib
 
-my $pathText.=<<MATLAB;
-% add user defined path
-addpath $ssh->{matlib} -begin
+# Freez the environment after you installed all the modules
+pip freeze > \${DIR}/python_requirements.txt
+    
+LIB
 
-% generate recursive path
-addpath(genpath('.'));
+$script =~ s|<PYTHONLIB>|$libs|;
+$script =~ s|<PYTHON_MODULE>|$ssh->{'Python'}|;
 
-try
-cvx_setup;
-cvx_quiet(true)
-% Find and add Sedumi Path for machines that have CVX installed
-    cvx_path = which('cvx_setup.m');
-oldpath = textscan( cvx_path, '%s', 'Delimiter', '/');
-newpath = horzcat(oldpath{:});
-sedumi_path = [sprintf('%s/', newpath{1:end-1}) 'sedumi'];
-addpath(sedumi_path)
-
-catch
-warning('CVX not enabled. Please set CVX path in .ssh_config if you need CVX for your jobs');
-end
-
-MATLAB
-
-$script =~ s|<MATPATH>|$pathText|;
-$script =~ s|<MATLAB_MODULE>|$ssh->{mat}|;
-
-
+  
 return $script;
 
+    
+    
 }
 
 

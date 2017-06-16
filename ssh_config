@@ -1,48 +1,58 @@
 [osg]
-Host	login.osgconnect.net
-User	hatef
-Bqs	HTCondor
-Repo	./
-MAT	matlab/2016b
-MATlib	~/cvx
+Host		login.osgconnect.net
+User		hatef
+Bqs		HTCondor
+Repo		./
+MAT		matlab/2016b
+MATlib		~/cvx
+Python		python/3.4.3
+Pythonlib	numpy:pickle
 [osg]
 
 
 [psc-bridges]
-Host	bridges.psc.edu
-User	monajemi
-Bqs	SLURM
-Repo	/pylon2/cc3l6jp/monajemi/
-MAT	matlab/R2016a
-MATlib	~/cvx
+Host		bridges.psc.edu
+User		monajemi
+Bqs		SLURM
+Repo		/pylon2/cc3l6jp/monajemi/
+MAT		matlab/R2016a
+MATlib		~/cvx
+Python		python/3.4.3
+Pythonlib	numpy:scipy
 [psc-bridges]
 
 
 [tacc-stampede]
-Host	stampede.tacc.utexas.edu
-User	tg840998
-Bqs	SLURM
-Repo	/work/04800/tg840998/CJRepo_Remote
-MAT	matlab/2016b
-MATlib	~/BPDN/CVX/cvx
+Host		stampede.tacc.utexas.edu
+User		tg840998
+Bqs		SLURM
+Repo		/work/04800/tg840998/CJRepo_Remote
+MAT		matlab/2016b
+MATlib		~/BPDN/CVX/cvx
+Python		python/3.4.3
+Pythonlib	numpy:scipy
 [tacc-stampede]
 
 
 [sherlock]
-Host	sherlock.stanford.edu
-User	monajemi
-Bqs	SLURM
-Repo	/scratch/users/monajemi/CJRepo_Remote
-MAT     matlab/R2016b
-MATlib	~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
+Host		sherlock.stanford.edu
+User		monajemi
+Bqs		SLURM
+Repo		/scratch/users/monajemi/CJRepo_Remote
+MAT     	matlab/R2016b
+MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
+Python		python/3.4.3
+Pythonlib	numpy:scipy
 [sherlock]
 
 
 [farmshare]
-Host	corn.stanford.edu
-User	monajemi
-Bqs	SGE
-Repo	/farmshare/user_data/monajemi/CJRepo_Remote
-MAT     matlab/r2016b
-MATlib	~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
+Host		corn.stanford.edu
+User		monajemi
+Bqs		SGE
+Repo		/farmshare/user_data/monajemi/CJRepo_Remote
+MAT     	matlab/r2016b
+MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
+Python		python/3.4.3
+Pythonlib	numpy:scipy
 [farmshare]

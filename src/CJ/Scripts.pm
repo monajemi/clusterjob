@@ -12,30 +12,6 @@ use CJ::Python;
 use feature 'state';
 use feature 'say';
 
-#################################
-sub build_reproducible_script{
-#################################
-    my ($programType, $program, $path, $runflag) = @_;
-	
-    if ($programType eq "matlab"){
-		my $matlab = CJ::Matlab->new($path,$program);
-		$matlab->build_reproducible_script($runflag); 
-	}elsif($programType eq "r"){
-		#TODO: implement this:
-		#CJ::R::build_reproducible_script($program, $local_sep_Dir, $runflag) if ($programType eq "r");
-		CJ::err('not implemented yet');
-    }elsif($programType eq "python"){
-        my $python = CJ::Python->new($path,$program);
-        $python->build_reproducible_script($runflag);
-        
-        die;
-        
-	}else{
-		CJ::err("Program type .$programType not recognized." );
-	}
-	
-}
-
 
 sub build_rrun_bashMain_script{
 my ($extra) = @_;
@@ -187,7 +163,7 @@ sub build_nloop_matlab_code
        &CJ::writeFile($this_path,$new_script);
        # build reproducible script for each run
   	   CJ::message("Creating reproducible script(s) reproduce_$program") if ($counter==1);
-	   CJ::Scripts::build_reproducible_script("matlab", $program,  "$local_sep_Dir/$counter", $runflag);
+       &CJ::CodeObj("$local_sep_Dir/$counter",$program)->build_reproducible_script($runflag);
 	
        
        
@@ -336,11 +312,10 @@ sub make_shell_script
 
     my $sh_script  = CJ::shell_head($bqs);
     $sh_script    .= CJ::shell_neck($program,$pid);  # setting PID, and SHELLSCRIPT, LOGFILE PATH
-    $sh_script    .= CJ::Scripts::make_CJrun_bash_script($ssh,$program,$bqs);
+    $sh_script    .= CJ::Scripts::make_CJrun_bash_script($ssh,$program,$bqs); # Program specific Mat, Py, R,
     $sh_script    .= 'chmod a+x $SHELLSCRIPT' . "\n";
     $sh_script    .= 'bash $SHELLSCRIPT > $LOGFILE' . "\n";
     
-
 print $sh_script;
 die;
         
@@ -365,27 +340,6 @@ my  $CJrun_bash_script   = 'cat <<THERE > $SHELLSCRIPT' . "\n";
 return $CJrun_bash_script;
     
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

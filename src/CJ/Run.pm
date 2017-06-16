@@ -176,15 +176,15 @@ my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir
 
 
 
-CJ::message("Creating reproducible script(s) reproduce_$self->{program}");
-CJ::Scripts::build_reproducible_script($program_type,$self->{program}, $local_sep_Dir,$self->{runflag});
+&CJ::message("Creating reproducible script(s) reproduce_$self->{program}");
+&CJ::CodeObj($local_sep_Dir,$self->{program})->build_reproducible_script($self->{runflag});
 
+    
+    ################### UP TO HERE #######################
+    
 #===========================================
 # BUILD A BASH WRAPPER
 #===========================================
-
-
-
 my $sh_script = &CJ::Scripts::make_shell_script($ssh,$self->{program},$pid,$ssh->{bqs});
 my $local_sh_path = "$local_sep_Dir/bashMain.sh";
 &CJ::writeFile($local_sh_path, $sh_script);
