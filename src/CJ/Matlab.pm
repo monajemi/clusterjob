@@ -44,8 +44,9 @@ sub parse {
 	close $fh;
     
 	# this includes fors on one line
-	my @lines = split('\n|;\s*(?=for)', $script_lines);
+	my @lines = split('\n|[;,]\s*(?=for)', $script_lines);
 
+    
 	my @forlines_idx_set;
 	foreach my $i (0..$#lines){
 	my $line = $lines[$i];

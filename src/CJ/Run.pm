@@ -285,10 +285,11 @@ my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir
 
 # read the script, parse it out and
 # find the for loops
-my $matlab = CJ::Matlab->new($self->{path},$self->{program});
-my $parser = $matlab->parse();
-my ($idx_tags,$ranges) = $matlab->findIdxTagRange($parser,$self->{verbose});
+my $codeobj            = &CJ::CodeObj($self->{path},$self->{program});
+my $parser             = $codeobj->parse();
+my ($idx_tags,$ranges) = $codeobj->findIdxTagRange($parser,$self->{verbose});
 
+    
 # Check that number of jobs doesnt exceed Maximum jobs for user on chosen cluster
 # later check all resources like mem, etc.
 my @keys  = keys %$ranges;
@@ -302,7 +303,7 @@ my $max_jobs = &CJ::max_jobs_allowed($ssh,$self->{qsub_extra});
 
 
 #Check that user has initialized for loop vars
-$matlab->check_initialization($parser,$idx_tags,$self->{verbose});
+$codeobj->check_initialization($parser,$idx_tags,$self->{verbose});
 
 #==============================================
 #        MASTER SCRIPT
@@ -424,18 +425,6 @@ my $runinfo={
 &CJ::add_record($runinfo);
 &CJ::write2firebase($pid,$runinfo, $date->{epoch},0);  # send to CJ server
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
