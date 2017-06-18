@@ -1638,25 +1638,30 @@ sub host{
     }else{
         &CJ::err(".ssh_config:: Machine $machine_name not found. ");
     }
-    my ($user) = $this_host =~ /User[\t\s]*(.*)/;
+    my ($user) = $this_host =~ /User[\t\s]*(.*)/i;
         $user =remove_white_space($user);
     
-    my ($host) = $this_host =~ /Host[\t\s]*(.*)/;
+    my ($host) = $this_host =~ /Host[\t\s]*(.*)/i;
         $host =remove_white_space($host);
     
-    my ($bqs)  = $this_host =~ /Bqs[\t\s]*(.*)/ ;
+    my ($bqs)  = $this_host =~ /Bqs[\t\s]*(.*)/i ;
         $bqs  =remove_white_space($bqs);
     
-    my ($remote_repo)  = $this_host =~ /Repo[\t\s]*(.*)/ ;
+    my ($remote_repo)  = $this_host =~ /Repo[\t\s]*(.*)/i ;
         $remote_repo   = remove_white_space($remote_repo);
     
-    my ($remote_matlab_lib)  = $this_host =~ /MATlib[\t\s]*(.*)/;
+    my ($remote_matlab_lib)  = $this_host =~ /MATlib[\t\s]*(.*)/i;
         $remote_matlab_lib =remove_white_space($remote_matlab_lib);
     
-    my ($remote_matlab_module)  = $this_host =~ /\bMAT\b[\t\s]*(.*)/;
+    my ($remote_matlab_module)  = $this_host =~ /\bMAT\b[\t\s]*(.*)/i;
         $remote_matlab_module =remove_white_space($remote_matlab_module);
 
+    my ($remote_python_lib)  = $this_host =~ /Pythonlib[\t\s]*(.*)/i;
+    $remote_python_lib =remove_white_space($remote_python_lib);
     
+    my ($remote_python_module)  = $this_host =~ /\bPython\b[\t\s]*(.*)/i;
+    $remote_python_module =remove_white_space($remote_python_module);
+
     
     
     my $account  = $user . "@" . $host;
@@ -1668,6 +1673,8 @@ sub host{
     $ssh_config->{'matlib'}          = $remote_matlab_lib;
     $ssh_config->{'mat'}             = $remote_matlab_module;
     $ssh_config->{'user'}            = $user;
+    $ssh_config->{'py'}              = $remote_python_module;
+    $ssh_config->{'pylib'}           = $remote_python_lib;
     
     return $ssh_config;
 }
@@ -1899,8 +1906,8 @@ BASH_TOE
 }elsif($bqs eq "SLURM"){
 
 $shell_toe = <<'BASH_TOE';
-echo ending job \$SHELLSCRIPT
-echo JOB_ID \$SLURM_JOBID
+echo ending job $SHELLSCRIPT
+echo JOB_ID $SLURM_JOBID
 date
 echo "done"
 BASH_TOE
@@ -1959,8 +1966,14 @@ mkdir logs
 SHELLSCRIPT=${DIR}/scripts/CJrun.${PID}.sh;
 LOGFILE=${DIR}/logs/CJrun.${PID}.log;
 MID
-    
-$shell_neck =~ s|<PROGRAM>|$program|;
+   
+    my ($program_name,$ext)=remove_extension($program);
+
+if (&CJ::program_type($program) eq 'python') {
+    $shell_neck =~ s|<PROGRAM>|$program_name|;
+} else{
+    $shell_neck =~ s|<PROGRAM>|$program| ;
+}
 $shell_neck =~ s|<PID>|$pid|;
     
     return $shell_neck;
