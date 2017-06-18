@@ -650,6 +650,10 @@ sub CJrun_body_script{
 ########################
     my $self = shift;
     my ($ssh) = @_;
+    
+    
+&CJ::err("Matlab module not defined in ssh_config file.") if not defined $ssh->{'mat'};
+    
 my $script =<<'BASH';
     
 module load <MATLAB_MODULE>

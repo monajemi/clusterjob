@@ -305,9 +305,10 @@ $master_script.="$docstring";
 
 
 
+######################
+sub make_shell_script{
+######################
 
-sub make_shell_script
-{
     my ($ssh,$program,$pid,$bqs) = @_;
 
     my $sh_script  = CJ::shell_head($bqs);
@@ -316,17 +317,14 @@ sub make_shell_script
     $sh_script    .= 'chmod a+x $SHELLSCRIPT' . "\n";
     $sh_script    .= 'bash $SHELLSCRIPT > $LOGFILE' . "\n";
     
-print $sh_script;
-die;
-        
 return $sh_script;
 }
 
 
 
-##########################
+############################
 sub make_CJrun_bash_script{
-##########################
+############################
 my ($ssh,$program,$bqs) = @_;
 
 my $codeobj = CJ::CodeObj(undef,$program);  # This doesnt need a path at this stage;
@@ -345,8 +343,6 @@ return $CJrun_bash_script;
 
 
 
-	   
-	   
 
 # parallel shell script
 #====================================

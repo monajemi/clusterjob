@@ -156,32 +156,20 @@ return ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remot
 
 
 
-
-
-
-
-
-
-#========================================================
+#########################################################
 #   clusterjob run myscript.m -dep DEP -m "message"
 #   Serial run
-#========================================================
-
 sub SERIAL_DEPLOY_RUN{
+#########################################################
 
 my $self = shift;
     
 # create directories etc.
 my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
 
-
-
 &CJ::message("Creating reproducible script(s) reproduce_$self->{program}");
 &CJ::CodeObj($local_sep_Dir,$self->{program})->build_reproducible_script($self->{runflag});
 
-    
-    ################### UP TO HERE #######################
-    
 #===========================================
 # BUILD A BASH WRAPPER
 #===========================================
@@ -191,9 +179,7 @@ my $local_sh_path = "$local_sep_Dir/bashMain.sh";
 
 # Build master-script for submission
 my $master_script;
-    $master_script =  &CJ::Scripts::make_master_script($master_script,$self->{runflag},$self->{program},$date,$pid,$ssh->{bqs},$self->{submit_defaults},$self->{qSubmitDefault},$remote_sep_Dir,$self->{qsub_extra});
-
-
+$master_script = &CJ::Scripts::make_master_script($master_script,$self->{runflag},$self->{program},$date,$pid,$ssh->{bqs},$self->{submit_defaults},$self->{qSubmitDefault},$remote_sep_Dir,$self->{qsub_extra});
 
 my $local_master_path="$local_sep_Dir/master.sh";
 &CJ::writeFile($local_master_path, $master_script);
@@ -281,18 +267,6 @@ my $runinfo={
 # write runinfo to FireBaee as well
 &CJ::write2firebase($pid,$runinfo,$date->{epoch},0);
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
