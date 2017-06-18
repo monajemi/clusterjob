@@ -43,13 +43,14 @@ sub parse {
 	}
 	close $fh;
     
-	# this includes fors on one line
-	my @lines = split('\n|;\s*(?=for)', $script_lines);
+    # this includes fors on one line
+    my @lines = split('\n|[;,]\s*(?=for)', $script_lines);
 
+    
 	my @forlines_idx_set;
 	foreach my $i (0..$#lines){
 	my $line = $lines[$i];
-	    if ($line =~ /^\s*(for.*)/ ){
+	    if ($line =~ /^[\t\s]*(for.*)/ ){
 	        push @forlines_idx_set, $i;
 	    }
 	}
@@ -86,19 +87,19 @@ sub parse {
 	$parser->{BOT} = $BOT;
 	$parser->{nloop} = $#forlines_idx_set+1;
 
-	return $parser;
+    
+    return $parser;
 	
 }
 
 
 
 
-
+##################################
 sub build_reproducible_script{
-
+##################################
 my $self = shift;
 my ($runflag) = @_;
-#TODO: add dependecies like CVX, etc.
 
 my $program_script = CJ::readFile("$self->{path}/$self->{program}");
 
@@ -218,6 +219,198 @@ return $script;
 ############################## UP TO HERE EDITED  FOR PY #####################
 
 
+#####################
+sub findIdxTagRange{
+#####################
+    
+    my $self = shift;
+    my ($parser,$verbose) = @_;
+    
+    my $FOR = $parser->{FOR};
+    my $TOP = $parser->{TOP};
+    
+    # Determine the tags and ranges of the
+    # indecies
+    my @idx_tags;
+    my $ranges={};  # This is a hashref $range->{tag}
+    my @tags_to_python_interpret;
+    my @forlines_to_python_interpret;
+    
+    
+    my @forline_list = split /^/, $FOR;
+    
+    for my $this_forline (@forline_list) {
+        
+        my ($idx_tag, $range) = $self->read_python_index_set($this_forline, $TOP,$verbose);
+        
+        #FIX
+        
+        CJ::err("Index tag cannot be established for $this_forline") unless ($idx_tag);
+        push @idx_tags, $idx_tag;   # This will keep order.
+        
+        if(defined($range)){
+            $ranges->{$idx_tag} = $range;
+        }else{
+            push @tags_to_python_interpret, $idx_tag;
+            push @forlines_to_python_interpret, $this_forline;
+        }
+        
+    }
+    
+    die;
+    
+    if ( @tags_to_python_interpret ) { # if we need to run matlab
+        my $range_run_interpret = $self->run_python_index_interpreter($TOP,\@tags_to_python_interpret,\@forlines_to_python_interpret, $verbose);
+        
+        
+        for (keys %$range_run_interpret){
+            $ranges->{$_} = $range_run_interpret->{$_};
+            #print"$_:$range_run_interpret->{$_} \n";
+        }
+    }
+    
+    return (\@idx_tags,$ranges);
+}
+
+
+
+
+sub read_python_index_set
+{
+    my $self = shift;
+    
+    my ($forline, $TOP, $verbose) = @_;
+    
+    chomp($forline);
+    
+    # split at 'in' keyword.
+    my @myarray    = split(/\s*\bin\b\s*/,$forline);
+    my @tag        = split(/\s/,$myarray[0]);
+    my $idx_tag = $tag[-1];
+    
+    
+    my $range = undef;
+    # The right of in keyword
+    my $right  = $myarray[1];
+    
+    
+    # see if the forline contains range
+    if($right =~ /\s*x?range\(\s*(.+?)\s*\)/){
+        
+        print $1 . "\n";
+        
+        
+        
+        my @rightarray = split( /\s*,\s*/, $1);
+        
+        print "$#rightarray\n"; die;
+        
+        if($#rightarray == 0){
+          #CASE i in range(stop);
+            
+            
+        }elsif($#rightarray == 1){
+          #CASE i in range(start,stop);
+            
+        }elsif($#rightarray == 2){
+          #CASE i in range(start,stop, step);
+            
+        }else{
+            &CJ::err("invalid argument to range(start, stop[, step]). $!");
+        }
+        
+        
+        ################# UP TO HERE ################
+        
+        
+        
+        my $low =$rightarray[0];
+        if(! &CJ::isnumeric($low) ){
+            &CJ::err("The lower limit of for MUST be numeric for this version of clusterjob\n");
+        }
+        
+        # remove white space
+        $rightarray[1]=~ s/^\s+|\s+$//g;
+        
+        
+        if($rightarray[1] =~ /\s*length\(\s*(.+?)\s*\)/){
+            
+            #CASE i = 1:length(var);
+            # find the variable;
+            my ($var) = $rightarray[1] =~ /\s*length\(\s*(.+?)\s*\)/;
+            my $this_line = &CJ::grep_var_line($var,$TOP);
+            
+            #extract the range
+            my @this_array    = split(/\s*=\s*/,$this_line);
+            
+            
+            my $numbers;
+            if($this_array[1] =~ /\[\s*([^:]+?)\s*\]/){
+                ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
+                my $floating_pattern = "[-+]?[0-9]*[\.]?[0-9]+(?:[eE][-+]?[0-9]+)?";
+                my $fractional_pattern = "(?:${floating_pattern}\/)?${floating_pattern}";
+                my @vals = $numbers =~ /[\;\,]?($fractional_pattern)[\;\,]?/g;
+                
+                my $high = 1+$#vals;
+                my @range = ($low..$high);
+                $range = join(',',@range);
+                
+            }
+            
+            
+            
+        }elsif($rightarray[1] =~ /\s*(\D+)\s*/) {
+            #print "$rightarray[1]"."\n";
+            # CASE i = 1:L
+            # find the variable;
+            
+            
+            my ($var) = $rightarray[1] =~ /\s*(\w+)\s*/;
+            
+            my $this_line = &CJ::grep_var_line($var,$TOP);
+            
+            #extract the range
+            my @this_array    = split(/\s*=\s*/,$this_line);
+            my ($high) = $this_array[1] =~ /\[?\s*(\d+)\s*\]?/;
+            
+            
+            if(! &CJ::isnumeric($high) ){
+                $range = undef;
+            }else{
+                my @range = ($low..$high);
+                $range = join(',',@range);
+            }
+        }elsif($rightarray[1] =~ /.*(\d+).*/){
+            # CASE i = 1:10
+            my ($high) = $rightarray[1] =~ /^\s*(\d+).*/;
+            my @range = ($low..$high);
+            $range = join(',',@range);
+            
+        }else{
+            
+            
+            $range = undef;
+            #&CJ::err("strcuture of for loop not recognized by clusterjob. try rewriting your for loop using 'i = 1:10' structure");
+            
+        }
+        
+        
+        # Other cases of for loop to be considered.
+        
+        
+        
+    }
+    
+    
+    return ($idx_tag, $range);
+}
+
+
+
+
+
+
+
 
 
 
@@ -271,165 +464,8 @@ sub check_initialization{
 
 
 
-sub findIdxTagRange
-{
-	my $self = shift;
-	my ($parser,$verbose) = @_;
-	
-	my $FOR = $parser->{FOR};
-	my $TOP = $parser->{TOP};
-	
-	# Determine the tags and ranges of the
-	# indecies
-	my @idx_tags;
-	my $ranges={};  # This is a hashref $range->{tag}
-	my @tags_to_matlab_interpret;
-	my @forlines_to_matlab_interpret;
-    
-    
-	    my @forline_list = split /^/, $FOR;
-   
-	for my $this_forline (@forline_list) {
-    
-	    my ($idx_tag, $range) = $self->read_matlab_index_set($this_forline, $TOP,$verbose);
-    
-	    CJ::err("Index tag cannot be established for $this_forline") unless ($idx_tag);
-        push @idx_tags, $idx_tag;   # This will keep order.
-	    
-		if(defined($range)){
-	        $ranges->{$idx_tag} = $range;
-	    }else{
-	        push @tags_to_matlab_interpret, $idx_tag;
-	        push @forlines_to_matlab_interpret, $this_forline;
-	    }
-    
-	}
 
 
-    
-	if ( @tags_to_matlab_interpret ) { # if we need to run matlab
-	    my $range_run_interpret = $self->run_matlab_index_interpreter($TOP,\@tags_to_matlab_interpret,\@forlines_to_matlab_interpret, $verbose);
-    
-    
-	    for (keys %$range_run_interpret){
-	    	$ranges->{$_} = $range_run_interpret->{$_};
-	    	#print"$_:$range_run_interpret->{$_} \n";
-	    }
-	}
-    
-	return (\@idx_tags,$ranges);
-}
-
-
-
-
-
-
-sub read_matlab_index_set
-{
-	my $self = shift;
-	
-    my ($forline, $TOP, $verbose) = @_;
-    
-    chomp($forline);
-    $forline = $self->uncomment_matlab_line($forline);   # uncomment the line so you dont deal with comments. easier parsing;
-    
-    
-    # split at equal sign.
-    my @myarray    = split(/\s*=\s*/,$forline);
-    my @tag     = split(/\s/,$myarray[0]);
-    my $idx_tag = $tag[-1];
-    
-    
-  
-    
-    my $range = undef;
-    # The right of equal sign
-    my $right  = $myarray[1];
-    # see if the forline contains :
-    if($right =~ /^[^:]+:[^:]+$/){
-        my @rightarray = split( /\s*:\s*/, $right, 2 );
-        
-        my $low =$rightarray[0];
-        if(! &CJ::isnumeric($low) ){
-            &CJ::err("The lower limit of for MUST be numeric for this version of clusterjob\n");
-        }
-        
-		# remove white space
-        $rightarray[1]=~ s/^\s+|\s+$//g;
-		
-		
-        if($rightarray[1] =~ /\s*length\(\s*(.+?)\s*\)/){
-            
-            #CASE i = 1:length(var);
-            # find the variable;
-            my ($var) = $rightarray[1] =~ /\s*length\(\s*(.+?)\s*\)/;
-            my $this_line = &CJ::grep_var_line($var,$TOP);
-            
-            #extract the range
-            my @this_array    = split(/\s*=\s*/,$this_line);
-            
-            
-            my $numbers;
-            if($this_array[1] =~ /\[\s*([^:]+?)\s*\]/){
-            ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
-            my $floating_pattern = "[-+]?[0-9]*[\.]?[0-9]+(?:[eE][-+]?[0-9]+)?";
-            my $fractional_pattern = "(?:${floating_pattern}\/)?${floating_pattern}";
-            my @vals = $numbers =~ /[\;\,]?($fractional_pattern)[\;\,]?/g;
-             
-            my $high = 1+$#vals;
-            my @range = ($low..$high);
-            $range = join(',',@range);
-                
-            }
-            
-           
-            
-        }elsif($rightarray[1] =~ /\s*(\D+)\s*/) {
-            #print "$rightarray[1]"."\n";
-            # CASE i = 1:L
-            # find the variable;
-            
-			
-            my ($var) = $rightarray[1] =~ /\s*(\w+)\s*/;
-			
-            my $this_line = &CJ::grep_var_line($var,$TOP);
-            
-            #extract the range
-            my @this_array    = split(/\s*=\s*/,$this_line);
-            my ($high) = $this_array[1] =~ /\[?\s*(\d+)\s*\]?/;
-            
-            
-            if(! &CJ::isnumeric($high) ){
-                $range = undef;
-            }else{
-                my @range = ($low..$high);
-                $range = join(',',@range);
-            }
-        }elsif($rightarray[1] =~ /.*(\d+).*/){
-            # CASE i = 1:10
-            my ($high) = $rightarray[1] =~ /^\s*(\d+).*/;
-            my @range = ($low..$high);
-            $range = join(',',@range);
-            
-        }else{
-            
-            
-            $range = undef;
-            #&CJ::err("strcuture of for loop not recognized by clusterjob. try rewriting your for loop using 'i = 1:10' structure");
-            
-        }
-        
-   
-        # Other cases of for loop to be considered.
-        
-        
-        
-    }
- 
-
-    return ($idx_tag, $range);
-}
 
 
 
@@ -573,8 +609,7 @@ sub uncomment_python_line{
 	my $self = shift;
     my ($line) = @_;
     # This uncomments useless comment lines.
-    # It doesnt however remove an comment followed by useful expression
-    
+    # It doesnt however remove a comment proceeded by useful expression
     $line =~ s/^(?:(?![\"|\']).)*\K\#(.*)//;
     
     return $line;
