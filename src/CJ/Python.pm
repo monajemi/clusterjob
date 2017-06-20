@@ -216,6 +216,144 @@ return $script;
 }
 
 
+
+
+
+
+################################
+sub read_python_array_values{
+    ################################
+    my $self = shift;
+    my ($string) = @_;
+    
+    my $floating_pattern = "[-+]?[0-9]*[\.]?[0-9]+(?:[eE][-+]?[0-9]+)?";
+    my $fractional_pattern = "(?:${floating_pattern}\/)?${floating_pattern}";
+    my @vals = undef;
+    
+    if($string =~ /(.*array\(\[)?\s*($fractional_pattern)+\s*(\]\))?/){
+        my ($numbers) = $string =~ /(?:.*array\(\[)?\s*(.+)\s*(?:\]\))?/;
+        @vals = $numbers =~ /[\;\,]?($fractional_pattern)[\;\,]?/g;
+    }
+    return @vals;
+}
+
+
+########################
+sub read_python_lohi{
+    ########################
+    my $self  = shift;
+    my ($input,$TOP) = @_;
+    
+    my $lohi = undef;
+    
+    if( &CJ::isnumeric($input) ) {
+        $lohi = $input;
+        
+    }elsif ($input =~ /\s*len\(\s*(.+)\s*\)/) {
+        my $this_line = &CJ::grep_var_line($1,$TOP);
+        #extract the range
+        my @this_array    = split(/\s*=\s*/,$this_line);
+        
+        my @vals = $self->read_python_array_values($this_array[1]);  # This reads the vals;
+        $lohi = 1+$#vals;
+        $lohi = undef if (!&CJ::isnumeric($lohi));
+        
+    }elsif($input =~ /\s*(\D+)\s*:/){
+        # CASE var
+        my $this_line = &CJ::grep_var_line($1,$TOP);
+        
+        #extract the range
+        my @this_array    = split(/\s*=\s*/,$this_line);
+        
+        $lohi = ($self->read_python_array_values($this_array[1]))[0];  # This reads a number;
+        $lohi = undef if (!&CJ::isnumeric($lohi));
+    }
+    
+    return $lohi;
+}
+
+
+
+
+##########################
+sub read_python_index_set{
+    ##########################
+    my $self = shift;
+    
+    my ($forline, $TOP, $verbose) = @_;
+    
+    chomp($forline);
+    
+    # split at 'in' keyword.
+    my @myarray    = split(/\s*\bin\b\s*/,$forline);
+    my @tag        = split(/\s/,$myarray[0]);
+    my $idx_tag    = $tag[-1];
+    
+    
+    my $range = undef;   # This will be defined below
+    # The right of in keyword
+    my $right  = $myarray[1];
+    
+    
+    # see if the for line contains range
+    if($right =~ /\s*x?range\(\s*(.+)\s*\)/){
+        
+        my @rightarray = split( /\s*,\s*/, $1);
+        
+        if($#rightarray == 0){
+            #CASE i in range(stop);
+            my $low     = 0;
+            my $high    = $self->read_python_lohi($rightarray[0],$TOP);
+            $range      = join(',',($low..$high-1)) if defined($high);
+            
+        }elsif($#rightarray == 1){
+            #CASE i in range(start,stop);
+            my $low  = $self->read_python_lohi($rightarray[0],$TOP);
+            my $high = $self->read_python_lohi($rightarray[1],$TOP);
+            $range      = join(',',($low..$high-1)) if defined($high);
+            
+        }elsif($#rightarray == 2){
+            #CASE i in range(start,stop, step);
+            my $low  = $self->read_python_lohi($rightarray[0],$TOP);
+            my $high = $self->read_python_lohi($rightarray[1],$TOP);
+            my $step = $self->read_python_lohi($rightarray[2],$TOP);
+            
+            if( defined($low) && defined($high) && defined($step)){
+                
+                my @range;
+                for (my $i = $low; $i < $high; $i += $step) {
+                    push @range, $i;
+                }
+                $range      = join(',',@range);
+            }
+        }else{
+            &CJ::err("invalid argument to range(start, stop[, step]). $!");
+        }
+        
+    }elsif($right =~ /\s*(\D+)\s*:/){
+        #CASE: for i in array;
+        print $1 . "\n";
+        my $this_line = &CJ::grep_var_line($1,$TOP);
+        #extract the range
+        my @this_array    = split(/\s*=\s*/,$this_line);
+        my @range = $self->read_python_array_values($this_array[1]);
+        
+        $range      = join(',',@range);
+        
+    }else{
+        
+        $range = undef;
+        #&CJ::err("strcuture of for loop not recognized by clusterjob. try rewriting your for loop using 'i = 1:10' structure");
+        
+    }
+    return ($idx_tag, $range);
+}
+
+
+
+
+
+
 ############################## UP TO HERE EDITED  FOR PY #####################
 
 
@@ -276,185 +414,6 @@ sub findIdxTagRange{
 
 
 
-################################
-sub read_python_array_numbers{
-################################
-    my $self = shift;
-    my ($string) = @_;
-    
-    
-my $floating_pattern = "[-+]?[0-9]*[\.]?[0-9]+(?:[eE][-+]?[0-9]+)?";
-my $fractional_pattern = "(?:${floating_pattern}\/)?${floating_pattern}";
-my @vals = undef;
-    
-if($string =~ /(.*array\(\[)?\s*($fractional_pattern)+\s*(\]\))?/){
-my ($numbers) = $string =~ /(?:.*array\(\[)?\s*(.+)\s*(?:\]\))?/;
-@vals = $numbers =~ /[\;\,]?($fractional_pattern)[\;\,]?/g;
-    #$high = 1+$#vals;
-
-}
-    return @vals;
-}
-
-
-########################
-sub read_python_lohi{
-########################
-    my $self  = shift;
-    my ($input,$TOP) = @_;
-    
-    my $lohi = undef;
-    
-    if( &CJ::isnumeric($input) ) {
-        $lohi = $input;
-    }else{
-        
-        my ($var) = $input =~ /\s*(\D+)\s*/;
-        # CASE var
-        my $this_line = &CJ::grep_var_line($var,$TOP);
-        
-        #extract the range
-        my @this_array    = split(/\s*=\s*/,$this_line);
-    
-        
-        
-        $lohi = ($self->read_python_array_numbers($this_array[1]))[0];  # This reads a number;
-        $lohi = undef if (!&CJ::isnumeric($lohi));
-    }
-    
-    return $lohi;
-}
-
-
-
-
-##########################
-sub read_python_index_set{
-##########################
-    my $self = shift;
-    
-    my ($forline, $TOP, $verbose) = @_;
-    
-    chomp($forline);
-    
-    # split at 'in' keyword.
-    my @myarray    = split(/\s*\bin\b\s*/,$forline);
-    my @tag        = split(/\s/,$myarray[0]);
-    my $idx_tag    = $tag[-1];
-    
-    
-    my $range = undef;   # This will be defined below
-    # The right of in keyword
-    my $right  = $myarray[1];
-    
-    
-    # see if the forline contains range
-    if($right =~ /\s*x?range\(\s*(.+?)\s*\)/){
-        
-        print $1 . "\n";
-        
-        
-        my @rightarray = split( /\s*,\s*/, $1);
-        
-        if($#rightarray == 0){
-          #CASE i in range(stop);
-            my $low     = 0;
-            my $high    = $self->read_python_lohi($rightarray[0],$TOP)-1;
-            $range      = join(',',($low..$high));
-
-        }elsif($#rightarray == 1){
-            #CASE i in range(start,stop);
-            my $low  = $self->read_python_lohi($rightarray[0],$TOP);
-            my $high = $self->read_python_lohi($rightarray[1],$TOP)-1;
-            $range      = join(',',($low..$high));
-            
-        }elsif($#rightarray == 2){
-          #CASE i in range(start,stop, step);
-            my $low  = $self->read_python_lohi($rightarray[0],$TOP);
-            my $high = $self->read_python_lohi($rightarray[1],$TOP);
-            my $step = $self->read_python_lohi($rightarray[2],$TOP);
-            
-            if( defined($low) && defined($high) && defined($step)){
-            
-                my @range;
-                for (my $i = $low; $i < $high; $i += $step) {
-                    push @range, $i;
-                }
-                $range      = join(',',@range);
-            }
-        }else{
-            &CJ::err("invalid argument to range(start, stop[, step]). $!");
-        }
-        
-        
-        print "$range\n"; die;
-        
-        ################# UP TO HERE ################
-        
-        
-        
-        my $low = $rightarray[0];
-        if(! &CJ::isnumeric($low) ){
-            &CJ::err("The lower limit of for MUST be numeric for this version of clusterjob\n");
-        }
-        
-        # remove white space
-        $rightarray[1]=~ s/^\s+|\s+$//g;
-        
-        
-        if($rightarray[1] =~ /\s*length\(\s*(.+?)\s*\)/){
-            
-            #CASE i = 1:length(var);
-            # find the variable;
-            my ($var) = $rightarray[1] =~ /\s*length\(\s*(.+?)\s*\)/;
-            
-            
-            
-        }elsif($rightarray[1] =~ /\s*(\D+)\s*/) {
-            #print "$rightarray[1]"."\n";
-            # CASE i = 1:L
-            # find the variable;
-            
-            
-            my ($var) = $rightarray[1] =~ /\s*(\w+)\s*/;
-            
-            my $this_line = &CJ::grep_var_line($var,$TOP);
-            
-            #extract the range
-            my @this_array    = split(/\s*=\s*/,$this_line);
-            my ($high) = $this_array[1] =~ /\[?\s*(\d+)\s*\]?/;
-            
-            
-            if(! &CJ::isnumeric($high) ){
-                $range = undef;
-            }else{
-                my @range = ($low..$high);
-                $range = join(',',@range);
-            }
-        }elsif($rightarray[1] =~ /.*(\d+).*/){
-            # CASE i = 1:10
-            my ($high) = $rightarray[1] =~ /^\s*(\d+).*/;
-            my @range = ($low..$high);
-            $range = join(',',@range);
-            
-        }else{
-            
-            
-            $range = undef;
-            #&CJ::err("strcuture of for loop not recognized by clusterjob. try rewriting your for loop using 'i = 1:10' structure");
-            
-        }
-        
-        
-        # Other cases of for loop to be considered.
-        
-        
-        
-    }
-    
-    
-    return ($idx_tag, $range);
-}
 
 
 
