@@ -168,7 +168,7 @@ my $self = shift;
 my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
 
 &CJ::message("Creating reproducible script(s) reproduce_$self->{program}");
-&CJ::CodeObj($local_sep_Dir,$self->{program})->build_reproducible_script($self->{runflag});
+    &CJ::CodeObj($local_sep_Dir,$self->{program},$self->{dep_folder})->build_reproducible_script($self->{runflag});
 
 #===========================================
 # BUILD A BASH WRAPPER
@@ -283,9 +283,11 @@ my $self = shift;
 my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
 
 
+    
+    
 # read the script, parse it out and
 # find the for loops
-my $codeobj            = &CJ::CodeObj($self->{path},$self->{program});
+my $codeobj            = &CJ::CodeObj($self->{path},$self->{program},$self->{dep_folder});
 my $parser             = $codeobj->parse();
 my ($idx_tags,$ranges) = $codeobj->findIdxTagRange($parser,$self->{verbose});
 

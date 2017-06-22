@@ -14,11 +14,12 @@ use feature 'say';
 sub new {
 ####################
  	my $class= shift;
- 	my ($path,$program) = @_;
+ 	my ($path,$program,$dep_folder) = @_;
 	
 	my $self= bless {
 		path => $path, 
-		program => $program
+		program => $program,
+        dep_folder => $dep_folder
 	}, $class;
 		
 	return $self;
@@ -277,12 +278,13 @@ sub read_python_lohi{
 
 ##########################
 sub read_python_index_set{
-    ##########################
+##########################
     my $self = shift;
     
     my ($forline, $TOP, $verbose) = @_;
     
     chomp($forline);
+    
     
     # split at 'in' keyword.
     my @myarray    = split(/\s*\bin\b\s*/,$forline);
@@ -330,7 +332,8 @@ sub read_python_index_set{
             &CJ::err("invalid argument to range(start, stop[, step]). $!");
         }
         
-    }elsif($right =~ /\s*(\D+)\s*:/){
+    }elsif($right =~ /^\s*(\w+)\s*:$/){
+
         #CASE: for i in array;
         print $1 . "\n";
         my $this_line = &CJ::grep_var_line($1,$TOP);
@@ -341,6 +344,9 @@ sub read_python_index_set{
         $range      = join(',',@range);
         
     }else{
+        
+        
+
         
         $range = undef;
         #&CJ::err("strcuture of for loop not recognized by clusterjob. try rewriting your for loop using 'i = 1:10' structure");
@@ -355,6 +361,152 @@ sub read_python_index_set{
 
 
 ############################## UP TO HERE EDITED  FOR PY #####################
+
+##################################
+sub run_python_index_interpreter{
+##################################
+my $self = shift;
+my ($TOP,$tag_list,$for_lines,$verbose) = @_;
+
+&CJ::message("Invoking Python to find range of indices. Please be patient...");
+    
+    
+# Check that the local machine has Python (we currently build package locally!)
+# Open python and eval
+
+my $test_name= "/tmp/CJ_python_test";
+my $test_file = "\'$test_name\'";
+
+my $python_check_script = <<PYTHON_CHECK;
+test_fid = open($test_file,'w');
+test_fid.write('test_passed');
+test_fid.close();
+PYTHON_CHECK
+
+my $check_path = "/tmp";
+my $check_name= "CJ_python_check_script.m";
+
+&CJ::writeFile("$check_path/$check_name",$python_check_script);
+
+my $junk = "/tmp/CJ_python.output";
+
+my $python_check_bash = <<CHECK_BASH;
+#!/bin/bash -l
+python '$check_path/$check_name'  &>$junk;
+CHECK_BASH
+
+
+
+&CJ::message("Checking command 'python' is available...",1);
+    
+CJ::my_system("source ~/.bash_profile; source ~/.bashrc; printf '%s' $python_check_bash",$verbose);  # this will generate a file test_file
+
+eval{
+my $check = &CJ::readFile($test_name);     # this causes error if there is no file which indicates matlab were not found.
+    #print $check . "\n";
+};
+    
+if($@){
+#print $@ . "\n";
+&CJ::err("CJ requires 'python' but it cannot access it. Check 'python' command.");
+}else{
+&CJ::message("python available.",1);
+};
+
+
+# build a script from top to output the range of index
+
+# Add top
+my $python_interpreter_script=$TOP;
+
+
+# Add for lines
+foreach my $i (0..$#{$for_lines}){
+my $tag = $tag_list->[$i];
+my $forline = $for_lines->[$i];
+chomp($forline);
+$forline = &CJ::remove_white_space($forline);
+# print  "$tag: $forline\n";
+
+my $tag_file = "\'/tmp/$tag\.tmp\'";
+$python_interpreter_script .=<<PYTHON
+$tag\_fid = open($tag_file,'w');
+$forline
+\t$tag\_fid.write(\"%i\\n\" \% $tag);
+$tag\_fid.close();
+PYTHON
+}
+my $name = "CJ_python_interpreter_script";
+my $path = "/tmp";
+&CJ::writeFile("$path/$name.py",$python_interpreter_script);
+#&CJ::message("$name is built in $path",1);
+
+
+my $python_interpreter_bash = <<BASH;
+#!/bin/bash -l
+# dump everything user-generated from top in /tmp
+cd /tmp/
+python <<HERE &>$junk;
+import sys;
+sys.path.append('$self->{path}');
+sys.path.append('$self->{path}/$self->{dep_folder}');
+
+source $name
+HERE
+BASH
+    print "$python_interpreter_bash\n";
+    die;
+
+#my $bash_name = "CJ_matlab_interpreter_bash.sh";
+#my $bash_path = "/tmp";
+#&CJ::writeFile("$bash_path/$bash_name",$matlab_interpreter_bash);
+#&CJ::message("$bash_name is built in $bash_path");
+
+&CJ::message("finding range of indices...",1);
+CJ::my_system("source ~/.bash_profile; source ~/.bashrc; printf '%s' $python_interpreter_bash",$verbose);  # this will generate a
+&CJ::message("Closing Matlab session!",1);
+
+# Read the files, and put it into $numbers
+# open a hashref
+my $range={};
+foreach my $tag (@$tag_list){
+my $tag_file = "/tmp/$tag\.tmp";
+my $tmp_array = &CJ::readFile("$tag_file");
+my @tmp_array  = split /\n/,$tmp_array;
+$range->{$tag} = join(',', @tmp_array);
+# print $range->{$tag} . "\n";
+&CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp  
+}
+
+
+# remove the files you made in /tmp
+&CJ::my_system("rm -f $test_name $junk $check_path/$check_name $path/$name");
+
+return $range;
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 #####################
@@ -395,9 +547,8 @@ sub findIdxTagRange{
         
     }
     
-    die;
     
-    if ( @tags_to_python_interpret ) { # if we need to run matlab
+    if ( @tags_to_python_interpret ) { # if we need to run python
         my $range_run_interpret = $self->run_python_index_interpreter($TOP,\@tags_to_python_interpret,\@forlines_to_python_interpret, $verbose);
         
         
@@ -479,137 +630,6 @@ sub check_initialization{
 
 
 
-
-sub run_matlab_index_interpreter{
-	my $self = shift;
-    my ($TOP,$tag_list,$for_lines,$verbose) = @_;
-
-	&CJ::message("Invoking MATLAB to find range of indices. Please be patient...");
-
-    
-    # Check that the local machine has MATLAB (we currently build package locally!)
-	# Open matlab  and eval
-
-my $test_name= "/tmp/CJ_matlab_test";
-my $test_file = "\'$test_name\'";
-
-my $matlab_check_script = <<MATLAB_CHECK;
-test_fid = fopen($test_file,'w+');
-fprintf(test_fid,\'%s\', 'test_passed');
-fclose(test_fid);
-MATLAB_CHECK
-
-my $check_path = "/tmp";
-my $check_name= "CJ_matlab_check_script.m";
-
-&CJ::writeFile("$check_path/$check_name",$matlab_check_script);
-
-
-my $junk = "/tmp/CJ_matlab.output"; 
-
-my $matlab_check_bash = <<CHECK_BASH;
-#!/bin/bash -l
-  matlab -nodisplay -nodesktop -nosplash  < '$check_path/$check_name'  &>$junk;
-CHECK_BASH
-   
-   
-   
-&CJ::message("Checking command 'matlab' is available...",1);
-
-CJ::my_system("source ~/.bash_profile; source ~/.bashrc; printf '%s' $matlab_check_bash",$verbose);  # this will generate a file test_file
-
-eval{
-    my $check = &CJ::readFile($test_name);     # this causes error if there is no file which indicates matlab were not found.
-	#print $check . "\n";
-};
-if($@){
-	#print $@ . "\n";
-&CJ::err("CJ requires 'matlab' but it cannot access it. Consider adding alias 'matlab' in your ~/.bashrc or ~/.bash_profile");	
-}else{
-&CJ::message("matlab available.",1);	
-};   
-   
-	
-	#
-    # my $check_matlab_installed = `source ~/.bashrc ; source ~/.profile; source ~/.bash_profile; command -v matlab`;
-    # if($check_matlab_installed eq ""){
-    # &CJ::err("I require matlab but it's not installed: The following check command returned null. \n     `source ~/.bashrc ; source ~/.profile; command -v matlab`");
-    # }else{
-    # &CJ::message("Test passed, Matlab is installed on your machine.");
-    # }
-    # 
-
-# build a script from top to output the range of index
-    
-# Add top
-my $matlab_interpreter_script=$TOP;
-
-    
-# Add for lines
-foreach my $i (0..$#{$for_lines}){
-    my $tag = $tag_list->[$i];
-    my $forline = $for_lines->[$i];
-    
-        # print  "$tag: $forline\n";
-    
-   	 my $tag_file = "\'/tmp/$tag\.tmp\'";
-$matlab_interpreter_script .=<<MATLAB
-$tag\_fid = fopen($tag_file,'w+');
-$forline
-fprintf($tag\_fid,\'%i\\n\', $tag);
-end
-fclose($tag\_fid);
-MATLAB
-}
-    #print  "$matlab_interpreter_script\n";
-    
-    my $name = "CJ_matlab_interpreter_script.m";
-    my $path = "/tmp";
-    &CJ::writeFile("$path/$name",$matlab_interpreter_script);
-    #&CJ::message("$name is built in $path",1);
-
-    
-    
-    
-my $matlab_interpreter_bash = <<BASH;
-#!/bin/bash -l
-# dump everything user-generated from top in /tmp
-cd /tmp/
-matlab -nodisplay -nodesktop -nosplash  <<HERE &>$junk;
-addpath(genpath('$self->{path}'));
-run('$path/$name')
-HERE
-BASH
-
-
-    #my $bash_name = "CJ_matlab_interpreter_bash.sh";
-    #my $bash_path = "/tmp";
-    #&CJ::writeFile("$bash_path/$bash_name",$matlab_interpreter_bash);
-    #&CJ::message("$bash_name is built in $bash_path");
-
-&CJ::message("finding range of indices...",1);
-CJ::my_system("source ~/.bash_profile; source ~/.bashrc; printf '%s' $matlab_interpreter_bash",$verbose);  # this will generate a 
-&CJ::message("Closing Matlab session!",1);
-    
-# Read the files, and put it into $numbers
-# open a hashref
-my $range={};
-foreach my $tag (@$tag_list){
-    my $tag_file = "/tmp/$tag\.tmp";
-    my $tmp_array = &CJ::readFile("$tag_file");
-    my @tmp_array  = split /\n/,$tmp_array;
-    $range->{$tag} = join(',', @tmp_array);
-    # print $range->{$tag} . "\n";
-	&CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp  
-}
-
-
-# remove the files you made in /tmp
-&CJ::my_system("rm -f $test_name $junk $check_path/$check_name $path/$name");
-
-    return $range;
-	
-}
 
 
 

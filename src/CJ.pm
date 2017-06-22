@@ -2496,17 +2496,18 @@ sub create_run_history_file{
 
 sub CodeObj{
     
-my ($path,$program) = @_;
+my ($path,$program,$dep_folder) = @_;
 
+    $dep_folder ||= '';         # default
 my $program_type  = &CJ::program_type($program);
     
 my $code;
 if($program_type eq 'matlab'){
-    $code = CJ::Matlab->new($path,$program);
+    $code = CJ::Matlab->new($path,$program,$dep_folder);
 }elsif($program_type eq 'r'){
-    $code = CJ::R->new($path,$program);
+    $code = CJ::R->new($path,$program,$dep_folder);
 }elsif($program_type eq 'python'){
-    $code = CJ::Python->new($path,$program);
+    $code = CJ::Python->new($path,$program,$dep_folder);
 }else{
     CJ::err("ProgramType $program_type is not recognized.$!")
 }
