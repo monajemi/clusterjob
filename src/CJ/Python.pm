@@ -358,10 +358,6 @@ sub read_python_index_set{
 
 
 
-
-
-############################## UP TO HERE EDITED  FOR PY #####################
-
 ##################################
 sub run_python_index_interpreter{
 ##################################
@@ -450,21 +446,20 @@ python <<HERE &>$junk;
 import sys;
 sys.path.append('$self->{path}');
 sys.path.append('$self->{path}/$self->{dep_folder}');
-
-source $name
+import $name
 HERE
 BASH
-    print "$python_interpreter_bash\n";
-    die;
 
-#my $bash_name = "CJ_matlab_interpreter_bash.sh";
-#my $bash_path = "/tmp";
-#&CJ::writeFile("$bash_path/$bash_name",$matlab_interpreter_bash);
-#&CJ::message("$bash_name is built in $bash_path");
 
 &CJ::message("finding range of indices...",1);
-CJ::my_system("source ~/.bash_profile; source ~/.bashrc; printf '%s' $python_interpreter_bash",$verbose);  # this will generate a
-&CJ::message("Closing Matlab session!",1);
+
+CJ::my_system("source hatef.rc",$verbose);
+CJ::my_system("source ~/.bash_profile",$verbose);
+CJ::my_system("source ~/.profile",$verbose);
+CJ::my_system("source ~/.bashrc",$verbose);
+CJ::my_system("printf '%s' $python_interpreter_bash",$verbose);
+    
+&CJ::message("Closing Python session!",1);
 
 # Read the files, and put it into $numbers
 # open a hashref
@@ -480,33 +475,11 @@ $range->{$tag} = join(',', @tmp_array);
 
 
 # remove the files you made in /tmp
-&CJ::my_system("rm -f $test_name $junk $check_path/$check_name $path/$name");
+&CJ::my_system("rm -f $test_name $junk $check_path/$check_name $path/$name.py");
 
 return $range;
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 #####################
@@ -564,10 +537,21 @@ sub findIdxTagRange{
 
 
 
+############################
+sub uncomment_python_line{
+    ############################
+    my $self = shift;
+    my ($line) = @_;
+    # This uncomments useless comment lines.
+    $line =~ s/^(?:(?![\"|\']).)*\K\#(.*)//;
+    return $line;
+}
 
 
 
 
+
+############################## UP TO HERE EDITED  FOR PY #####################
 
 
 
@@ -632,18 +616,6 @@ sub check_initialization{
 
 
 
-
-
-
-sub uncomment_python_line{
-	my $self = shift;
-    my ($line) = @_;
-    # This uncomments useless comment lines.
-    # It doesnt however remove a comment proceeded by useful expression
-    $line =~ s/^(?:(?![\"|\']).)*\K\#(.*)//;
-    
-    return $line;
-}
 
 
 
