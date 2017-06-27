@@ -56,3 +56,16 @@ MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 Python		python/3.4.3
 Pythonlib	numpy:scipy
 [farmshare]
+
+[farmshare2]
+Host		rice.stanford.edu
+User		monajemi
+Bqs		SLURM
+Repo		/farmshare/user_data/monajemi/CJRepo_Remote
+MAT     	matlab/r2016b
+MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
+Python		python/3.4.3
+Pythonlib	numpy:scipy
+[farmshare2]
+
+

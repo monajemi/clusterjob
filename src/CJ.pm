@@ -2046,7 +2046,7 @@ sub my_system
 		system("touch $CJlog_out") unless (-f $CJlog_out);
         system("touch $CJlog_error") unless (-f $CJlog_error);
         &CJ::writeFile($CJlog_out,"system: $cmd\n", "-a");
-        system("$cmd >> $CJlog_out 2> $CJlog_error") ;
+        system("$cmd >> $CJlog_out 2>$CJlog_error") ;
     }
 
 }
