@@ -113,6 +113,12 @@ sub nForLoop
         return $master_script;	
 }
 
+
+
+################### FIX ME######################
+#  THE INPUT needs to follow PYTHON syntax.
+#   SLIGHTLY LANGUAGE DEPENDENT
+################################################
 sub build_nloop_matlab_code
 {		   
 	my ($master_script,$counter,$extra,@rest) = @_;

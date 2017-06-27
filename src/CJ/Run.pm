@@ -358,7 +358,7 @@ $cmd = "rsync -arvz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
 &CJ::my_system($cmd,$self->{verbose});
 
 
-&CJ::message("Submitting job(s)");
+$self->{runflag} eq "pardeploy" ? &CJ::message("Deployed.") : &CJ::message("Submitting job(s)");
 my $wait = int($totalJobs/300) + 2 ; # add more wait time for large jobs so the other server finish writing.
 $cmd = "ssh $ssh->{account} 'source ~/.bashrc;cd $remoteDir; tar -xzf ${tarfile} ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep $wait'";
 &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "pardeploy");
