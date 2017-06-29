@@ -714,10 +714,27 @@ $script =~ s|<MATLAB_MODULE>|$ssh->{mat}|;
 
 
 
+#############################
+sub buildParallelizedScript{
+#############################
+my $self = shift;
+my ($TOP,$FOR,$BOT,@tag_idx) = @_;
+
+my @str;
+while(@tag_idx){
+   my $tag = shift @tag_idx;
+   my $idx = shift @tag_idx;
+   push @str , "$tag~=$idx";
+}
+
+my $str = join('||',@str);
 
 
-
-
+my $INSERT = "if ($str); continue;end";
+my $new_script = "$TOP \n $FOR \n $INSERT \n $BOT";
+undef $INSERT;
+return $new_script;
+}
 
 
 

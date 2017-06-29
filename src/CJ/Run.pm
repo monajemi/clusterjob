@@ -320,6 +320,7 @@ $extra->{BOT}= $parser->{BOT};
 $extra->{local_sep_Dir}= $local_sep_Dir;
 $extra->{remote_sep_Dir}= $remote_sep_Dir;
 $extra->{runflag}= $self->{runflag};
+$extra->{path}   = $self->{path};  #This is directory from which the code is being called
 $extra->{program}= $self->{program};
 $extra->{date}= $date;
 $extra->{pid}= $pid;
@@ -427,6 +428,23 @@ my $runinfo={
 &CJ::add_record($runinfo);
 &CJ::write2firebase($pid,$runinfo, $date->{epoch},0);  # send to CJ server
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

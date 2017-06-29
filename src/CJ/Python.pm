@@ -241,7 +241,7 @@ sub read_python_array_values{
 
 ########################
 sub read_python_lohi{
-    ########################
+########################
     my $self  = shift;
     my ($input,$TOP) = @_;
     
@@ -539,7 +539,7 @@ sub findIdxTagRange{
 
 ############################
 sub uncomment_python_line{
-    ############################
+############################
     my $self = shift;
     my ($line) = @_;
     # This uncomments useless comment lines.
@@ -549,19 +549,36 @@ sub uncomment_python_line{
 
 
 
+#############################
+sub buildParallelizedScript{
+#############################
+my $self = shift;
+my ($TOP,$FOR,$BOT,@tag_idx) = @_;
+
+my @str;
+while(@tag_idx){
+    my $tag = shift @tag_idx;
+    my $idx = shift @tag_idx;
+    push @str , " $tag != $idx ";
+}
+
+my $str = join('or',@str);
+
+my $INSERT = "if ($str): continue;";
+my @BOT_lines = split /^/, $BOT;
+my ($level) = $BOT_lines[0] =~ m/^(\s*).+/ ;  # determin our level of indentation
+    
+my $new_script = "$TOP\n$FOR\n$level$INSERT\n$BOT";
+undef $INSERT;
+return $new_script;
+}
+
+
+
+
 
 
 ############################## UP TO HERE EDITED  FOR PY #####################
-
-
-
-
-
-
-
-
-
-
 
 ##########################
 sub check_initialization{
