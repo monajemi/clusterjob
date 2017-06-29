@@ -87,7 +87,7 @@ sub build_nloop_master_script
 		
 	my $master_script;
 	my $itr = 0; 			 #$ranges->[$itr]);  0<=itr<=nloops-1
-	$master_script = nForLoop(\&build_nloop_matlab_code,$extra,$nloop,$itr,$idx_tags,$ranges);
+	$master_script = nForLoop(\&build_nloop_code,$extra,$nloop,$itr,$idx_tags,$ranges);
 	return $master_script;
 }
 
@@ -119,46 +119,36 @@ sub nForLoop
 #  THE INPUT needs to follow PYTHON syntax.
 #   SLIGHTLY LANGUAGE DEPENDENT
 ################################################
-sub build_nloop_matlab_code
+
+sub build_nloop_code
 {		   
 	my ($master_script,$counter,$extra,@rest) = @_;
 		
 	   $counter++;
 	   # print "$counter\n";
-	   my $TOP = $extra->{TOP};
-	   my $FOR = $extra->{FOR};
-	   my $BOT = $extra->{BOT};
-	   my $local_sep_Dir = $extra->{local_sep_Dir};
-	   my $remote_sep_Dir=$extra->{remote_sep_Dir};
-	   my $runflag = $extra->{runflag};
-	   my $program = $extra->{program};
-	   my $date = $extra->{date} ;
-	   my $pid =$extra->{pid} ;
-	   my $bqs = $extra->{bqs};
+	   my $TOP            = $extra->{TOP};
+	   my $FOR            = $extra->{FOR};
+	   my $BOT            = $extra->{BOT};
+	   my $local_sep_Dir  = $extra->{local_sep_Dir};
+	   my $remote_sep_Dir =$extra->{remote_sep_Dir};
+	   my $runflag        = $extra->{runflag};
+       my $path           = $extra->{path};
+	   my $program        = $extra->{program};
+	   my $date           = $extra->{date} ;
+	   my $pid            = $extra->{pid} ;
+	   my $bqs            = $extra->{bqs};
 	   my $submit_defaults=$extra->{submit_defaults};
        my $qSubmitDefault = $extra->{qSubmitDefault};
-       my $qsub_extra = $extra->{qsub_extra};
+       my $qsub_extra     = $extra->{qsub_extra};
 	   my $ssh = $extra->{ssh};
 
-       
+    
+       my $codeobj = &CJ::CodeObj($path,$program);
+    
        #============================================
        #     BUILD EXP FOR this (v0,v1,...)
        #============================================
-	   my @str;
-	   while(@rest){
-		   my $tag = shift @rest;
-		   my $idx = shift @rest;
-		   push @str , "$tag~=$idx";
-	   } 
-       
-	   my $str = join('||',@str);
-	   
-	   
-       my $INPUT;
-       $INPUT .= "if ($str); continue;end";
-       my $new_script = "$TOP \n $FOR \n $INPUT \n $BOT";
-       undef $INPUT;                   #undef INPUT for the next run
-      
+       my $new_script = $codeobj->buildParallelizedScript($TOP,$FOR,$BOT,@rest);
        #============================================
        #   COPY ALL NECESSARY FILES INTO THE
        #   EXPERIMENTS FOLDER
@@ -186,10 +176,6 @@ sub build_nloop_matlab_code
        $master_script = &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$counter);
 	   return ($counter,$master_script);
 }
-
-
-
-
 
 # ======
 # Build master script
