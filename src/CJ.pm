@@ -1899,7 +1899,7 @@ if($bqs eq "SGE"){
 $shell_toe = <<'BASH_TOE';
 echo ending job \$SHELLSCRIPT
 echo JOB_ID \$JOB_ID
-date
+echo END_DATE date
 echo "done"
 BASH_TOE
     
@@ -1908,7 +1908,7 @@ BASH_TOE
 $shell_toe = <<'BASH_TOE';
 echo ending job $SHELLSCRIPT
 echo JOB_ID $SLURM_JOBID
-date
+echo END_DATE date
 echo "done"
 BASH_TOE
     
@@ -1929,35 +1929,35 @@ my ($bqs) = @_;
 
 my $shell_head = bash_header($bqs);
 
-    
 if($bqs eq "SGE"){
 $shell_head.=<<'HEAD'
 echo JOB_ID $JOB_ID
 echo WORKDIR $SGE_O_WORKDIR
-DIR=`pwd`
+echo START_DATE date
 HEAD
 
 }elsif($bqs eq "SLURM"){
 $shell_head.=<<'HEAD'
 echo JOB_ID $SLURM_JOBID
 echo WORKDIR $SLURM_SUBMIT_DIR
-DIR=`pwd`
+echo START_DATE date
 HEAD
 }else{
 &CJ::err("unknown BQS $!");
 }
-    
     return $shell_head;
+
 }
 
 
-################
+#####################################
 sub shell_neck{
-################
-my ($program,$pid) = @_;
+#####################################
+my ($program,$pid,$remote_path) = @_;
     
 my $shell_neck;
 $shell_neck = <<'MID';
+DIR=<remote_path>;
 PROGRAM="<PROGRAM>";
 PID=<PID>;
 cd $DIR;
@@ -1967,20 +1967,54 @@ SHELLSCRIPT=${DIR}/scripts/CJrun.${PID}.sh;
 LOGFILE=${DIR}/logs/CJrun.${PID}.log;
 MID
    
-    my ($program_name,$ext)=remove_extension($program);
+my ($program_name,$ext)=remove_extension($program);
 
-if (&CJ::program_type($program) eq 'python') {
-    $shell_neck =~ s|<PROGRAM>|$program_name|;
-} else{
-    $shell_neck =~ s|<PROGRAM>|$program| ;
-}
 $shell_neck =~ s|<PID>|$pid|;
-    
+$shell_neck =~ s|<remote_path>|$remote_path|;
+if (&CJ::program_type($program) eq 'python') {
+$shell_neck =~ s|<PROGRAM>|$program_name|;
+} else{
+$shell_neck =~ s|<PROGRAM>|$program| ;
+}
     return $shell_neck;
 }
 
 
 
+
+#####################################
+sub par_shell_neck{
+#####################################
+my ($program,$pid,$counter,$remote_path) = @_;
+    
+my $shell_neck;
+$shell_neck = <<'MID';
+DIR=<remote_path>;
+PROGRAM="<PROGRAM>";
+PID=<PID>;
+COUNTER=<COUNTER>;
+cd $DIR;
+mkdir scripts
+mkdir logs
+SHELLSCRIPT=${DIR}/scripts/CJrun.${PID}.${COUNTER}.sh;
+LOGFILE=${DIR}/logs/CJrun.${PID}.${COUNTER}.log;
+MID
+    
+
+my ($program_name,$ext)=remove_extension($program);
+    
+$shell_neck =~ s|<PID>|$pid|;
+$shell_neck =~ s|<COUNTER>|$counter|;
+$shell_neck =~ s|<remote_path>|$remote_path|;
+if (&CJ::program_type($program) eq 'python') {
+    $shell_neck =~ s|<PROGRAM>|$program_name|;
+} else{
+    $shell_neck =~ s|<PROGRAM>|$program| ;
+}
+    
+    
+    return $shell_neck;
+}
 
 
 
