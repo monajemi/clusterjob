@@ -130,7 +130,7 @@ sub build_nloop_code
 	   my $FOR            = $extra->{FOR};
 	   my $BOT            = $extra->{BOT};
 	   my $local_sep_Dir  = $extra->{local_sep_Dir};
-	   my $remote_sep_Dir =$extra->{remote_sep_Dir};
+	   my $remote_sep_Dir = $extra->{remote_sep_Dir};
 	   my $runflag        = $extra->{runflag};
        my $path           = $extra->{path};
 	   my $program        = $extra->{program};
@@ -165,7 +165,7 @@ sub build_nloop_code
        
        # build bashMain.sh for each parallel package
        my $remote_par_sep_dir = "$remote_sep_Dir/$counter";
-       my $sh_script = &CJ::Scripts::make_par_shell_script($ssh,$program,$pid,$bqs,$counter, $remote_par_sep_dir);
+       my $sh_script = &CJ::Scripts::make_par_shell_script($ssh,$program,$pid,$bqs,$counter,$remote_par_sep_dir);
        my $local_sh_path = "$local_sep_Dir/$counter/bashMain.sh";
        &CJ::writeFile($local_sh_path, $sh_script);
     
@@ -301,11 +301,11 @@ $master_script.="$docstring";
 sub make_shell_script{
 ######################
 
-    my ($ssh,$program,$pid,$bqs) = @_;
+    my ($ssh,$program,$pid,$bqs,$remote_path) = @_;
 
-    my $sh_script  = CJ::shell_head($bqs);
-    $sh_script    .= CJ::shell_neck($program,$pid);  # setting PID, and SHELLSCRIPT, LOGFILE PATH
-    $sh_script    .= CJ::Scripts::make_CJrun_bash_script($ssh,$program,$bqs); # Program specific Mat, Py, R,
+    my $sh_script  = &CJ::shell_head($bqs);
+    $sh_script    .= &CJ::shell_neck($program,$pid, $remote_path);  # setting PID, and SHELLSCRIPT, LOGFILE PATH
+    $sh_script    .= &CJ::Scripts::make_CJrun_bash_script($ssh,$program,$bqs); # Program specific Mat, Py, R,
     $sh_script    .= 'chmod a+x $SHELLSCRIPT' . "\n";
     $sh_script    .= 'bash $SHELLSCRIPT > $LOGFILE' . "\n";
     
@@ -319,12 +319,12 @@ sub make_CJrun_bash_script{
 ############################
 my ($ssh,$program,$bqs) = @_;
 
-my $codeobj = CJ::CodeObj(undef,$program);  # This doesnt need a path at this stage;
+my $codeobj = &CJ::CodeObj(undef,$program);  # This doesnt need a path at this stage;
     
 my  $CJrun_bash_script   = 'cat <<THERE > $SHELLSCRIPT' . "\n";
-    $CJrun_bash_script  .= CJ::shell_head($bqs);
+    $CJrun_bash_script  .= &CJ::bash_header($bqs);
     $CJrun_bash_script  .= $codeobj->CJrun_body_script($ssh);
-    $CJrun_bash_script  .= CJ::shell_toe($bqs);
+    $CJrun_bash_script  .= &CJ::shell_toe($bqs);
     $CJrun_bash_script  .= 'THERE' . "\n";
     
 return $CJrun_bash_script;
@@ -334,195 +334,42 @@ return $CJrun_bash_script;
 
 
 
+###############################
+sub make_CJrun_par_bash_script{
+###############################
+    
+    my ($ssh,$program,$bqs) = @_;
+    
+    my $codeobj = CJ::CodeObj(undef,$program);  # This doesnt need a path at this stage;
+    
+    my  $CJrun_bash_script   = 'cat <<THERE > $SHELLSCRIPT' . "\n";
+    $CJrun_bash_script  .= &CJ::bash_header($bqs);
+    $CJrun_bash_script  .= $codeobj->CJrun_par_body_script($ssh);
+    $CJrun_bash_script  .= &CJ::shell_toe($bqs);
+    $CJrun_bash_script  .= 'THERE' . "\n";
+    return $CJrun_bash_script;
+}
 
 
+
+
+
+###############################
 # parallel shell script
-#====================================
-#       BUILD A PARALLEL BASH WRAPPER
-#====================================
+# BUILD A PARALLEL BASH WRAPPER
+sub make_par_shell_script{
+###############################
 
-sub make_par_shell_script
-{
 my ($ssh,$program,$pid,$bqs,$counter,$remote_path) = @_;
 
-my $sh_script;
-if($bqs eq "SGE"){
+   my $codeobj       = &CJ::CodeObj(undef,$program);  # This doesnt need a path at this stage;
+   
+    my $sh_script    = &CJ::shell_head($bqs);
+       $sh_script   .= &CJ::par_shell_neck($program,$pid,$counter,$remote_path);  # setting PID, and SHELLSCRIPT, LOGFILE PATH
+       $sh_script   .= &CJ::Scripts::make_CJrun_par_bash_script($ssh,$program,$bqs); # Program specific Mat, Py, R,
+       $sh_script   .= 'chmod a+x $SHELLSCRIPT' . "\n";
+       $sh_script   .= 'bash $SHELLSCRIPT > $LOGFILE' . "\n";
     
-$sh_script=<<'HEAD'
-#!/bin/bash -l
-#\$ -cwd
-#\$ -S /bin/bash
-
-echo JOB_ID $JOB_ID
-echo WORKDIR $SGE_O_WORKDIR
-DIR=<remote_path>
-HEAD
-
-}elsif($bqs eq "SLURM"){
-$sh_script=<<'HEAD'
-#!/bin/bash -l
-echo JOB_ID $SLURM_JOBID
-echo WORKDIR $SLURM_SUBMIT_DIR
-DIR=<remote_path>
-HEAD
-}else{
-&CJ::err("unknown BQS");
-}
-    
-
-$sh_script.= <<'MID';
-PROGRAM="<PROGRAM>";
-PID=<PID>;
-COUNTER=<COUNTER>;
-cd $DIR;
-mkdir scripts
-mkdir logs
-SHELLSCRIPT=${DIR}/scripts/CJrun.${PID}.${COUNTER}.sh;
-LOGFILE=${DIR}/logs/CJrun.${PID}.${COUNTER}.log;
-MID
-
-if($bqs eq "SGE"){
-$sh_script.= <<'BASH';
-cat <<THERE > $SHELLSCRIPT
-#! /bin/bash -l
-#$ -cwd
-#$ -R y
-#$ -S /bin/bash
-
-echo starting job $SHELLSCRIPT
-echo JOB_ID \$JOB_ID
-echo WORKDIR \$SGE_O_WORKDIR
-date
-cd $DIR
-
-module load <MATLAB_MODULE>
-unset _JAVA_OPTIONS
-matlab -nosplash -nodisplay <<HERE
-<MATPATH>
-
-    
-% add path for parrun
-oldpath = textscan('$DIR', '%s', 'Delimiter', '/');
-newpath = horzcat(oldpath{:});
-bin_path = sprintf('%s/', newpath{1:end-1});
-addpath(genpath(bin_path));  % recursive path
-    
-    
-% make sure each run has different random number stream
-myversion = version;
-mydate = date;
-    
-% To get different Randstate for different jobs
-rng(${COUNTER})
-seed = sum(100*clock) + randi(10^6);
-RandStream.setGlobalStream(RandStream('mt19937ar','seed', seed));
-globalStream = RandStream.getGlobalStream;
-CJsavedState = globalStream.State;
-fname = sprintf('CJrandState.mat');
-save(fname, 'myversion','mydate', 'CJsavedState');
-cd $DIR
-run('${PROGRAM}');
-quit;
-HERE
-
-echo ending job \$SHELLSCRIPT
-echo JOB_ID \$JOB_ID
-date
-echo "done"
-THERE
-
-chmod a+x $SHELLSCRIPT
-bash $SHELLSCRIPT > $LOGFILE
-
-BASH
-}elsif($bqs eq "SLURM"){
-$sh_script.= <<'BASH';
-cat <<THERE > $SHELLSCRIPT
-#! /bin/bash -l
-
-echo starting job \$SHELLSCRIPT
-echo JOB_ID \$SLURM_JOBID
-echo WORKDIR \$SLURM_SUBMIT_DIR
-date
-cd $DIR
-
-module load <MATLAB_MODULE>
-unset _JAVA_OPTIONS
-matlab -nosplash -nodisplay <<HERE
-<MATPATH>
-
-    
-% add path for parrun
-oldpath = textscan('$DIR', '%s', 'Delimiter', '/');
-newpath = horzcat(oldpath{:});
-bin_path = sprintf('%s/', newpath{1:end-1});
-addpath(genpath(bin_path));
-    
-    
-% make sure each run has different random number stream
-myversion = version;
-mydate = date;
-% To get different Randstate for different jobs
-rng(${COUNTER})
-seed = sum(100*clock) + randi(10^6);
-RandStream.setGlobalStream(RandStream('mt19937ar','seed', seed));
-globalStream = RandStream.getGlobalStream;
-CJsavedState = globalStream.State;
-fname = sprintf('CJrandState.mat');
-save(fname,'myversion', 'mydate', 'CJsavedState');
-cd $DIR
-run('${PROGRAM}');
-quit;
-HERE
-
-echo ending job \$SHELLSCRIPT
-echo JOB_ID \$SLURM_JOBID
-date
-echo "done"
-THERE
-
-chmod a+x $SHELLSCRIPT
-bash $SHELLSCRIPT > $LOGFILE
-
-
-BASH
-}
-
-my $pathText.=<<MATLAB;
-    
-% add user defined path
-addpath $ssh->{matlib} -begin
-
-% generate recursive path
-addpath(genpath('.'));
-
-try
-cvx_setup;
-cvx_quiet(true)
-% Find and add Sedumi Path for machines that have CVX installed
-    cvx_path = which('cvx_setup.m');
-oldpath = textscan( cvx_path, '%s', 'Delimiter', '/');
-newpath = horzcat(oldpath{:});
-sedumi_path = [sprintf('%s/', newpath{1:end-1}) 'sedumi'];
-addpath(sedumi_path)
-
-catch
-warning('CVX not enabled. Please set CVX path in .ssh_config if you need CVX for your jobs');
-end
-
-MATLAB
-
-
-
-
-$sh_script =~ s|<PROGRAM>|$program|;
-$sh_script =~ s|<PID>|$pid|;
-$sh_script =~ s|<COUNTER>|$counter|;
-$sh_script =~ s|<MATPATH>|$pathText|;
-$sh_script =~ s|<MATLAB_MODULE>|$ssh->{mat}|;
-$sh_script =~ s|<remote_path>|$remote_path|;
-    
-
 return $sh_script;
 }	    
 		

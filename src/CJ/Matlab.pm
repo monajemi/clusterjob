@@ -720,6 +720,107 @@ $script =~ s|<MATLAB_MODULE>|$ssh->{mat}|;
 
 
 
+##########################
+sub CJrun_par_body_script{
+##########################
+    my $self = shift;
+    my ($ssh) = @_;
+    
+&CJ::err("Matlab module not defined in ssh_config file.") if not defined $ssh->{'mat'};
+
+my $script =<<'BASH';
+
+module load <MATLAB_MODULE>
+unset _JAVA_OPTIONS
+matlab -nosplash -nodisplay <<HERE
+<MATPATH>
+
+
+% add path for parrun
+oldpath = textscan('$DIR', '%s', 'Delimiter', '/');
+newpath = horzcat(oldpath{:});
+bin_path = sprintf('%s/', newpath{1:end-1});
+addpath(genpath(bin_path));
+
+
+% make sure each run has different random number stream
+myversion = version;
+mydate = date;
+% To get different Randstate for different jobs
+rng(${COUNTER})
+seed = sum(100*clock) + randi(10^6);
+RandStream.setGlobalStream(RandStream('mt19937ar','seed', seed));
+globalStream = RandStream.getGlobalStream;
+CJsavedState = globalStream.State;
+fname = sprintf('CJrandState.mat');
+save(fname,'myversion', 'mydate', 'CJsavedState');
+cd $DIR
+run('${PROGRAM}');
+quit;
+HERE
+
+BASH
+    
+    
+    
+my $pathText.=<<MATLAB;
+
+% add user defined path
+addpath $ssh->{matlib} -begin
+
+% generate recursive path
+addpath(genpath('.'));
+
+try
+cvx_setup;
+cvx_quiet(true)
+% Find and add Sedumi Path for machines that have CVX installed
+cvx_path = which('cvx_setup.m');
+oldpath = textscan( cvx_path, '%s', 'Delimiter', '/');
+newpath = horzcat(oldpath{:});
+sedumi_path = [sprintf('%s/', newpath{1:end-1}) 'sedumi'];
+addpath(sedumi_path)
+
+catch
+warning('CVX not enabled. Please set CVX path in .ssh_config if you need CVX for your jobs');
+end
+
+MATLAB
+   
+    
+$script =~ s|<MATPATH>|$pathText|;
+$script =~ s|<MATLAB_MODULE>|$ssh->{mat}|;
+
+    
+    return $script;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #############################
 sub buildParallelizedScript{
 #############################

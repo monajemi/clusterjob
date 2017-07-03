@@ -133,15 +133,18 @@ CJ::writeFile("$self->{path}/$rp_program", $rp_program_script);
 }
 
 
+
+
+
+
+
 #######################
 sub CJrun_body_script{
 #######################
     my $self = shift;
     my ($ssh) = @_;
     
-    
-    
-# Determine Easy_install version
+# Determine easy_install version
 my $python_version_tag = "";
 &CJ::err("python module not defined in ssh_config file.") if not defined $ssh->{'py'};
     
@@ -175,7 +178,7 @@ CJsavedState = {'myversion': sys.version, 'mydate':mydate, 'numpy_CJsavedState':
     
 fname = "$DIR/CJrandState.pickle";
 with open(fname, 'wb') as RandStateFile:
-    pickle.dump(CJsavedState, RandStateFile);
+	pickle.dump(CJsavedState, RandStateFile);
 
 # CJsavedState = pickle.load(open('CJrandState.pickle','rb'));
     
@@ -219,11 +222,108 @@ return $script;
 
 
 
+##########################
+sub CJrun_par_body_script{
+##########################
+    
+    my $self = shift;
+    my ($ssh) = @_;
+    
+# Determine easy_install version
+my $python_version_tag = "";
+&CJ::err("python module not defined in ssh_config file.") if not defined $ssh->{'py'};
+if( $ssh->{'py'} =~ /python.?((\d.\d).\d)/ ) {
+$python_version_tag = "-".$2;
+}
+
+# Libraries required
+my $user_required_pyLib = join (" ", split(":",$ssh->{'pylib'}) );
+
+    
+my $script =<<'BASH';
+
+module load <PYTHON_MODULE>
+
+<PYTHONLIB>
+
+python <<HERE
+
+# make sure each run has different random number stream
+import os,sys,pickle,numpy,random;
+    
+# Add path for parrun
+deli  = "/";
+path  = os.getcwd();
+path  = path.split(deli);
+path.pop();
+sys.path.append(deli.join(path));
+    
+#GET A RANDOM SEED FOR THIS COUNTER
+numpy.random.seed(${COUNTER});
+seed_0 = numpy.random.randint(10**6);
+mydate = numpy.datetime64('now');
+#sum(100*clock)
+seed_1 = numpy.sum(100*numpy.array([mydate.astype(object).year, mydate.astype(object).month, mydate.astype(object).day, mydate.astype(object).hour, mydate.astype(object).minute, mydate.astype(object).second]));
+#seed = sum(100*clock) + randi(10^6);
+seed = seed_0 + seed_1;
+
+    
+# Set the seed for python and numpy (for reproducibility purposes);
+random.seed(seed);
+numpy.random.seed(seed);
+
+CJsavedState = {'myversion': sys.version, 'mydate':mydate, 'numpy_CJsavedState': numpy.random.get_state(), 'CJsavedState': random.getstate()}
+
+fname = "$DIR/CJrandState.pickle";
+with open(fname, 'wb') as RandStateFile:
+	pickle.dump(CJsavedState, RandStateFile);
+
+# del vars that we create tmp
+del deli,path,seed_0,seed_1,seed,CJsavedState;
+    
+# CJsavedState = pickle.load(open('CJrandState.pickle','rb'));
+
+os.chdir("$DIR")
+import ${PROGRAM};
+exit();
+HERE
+
+# Get out of virtual env and remove it
+deactivate
+rm -rf $HOME/python_venv_$PID;
+
+BASH
+
+
+
+my $libs =<<LIB;
+# Install required software in a virtualenv
+# This can be different when Container used.
+
+easy_install$python_version_tag --user pip
+python -m pip install --user --upgrade pip
+python -m pip install --user --upgrade virtualenv
+python -m virtualenv \$HOME/python_venv_\$PID ;
+source \$HOME/python_venv_\$PID/bin/activate
+pip install numpy $user_required_pyLib
+
+# Freez the environment after you installed all the modules
+pip freeze > \${DIR}/python_requirements.txt
+
+LIB
+
+$script =~ s|<PYTHONLIB>|$libs|;
+$script =~ s|<PYTHON_MODULE>|$ssh->{'py'}|;
+
+
+return $script;
+}
+
 
 
 ################################
 sub read_python_array_values{
-    ################################
+################################
     my $self = shift;
     my ($string) = @_;
     
