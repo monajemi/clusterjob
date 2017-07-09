@@ -362,6 +362,8 @@ my $check_name= "CJ_matlab_check_script.m";
 
 my $junk = "/tmp/CJ_matlab.output"; 
 
+    
+    
 my $matlab_check_bash = <<CHECK_BASH;
 #!/bin/bash -l
   matlab -nodisplay -nodesktop -nosplash  < '$check_path/$check_name'  &>$junk;
@@ -425,6 +427,10 @@ MATLAB
 
     
     
+#FIXME: addpath(genpath('$self->{path}/$self->{dep_folder}'));
+# This needs to direct to only the dep folder. Otherwise you may pick up
+# Things, you dont need and this causes crash.
+# ALso if this is not successful and doesnt give index.tmp, we need to issue error.
     
 my $matlab_interpreter_bash = <<BASH;
 #!/bin/bash -l
