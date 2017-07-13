@@ -2030,10 +2030,6 @@ if (&CJ::program_type($program) eq 'python') {
 
 
 
-
-
-
-
 # Check Numeric
 sub isnumeric
 {

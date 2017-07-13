@@ -214,7 +214,7 @@ LIB
 $script =~ s|<PYTHONLIB>|$libs|;
 $script =~ s|<PYTHON_MODULE>|$ssh->{'py'}|;
 
-  
+
 return $script;
     
 }
@@ -339,9 +339,11 @@ sub read_python_array_values{
 }
 
 
-########################
+#############################################################
+# This function is used for parsing the content of _for_ line
+# low and high limits of the loop
 sub read_python_lohi{
-########################
+#############################################################
     my $self  = shift;
     my ($input,$TOP) = @_;
     
@@ -498,7 +500,7 @@ CHECK_BASH
 CJ::my_system("source ~/.bash_profile; source ~/.bashrc; printf '%s' $python_check_bash",$verbose);  # this will generate a file test_file
 
 eval{
-my $check = &CJ::readFile($test_name);     # this causes error if there is no file which indicates matlab were not found.
+my $check = &CJ::readFile($test_name);     # this causes error if there is no file which indicates Python were not found.
     #print $check . "\n";
 };
     
@@ -680,76 +682,16 @@ return $new_script;
 
 ############################## UP TO HERE EDITED  FOR PY #####################
 
-##########################
-sub check_initialization{
-##########################
-	my $self = shift;
-	
-    my ($parser,$tag_list,$verbose) = @_;
-
-	my $BOT = $parser->{BOT};
-	my $TOP = $parser->{TOP};
-	
-	
-	
-    my @BOT_lines = split /\n/, $BOT;
-   
+#############################
+sub make_MAT_collect_script{
+#############################
     
-    my @pattern;
-    foreach my $tag (@$tag_list){
-    # grep the line that has this tag as argument
-    push @pattern, "\\(.*\\b$tag\\b\.*\\)\|\\{.*\\b$tag\\b\.*\\}";
-    }
-    my $pattern = join("\|", @pattern);
-    
-    my @vars;
-    foreach my $line (@BOT_lines) {
-    
-        if($line =~ /(.*)(${pattern})\s*\={1}/){
-            my @tmp  = split "\\(|\\{", $line;
-            my $var  = $tmp[0];
-            #print "$line\n${pattern}:  $var\n";
-            $var =~ s/^\s+|\s+$//g;
-            push @vars, $var;
-        }
-    }
-    
-    foreach(@vars)
-    {
-        my $line = &CJ::grep_var_line($_,$TOP);
-    }
+my $self = shift;
 
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-sub make_MAT_collect_script
-{
-	my $self = shift;
-	
 my ($res_filename, $completed_filename, $bqs) = @_;
-    
+
 my $collect_filename = "collect_list.cjr";
-    
+
 my $matlab_collect_script=<<MATLAB;
 \% READ completed_list.cjr and FIND The counters that need
 \% to be collected
@@ -762,50 +704,50 @@ if(~isempty(completed_list))
 if(exist('$res_filename', 'file'))
     \% CJ has been called before
     res = load('$res_filename');
-    start = 1;
+start = 1;
 else
     \% Fisrt time CJ is being called
     res = load([num2str(completed_list(1)),'/$res_filename']);
-    start = 2;
-    
-    
-    \% delete the line from remaining_filename and add it to collected.
-    \%fid = fopen('$completed_filename', 'r') ;               \% Open source file.
-    \%fgetl(fid) ;                                            \% Read/discard line.
-    \%buffer = fread(fid, Inf) ;                              \% Read rest of the file.
-    \%fclose(fid);
-    \%delete('$completed_filename');                         \% delete the file
-    \%fid = fopen('$completed_filename', 'w')  ;             \% Open destination file.
-    \%fwrite(fid, buffer) ;                                  \% Save to file.
-    \%fclose(fid) ;
-    
-    if(~exist('$collect_filename','file'));
-    fid = fopen('$collect_filename', 'a+');
-    fprintf ( fid, '%d\\n', completed_list(1) );
-    fclose(fid);
-    end
-    
-    percent_done = 1/length(completed_list) * 100;
-    fprintf('\\n SubPackage %d Collected (%3.2f%%)', completed_list(1), percent_done );
+start = 2;
 
-    
+
+\% delete the line from remaining_filename and add it to collected.
+\%fid = fopen('$completed_filename', 'r') ;               \% Open source file.
+\%fgetl(fid) ;                                            \% Read/discard line.
+\%buffer = fread(fid, Inf) ;                              \% Read rest of the file.
+\%fclose(fid);
+\%delete('$completed_filename');                         \% delete the file
+\%fid = fopen('$completed_filename', 'w')  ;             \% Open destination file.
+\%fwrite(fid, buffer) ;                                  \% Save to file.
+\%fclose(fid) ;
+
+if(~exist('$collect_filename','file'));
+fid = fopen('$collect_filename', 'a+');
+fprintf ( fid, '%d\\n', completed_list(1) );
+fclose(fid);
+end
+
+percent_done = 1/length(completed_list) * 100;
+fprintf('\\n SubPackage %d Collected (%3.2f%%)', completed_list(1), percent_done );
+
+
 end
 
 flds = fields(res);
 
 
 for idx = start:length(completed_list)
-    count  = completed_list(idx);
-    newres = load([num2str(count),'/$res_filename']);
-    
-    for i = 1:length(flds)  \% for all variables
-        res.(flds{i}) =  CJ_reduce( res.(flds{i}) ,  newres.(flds{i}) );
-    end
+count  = completed_list(idx);
+newres = load([num2str(count),'/$res_filename']);
+
+for i = 1:length(flds)  \% for all variables
+res.(flds{i}) =  CJ_reduce( res.(flds{i}) ,  newres.(flds{i}) );
+end
 
 \% save after each packgae
 save('$res_filename','-struct', 'res');
 percent_done = idx/length(completed_list) * 100;
-    
+
 \% delete the line from remaining_filename and add it to collected.
 \%fid = fopen('$completed_filename', 'r') ;              \% Open source file.
 \%fgetl(fid) ;                                      \% Read/discard line.
@@ -817,17 +759,17 @@ percent_done = idx/length(completed_list) * 100;
 \%fclose(fid) ;
 
 if(~exist('$collect_filename','file'));
-    error('   CJerr::File $collect_filename is missing. CJ stands in AWE!');
+error('   CJerr::File $collect_filename is missing. CJ stands in AWE!');
 end
 
 fid = fopen('$collect_filename', 'a+');
 fprintf ( fid, '%d\\n', count );
 fclose(fid);
-    
+
 fprintf('\\n SubPackage %d Collected (%3.2f%%)', count, percent_done );
 end
 
-   
+
 
 end
 
@@ -877,8 +819,75 @@ BASH
 
 }
 
+
+return $script;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##########################
+sub check_initialization{
+##########################
+	my $self = shift;
+	
+    my ($parser,$tag_list,$verbose) = @_;
+
+	my $BOT = $parser->{BOT};
+	my $TOP = $parser->{TOP};
+	
+	
+	
+    my @BOT_lines = split /\n/, $BOT;
+   
     
-    return $script;
+    my @pattern;
+    foreach my $tag (@$tag_list){
+    # grep the line that has this tag as argument
+    push @pattern, "\\(.*\\b$tag\\b\.*\\)\|\\{.*\\b$tag\\b\.*\\}";
+    }
+    my $pattern = join("\|", @pattern);
+    
+    my @vars;
+    foreach my $line (@BOT_lines) {
+    
+        if($line =~ /(.*)(${pattern})\s*\={1}/){
+            my @tmp  = split "\\(|\\{", $line;
+            my $var  = $tmp[0];
+            #print "$line\n${pattern}:  $var\n";
+            $var =~ s/^\s+|\s+$//g;
+            push @vars, $var;
+        }
+    }
+    
+    foreach(@vars)
+    {
+        my $line = &CJ::grep_var_line($_,$TOP);
+    }
+
 }
 
 

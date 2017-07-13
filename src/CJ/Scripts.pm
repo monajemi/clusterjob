@@ -177,10 +177,11 @@ sub build_nloop_code
 	   return ($counter,$master_script);
 }
 
-# ======
+#######################
 # Build master script
 sub make_master_script{
-    my($master_script,$runflag,$program,$date,$pid,$bqs,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$counter) = @_;
+#######################
+my($master_script,$runflag,$program,$date,$pid,$bqs,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$counter) = @_;
     
     my $mem = $submit_defaults->{mem};
     my $runtime = $submit_defaults->{runtime};
@@ -372,6 +373,5 @@ my ($ssh,$program,$pid,$bqs,$counter,$remote_path) = @_;
     
 return $sh_script;
 }	    
-		
 		
 1;		

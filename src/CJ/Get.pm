@@ -225,10 +225,6 @@ sub reduce_one_pid{
  
     
     
-    
-    
-    
-    
     # REDUCE IS ONLY FOR PARRUN
     if(! $runflag =~ m/^par*/){
       CJ::err("REDUCE must be called for a 'parrun' package. Please use GET instead.");
@@ -304,10 +300,9 @@ sub reduce_one_pid{
     
     my $collect_bash_script;
     if( $ext =~ m/mat/){
-        $collect_bash_script = &CJ::Matlab::make_MAT_collect_script($res_filename, $completed_filename,$bqs);
-        
+        $collect_bash_script = &CJ::Get::make_MAT_collect_script($res_filename, $completed_filename,$bqs,$ssh);
     }elsif ($ext =~ m/txt|csv/){
-        $collect_bash_script = &CJ::Get::make_TEXT_collect_script($res_filename, $remaining_filename,$completed_filename,$bqs, $text_header_lines);
+        $collect_bash_script = &CJ::Get::make_TEXT_collect_script($res_filename,$remaining_filename,$completed_filename,$bqs, $text_header_lines);
     }else{
         &CJ::err("File extension not recognized");
     }
@@ -580,7 +575,7 @@ else
   
     TOTAL=\$(wc -l < "$completed_filename");
     
-    # determine wether reduce has been run before
+    # determine whether reduce has been run before
     if [ ! -f "$res_filename" ];then
       # It is the first time reduce is being called.
       # Read the result of the first package
@@ -656,6 +651,125 @@ BASH
 
 
 
+
+
+
+
+#FIXME: TEST THIS FUNCTION. Once PASSED Extend to Python.
+
+
+#############################
+sub make_MAT_collect_script{
+#############################
+    
+my ($res_filename, $completed_filename, $bqs, $ssh) = @_;
+
+my $collect_filename = "collect_list.cjr";
+
+my $matlab_collect_script=<<MATLAB;
+\% READ completed_list.cjr and FIND The counters that need
+\% to be collected
+completed_list = load('$completed_filename');
+
+if(~isempty(completed_list))
+
+\%determine the structre of the output
+if(exist('$res_filename', 'file'))
+\% CJ has been called before
+res = load('$res_filename');
+start = 1;
+else
+\% Fisrt time CJ is being called
+res = load([num2str(completed_list(1)),'/$res_filename']);
+start = 2;
+
+
+\% delete the line from remaining_filename and add it to collected.
+\%fid = fopen('$completed_filename', 'r') ;               \% Open source file.
+\%fgetl(fid) ;                                            \% Read/discard line.
+\%buffer = fread(fid, Inf) ;                              \% Read rest of the file.
+\%fclose(fid);
+\%delete('$completed_filename');                         \% delete the file
+\%fid = fopen('$completed_filename', 'w')  ;             \% Open destination file.
+\%fwrite(fid, buffer) ;                                  \% Save to file.
+\%fclose(fid) ;
+
+if(~exist('$collect_filename','file'));
+fid = fopen('$collect_filename', 'a+');
+fprintf ( fid, '%d\\n', completed_list(1) );
+fclose(fid);
+end
+
+percent_done = 1/length(completed_list) * 100;
+fprintf('\\n SubPackage %d Collected (%3.2f%%)', completed_list(1), percent_done );
+
+
+end
+
+flds = fields(res);
+
+for idx = start:length(completed_list)
+count  = completed_list(idx);
+newres = load([num2str(count),'/$res_filename']);
+
+for i = 1:length(flds)  \% for all variables
+res.(flds{i}) =  CJ_reduce( res.(flds{i}) ,  newres.(flds{i}) );
+end
+
+\% save after each packgae
+save('$res_filename','-struct', 'res');
+percent_done = idx/length(completed_list) * 100;
+
+\% delete the line from remaining_filename and add it to collected.
+\%fid = fopen('$completed_filename', 'r') ;              \% Open source file.
+\%fgetl(fid) ;                                           \% Read/discard line.
+\%buffer = fread(fid, Inf) ;                             \% Read rest of the file.
+\%fclose(fid);
+\%delete('$completed_filename');                         \% delete the file
+\%fid = fopen('$completed_filename', 'w')  ;             \% Open destination file.
+\%fwrite(fid, buffer) ;                                  \% Save to file.
+\%fclose(fid) ;
+
+if(~exist('$collect_filename','file'));
+error('   CJerr::File $collect_filename is missing. CJ stands in AWE!');
+end
+
+fid = fopen('$collect_filename', 'a+');
+fprintf ( fid, '%d\\n', count );
+fclose(fid);
+
+fprintf('\\n SubPackage %d Collected (%3.2f%%)', count, percent_done );
+end
+
+
+end
+
+MATLAB
+
+
+
+
+my $script;
+$script=<<BASH;
+&CJ::bash_header($bqs)
+echo starting collection
+echo FILE_NAME $res_filename
+    
+module load <MATLAB_MODULE>
+unset _JAVA_OPTIONS
+matlab -nosplash -nodisplay <<HERE
+$matlab_collect_script
+quit;
+HERE
+    
+echo ending colection;
+echo "done"
+BASH
+
+$script =~ s|<MATLAB_MODULE>|$ssh->{mat}|;
+    
+return $script;
+}
 
 
 
