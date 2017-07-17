@@ -2552,13 +2552,6 @@ if($program_type eq 'matlab'){
 
 
 
-
-
-
-
-
-
-
 sub getExtension{
     my ($filename) = @_;
     #print "$filename\n";
@@ -2568,9 +2561,21 @@ sub getExtension{
 }
 
 
+sub connect2cluster{
+    my ($machine) = @_;
+    my $ssh = &CJ::host($machine);
+    my $cmd = "ssh $ssh->{account}";
+    system($cmd);
+    return 1;
+}
 
 
-
+sub list_available_clusters{
+    my $lines = &CJ::readFile($ssh_config_file);
+    my $cmd = "less $ssh_config_file";
+    my_system($cmd,1);
+    return 1;
+}
 
 
 1;

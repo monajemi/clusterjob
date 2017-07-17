@@ -95,14 +95,14 @@ if($CJKEY && (!exists($nosync{$cjcmd0})) ){
 
 
 my $spec = <<'EOSPEC';
-      prompt 	    opens CJ prompt command [undocumented]
-                     {defer{cj_prompt}}
-      hi	    prints out CJ welcome [undocumented]                     
-		     {defer{cj_heart}}
-      nihao	    [ditto]  [undocumented]
-    -help 	      Show usage information [undocumented]
+      prompt 	      opens CJ prompt command [undocumented]
+                      {defer{cj_prompt}}
+      hi	      prints out CJ welcome [undocumented]                     
+		      {defer{cj_heart}}
+      nihao	      [ditto]  [undocumented]
+     -help 	      Show usage information [undocumented]
                     {defer{&CJ::add_cmd($cmdline);$self->usage(0);exit;}}
-     help  	 	  [ditto]  [undocumented]
+      help  	 	  [ditto]  [undocumented]
 
      -Help  	 	  [ditto]  [undocumented]
      -HELP		  [ditto]  [undocumented]
@@ -143,7 +143,9 @@ my $spec = <<'EOSPEC';
      sync 	                                          force sync [nocase]
 		                				{defer{CJ::sync_forced($sync_status)}}								
      who 	                                          prints out user and agent info [nocase]
-     install-update	                                  updates installation to the most recent commit on GitHub [nocase]
+     install update                                       updates installation to the most recent commit on GitHub [nocase]
+     clusters 					          lists available clusters
+     connect   <cluster>	                          connect to a cluster
      log [<argin>]	                                  log  -n|all|pid [nocase]
                                                                 {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin,$log_tag,$log_script) }}
      hist[ory]    [<argin>]	                          history of runs -n|all 
@@ -163,7 +165,8 @@ my $spec = <<'EOSPEC';
      less        [<pid> [[/] [<counter>] [[/] <file>]] ]	  shortcut for '--less show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,"less") }}
      rerun        [<pid> [[/] [<counter>...]]]	          rerun certain (failed) job [nocase]
-                                                                 {defer{&CJ::add_cmd($cmdline);&CJ::rerun($pid,\@counter,$submit_defaults,$qSubmitDefault,$qsub_extra,$verbose) }}
+                                                                 {defer{&CJ::add_cmd($cmdline);
+								  &CJ::rerun($pid,\@counter,$submit_defaults,$qSubmitDefault,$qsub_extra,$verbose) }}
      run          <code> <cluster>	                  run code on the cluster [nocase] [requires: -m]
                                                                  {my $runflag = "run";
                                                                  {defer{&CJ::add_cmd($cmdline); run($cluster,$code,$runflag,$qsub_extra)}}
@@ -204,7 +207,18 @@ EOSPEC
 
 my $opts = Getopt::Declare->new($spec);
 
-if($opts->{'install-update'}){
+# List clusters
+if($opts->{'clusters'}){
+    &CJ::list_available_clusters();
+}
+
+
+if($opts->{'connect'}){
+    CJ::message("connecting to $opts->{'connect'}");
+    &CJ::connect2cluster($opts->{'connect'});
+}
+
+if($opts->{'install'}){
 	my $star_line = '*' x length($install_dir);
     # make sure s/he really want a deletion
 	CJ::message("This update results in cloning the newest version of ClusterJob in");

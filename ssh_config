@@ -10,7 +10,7 @@ Pythonlib	numpy:pickle
 [osg]
 
 
-[psc-bridges]
+[bridges]
 Host		bridges.psc.edu
 User		monajemi
 Bqs		SLURM
@@ -19,10 +19,10 @@ MAT		matlab/R2016a
 MATlib		~/cvx
 Python		python/3.4.3
 Pythonlib	numpy:scipy
-[psc-bridges]
+[bridges]
 
 
-[tacc-stampede]
+[stampede]
 Host		stampede.tacc.utexas.edu
 User		tg840998
 Bqs		SLURM
@@ -31,7 +31,7 @@ MAT		matlab/2016b
 MATlib		~/BPDN/CVX/cvx
 Python		python/3.4.3
 Pythonlib	numpy:scipy
-[tacc-stampede]
+[stampede]
 
 
 [sherlock]
