@@ -69,3 +69,16 @@ Pythonlib	numpy:scipy
 [farmshare2]
 
 
+[gce]
+Host	        104.198.104.167
+User		hatefmonajemi
+Bqs		SLURM
+Repo		/home/hatefmonajemi/CJRepo_Remote
+MAT     	""
+MATlib		""
+Python		python3.4
+Pythonlib	numpy:scipy
+[gce]
+
+
+

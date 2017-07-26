@@ -148,19 +148,23 @@ sub CJrun_body_script{
 my $python_version_tag = "";
 &CJ::err("python module not defined in ssh_config file.") if not defined $ssh->{'py'};
     
-if( $ssh->{'py'} =~ /python.?((\d.\d).\d)/ ) {
+if( $ssh->{'py'} =~ /python\D?((\d.\d).\d)/i ) {
     $python_version_tag = "-".$2;
+}elsif( $ssh->{'py'} =~ /python\D?(\d.\d)/i ){
+    $python_version_tag = "-".$1;
+}else{
+    CJ::err("Cannot decipher pythonX.Y.Z version");
 }
 
 my $user_required_pyLib = join (" ", split(":",$ssh->{'pylib'}) );
         
 my $script =<<'BASH';
     
-module load <PYTHON_MODULE>
+#module load <PYTHON_MODULE>
 
 <PYTHONLIB>
 
-python <<HERE
+<PYTHON_MODULE> <<HERE
     
 # make sure each run has different random number stream
 import os,sys,pickle,numpy,random;
@@ -192,27 +196,45 @@ deactivate
 rm -rf $HOME/python_venv_$PID;
     
 BASH
+    
+    
+    
+    
 
 
     
 my $libs =<<LIB;
 # Install required software in a virtualenv
-# This can be different when Container used.
+# This can be different when container used.
+
+if [ -z \"\$\( which easy_install$python_version_tag \)\" ] \&\& [ -n \"\$\( which apt\-get \)\" ];
+  then
+    echo "INSTALLING PYTHON SOFTWARE REQ USING APT-GET"
+    sudo apt-get update
+    sudo apt-get -y upgrade
+    sudo apt-get install python-setuptools build-essential libssl-dev libffi-dev python-dev
+    sudo apt-get install -y python-pip
+    sudo apt-get install -y python3-pip
+fi
+    
+# There must be a check here using $?.
+# If apt-get fails, we dont have
+    
     
 easy_install$python_version_tag --user pip
-python -m pip install --user --upgrade pip
-python -m pip install --user --upgrade virtualenv
-python -m virtualenv \$HOME/python_venv_\$PID ;
+<PYTHON_MODULE>  -m pip install --user --upgrade pip
+<PYTHON_MODULE>  -m pip install --user --upgrade virtualenv
+<PYTHON_MODULE>  -m virtualenv \$HOME/python_venv_\$PID ;
 source \$HOME/python_venv_\$PID/bin/activate
 pip install numpy $user_required_pyLib
 
 # Freez the environment after you installed all the modules
-pip freeze > \${DIR}/python_requirements.txt
+pip freeze > \${DIR}/$PID_py_requirements.txt
     
 LIB
 
 $script =~ s|<PYTHONLIB>|$libs|;
-$script =~ s|<PYTHON_MODULE>|$ssh->{'py'}|;
+$script =~ s|<PYTHON_MODULE>|$ssh->{'py'}|g;
 
 
 return $script;
