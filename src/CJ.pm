@@ -108,7 +108,6 @@ sub CheckConnection{
     my $ssh      = &CJ::host($cluster);
     my $date     = &CJ::date();
     
-    # create remote directory  using outText
     my $check = $date->{year}.$date->{month}.$date->{min}.$date->{sec};
     my $sshres = `ssh $ssh->{account}  'mkdir CJsshtest_$check; rm -rf CJsshtest_$check; exit;'  2>$CJlog_error`;
     &CJ::err("Cannot connect to $ssh->{account}: $sshres") if($sshres);
@@ -850,10 +849,6 @@ sub show_log{
         
 		}
     
-  
-    
-    
-    
     exit 0;
 
 
@@ -948,11 +943,7 @@ sub clean
     
     
     # make sure s/he really want a deletion
-    CJ::message("Are you sure you would like to clean $short_pid? Y/N");
-    my $yesno =  <STDIN>; chomp($yesno);
-    
-    if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
-    
+    CJ::yesno("Are you sure you would like to clean $short_pid");
     CJ::message("Cleaning $short_pid");
     my $local_clean     = "$local_path\*";
     my $remote_clean    = "$remote_path\*";
@@ -1026,9 +1017,8 @@ my $timestamp = $date->{epoch};
 my $inform = 1;
 &CJ::write2firebase($info->{'pid'},$newinfo, $timestamp, $inform);
 	    
-}
     
-    exit 0;
+exit 0;
 
 }
 
@@ -1885,8 +1875,9 @@ sub is_valid_machine{
 sub is_valid_app{
 #####################
     my ($app) = @_;
-    my $app_all  = CJ::read_app_list();
-    return &CJ::check_hash($ssh_config_all, [$machine]) ? 1:0;
+    my $app_all  = decode_json CJ::readFile($app_list_file);
+    my $lc_app = lc $app;
+    return (&CJ::check_hash($app_all, [$lc_app]) and $app_all->{$lc_app} eq 1) ? 1:0;
 }
 
 
@@ -1943,8 +1934,8 @@ sub shell_toe{
 my $shell_toe;
 if($bqs eq "SGE"){
 $shell_toe = <<'BASH_TOE';
-echo ending job \$SHELLSCRIPT
-echo JOB_ID \$JOB_ID
+echo ending job $SHELLSCRIPT
+echo JOB_ID $JOB_ID
 echo END_DATE date
 echo "done"
 BASH_TOE
@@ -2111,11 +2102,21 @@ sub message{
 }
 
 
+sub yesno{
+    my ($question,$noBegin) = @_;
+    my $prompt = $question . "?(Y/N)";
+    CJ::message($prompt,$noBegin);
+    my $yesno =  <STDIN>; chomp($yesno);
+    exit 0 unless (lc($yesno) eq "y" or lc($yesno) eq "yes");
+}
+
+
+
 sub my_system
 {
    my($cmd,$verbose) = @_;
     if($verbose){
-        print("system: ",$cmd,"\n");
+        &CJ::message("system:$cmd",1);
         system("$cmd");
         
     }else{
@@ -2572,89 +2573,23 @@ sub create_run_history_file{
 }
 
 
-
-
 sub install_software{
 
     my ($app, $machine) = @_;
+    my $lc_app = lc($app);
+    # Sanity checks
+    &CJ::err('Incorrect specification \'install <app> <machine>\'.') if ($machine =~ /^\s*$/ || $app =~ /^\s*$/);
+    &CJ::err("Application <$app> is not available.") unless &CJ::is_valid_app($app);
+    &CJ::err("Machine <$machine> is not valid.") unless &CJ::is_valid_machine($machine);
+    &CJ::yesno("Are you sure you would like to install '$lc_app' on '$machine'");
     
-    my $empty = ($machine =~ /^\s*$/ || $app =~ /^\s*$/) ? 1:0;
-    &CJ::err('Incorrect specification \'install <app> <machine>\'.') if $empty;
     
+    &CJ::message("Installing $app on $machine.");
     
-    #check that machine and app is available.
-    CJ::err("Application <$app> is not available.") unless &CJ::is_valid_app($app);
-    CJ::err("Machine <$machine> is not valid.") unless &CJ::is_valid_machine($machine);
-
-    CJ::message("Installing $app on $machine. ");
-
-    #my installObj = &CJ::Install->new();
-    #installObj->anaconda if $app eq anaconda
-
+    my $installObj = CJ::Install->new($app, $machine,undef);
+    $installObj->anaconda() if $lc_app eq 'anaconda';
 
 }
-
-#sub install_anaconda{
-#  
-#
-#if( (!defined($master_script)) ||  ($master_script eq "")){
-#        my $docstring=<<DOCSTRING;
-#        # EXPERIMENT $program
-#        # COPYRIGHT  2014 CLUSTERJOB (CJ)
-#        # CONTACT:   Hatef Monajemi (monajemi AT stanford DOT edu)
-#        # DATE   :   $date->{datestr}
-#        DOCSTRING
-#        
-#        my $HEADER = &CJ::bash_header($bqs);
-#        $master_script=$HEADER;
-#        $master_script.="$docstring";
-#    }
-#    
-#    
-## Install required software in a virtualenv
-## from the following commit
-## commit 8ced93afebb9aaee12689d3aff473c9f02bb9d78
-## we are moving to anaconda virtual env
-#
-#module load anaconda
-#    
-#if [ -z \"\$\( which conda \)\" ];
-#    then
-#    echo "INSTALLING ANACONDA FOR PYTHON"
-#    wget -O https://repo.continuum.io/archive/Anaconda3-4.4.0-Linux-x86_64.sh
-#    Anaconda3-4.4.0-Linux-x86_64.sh -b -p \$HOME/CJanaconda
-#    rm Anaconda3-4.4.0-Linux-x86_64.sh
-#    echo \'export PATH=\"\$HOME/CJanaconda/bin:\$PATH\"\' >> \$HOME/.bashrc
-#    source \$HOME/.bashrc
-#    yes | conda update conda
-#    fi
-#    
-#    # IMPROVE: There must be a check here using $?.
-#    # in case installation fails
-#    
-#    
-#    #  If the venv already exists, just use it!
-#    #  For parallel package, this prevents buiding venv
-#    #  for each job!
-#    
-#    if [[ -z $( conda info --envs | grep python_venv_\$PID ) ]]; then
-#    echo "python_venv_\$PID  doesn't exist. Creating it..."
-#    conda create --yes -n python_venv_\$PID python=$python_version_tag anaconda
-#    else
-#        echo "using python_venv_\$PID"
-#        fi
-#        
-#    
-#}
-
-
-
-
-
-
-
-
-
 
 
 

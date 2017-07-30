@@ -231,10 +231,8 @@ if($opts->{'update'}){
 	CJ::message("$star_line",1);
 	CJ::message("The newest version may not be compatible with your old data structure",1);
 	CJ::message("It is recommended that you backup your old installation before this action.",1);
-    CJ::message("Are you sure you want to update your installation? Y/N",1);
-    my $yesno =  <STDIN>; chomp($yesno);
+    CJ::yesno("Are you sure you want to update your installation? Y/N",1);
     
-	exit unless (lc($yesno) eq "y" or lc($yesno) eq "yes");
     CJ::message("Updating CJ installation...");
 	my $date = CJ::date();
 	my $datetag = $date->{year}-$date->{month}-$date->{day};
