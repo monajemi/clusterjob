@@ -151,11 +151,6 @@ return ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remot
 
 
 
-
-
-
-
-
 #########################################################
 #   clusterjob run myscript.m -dep DEP -m "message"
 #   Serial run
@@ -179,6 +174,11 @@ my $local_sh_path = "$local_sep_Dir/bashMain.sh";
 
 # Build master-script for submission
 my $master_script;
+    
+# Add installation of anaconda to beginning of master
+    #my $master_script = &CJ::insatll_anaconda()
+    
+    
 $master_script = &CJ::Scripts::make_master_script($master_script,$self->{runflag},$self->{program},$date,$pid,$ssh->{bqs},$self->{submit_defaults},$self->{qSubmitDefault},$remote_sep_Dir,$self->{qsub_extra});
 
 my $local_master_path="$local_sep_Dir/master.sh";
@@ -196,6 +196,9 @@ my $cmd="cd $localDir; tar  --exclude '.git' --exclude '*~' --exclude '*.pdf'  -
 $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
 &CJ::my_system($cmd,$self->{verbose});
 
+    
+    
+    
 &CJ::message("Sending package \033[32m$short_pid\033[0m");
 # copy tar.gz file to remoteDir
 $cmd = "rsync -avz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
@@ -203,7 +206,7 @@ $cmd = "rsync -avz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
 
 
 &CJ::message("Submitting job");
-$cmd = "ssh $ssh->{account} 'source ~/.bashrc;cd $remoteDir; tar -xzvf ${tarfile} ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep 3'";
+$cmd = "ssh $ssh->{account} 'source ~/.bashrc; cd $remoteDir; tar -xzvf ${tarfile} ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep 3'";
 &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "deploy");
 
 
