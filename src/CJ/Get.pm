@@ -131,19 +131,19 @@ GATHER
     
     
     &CJ::message("Gathering $pattern in $dir_name...");
-    $cmd = "ssh $account 'cd $remote_path; bash -l $gather_name 2> cj_gather.out'";
+    $cmd = "ssh $account 'cd $remote_path; bash -l $gather_name 2> cj_gather.stderr'";
     &CJ::my_system($cmd,1);
     
     
     # Get the feedback
-    $cmd = "scp  $account:$remote_path/cj_gather.out /tmp/";
+    $cmd = "scp  $account:$remote_path/cj_gather.stderr /tmp/";
     &CJ::my_system($cmd,$verbose);
     
     my $short_pid = substr($info->{'pid'},0,8);
-    if ( ! -z "/tmp/cj_gather.out" ){
+    if ( -z "/tmp/cj_gather.stderr" ){
     &CJ::message("Gathering results done! Please use \"CJ get $short_pid \" to get your results.");
     }else{
-    my $error = `cat "/tmp/cj_gather.out"`;
+    my $error = `cat "/tmp/cj_gather.stderr"`;
     &CJ::err("$error");
     }
     
