@@ -5,6 +5,7 @@ use strict;
 use warnings;
 use CJ::CJVars;
 use CJ::Sync;
+use CJ::Install;
 use Term::ReadLine;
 use Time::Local;
 use Time::Piece;
@@ -207,9 +208,9 @@ sub check_hash {
    return unless @$keys;
 
    foreach my $key ( @$keys ) {
-       return unless eval { exists $hash->{$key} };
-       $hash = $hash->{$key};
-       }
+     return unless eval { exists $hash->{$key} };
+     $hash = $hash->{$key};
+    }
 
    return 1;
 }
@@ -1618,50 +1619,70 @@ sub add_record{
 }
 
 
-sub host{
-    my ($machine_name) = @_;
+
+sub read_ssh_config{
     
     my $ssh_config = {};
-
     
+    my $file_content = &CJ::readFile($ssh_config_file);
     
-    my $lines;
-    open(my $FILE, $ssh_config_file) or  die "could not open $ssh_config_file: $!";
-    local $/ = undef;
-    $lines = <$FILE>;
-    close ($FILE);
+    # read the contents
     
-    my $this_host ;
-    if($lines =~ /\[$machine_name\](.*?)\[$machine_name\]/isg)
-    {
-        $this_host = $1;
-    }else{
-        &CJ::err(".ssh_config:: Machine $machine_name not found. ");
+    my %machine_hash = $file_content =~ /\[(\w+)\](.*?)\[\g{-2}\]/isg;
+    
+    foreach my $machine (keys %machine_hash){
+        $ssh_config->{$machine} = &CJ::parse_ssh_config($machine_hash{$machine});
     }
-    my ($user) = $this_host =~ /User[\t\s]*(.*)/i;
-        $user =remove_white_space($user);
-    
-    my ($host) = $this_host =~ /Host[\t\s]*(.*)/i;
-        $host =remove_white_space($host);
-    
-    my ($bqs)  = $this_host =~ /Bqs[\t\s]*(.*)/i ;
-        $bqs  =remove_white_space($bqs);
-    
-    my ($remote_repo)  = $this_host =~ /Repo[\t\s]*(.*)/i ;
-        $remote_repo   = remove_white_space($remote_repo);
-    
-    my ($remote_matlab_lib)  = $this_host =~ /MATlib[\t\s]*(.*)/i;
-        $remote_matlab_lib =remove_white_space($remote_matlab_lib);
-    
-    my ($remote_matlab_module)  = $this_host =~ /\bMAT\b[\t\s]*(.*)/i;
-        $remote_matlab_module =remove_white_space($remote_matlab_module);
+    return $ssh_config;
+}
 
-    my ($remote_python_lib)  = $this_host =~ /Pythonlib[\t\s]*(.*)/i;
+
+
+
+
+
+
+
+sub host{
+    my ($machine_name) = @_;
+    my $ssh_config_hashref =  &CJ::read_ssh_config();
+    &CJ::err(".ssh_config:: machine $machine_name not found. ") unless &CJ::check_hash($ssh_config_hashref, [$machine_name]) ;
+    return $ssh_config_hashref->{$machine_name};
+}
+
+
+
+
+
+sub parse_ssh_config{
+    my ($this_machine_string) = @_;
+
+    my $ssh_config = {};
+    
+    my ($user) = $this_machine_string =~ /User[\t\s]*(.*)/i;
+    $user =remove_white_space($user);
+    
+    my ($host) = $this_machine_string =~ /Host[\t\s]*(.*)/i;
+    $host =remove_white_space($host);
+    
+    my ($bqs)  = $this_machine_string =~ /Bqs[\t\s]*(.*)/i ;
+    $bqs  =remove_white_space($bqs);
+    
+    my ($remote_repo)  = $this_machine_string =~ /Repo[\t\s]*(.*)/i ;
+    $remote_repo   = remove_white_space($remote_repo);
+    
+    my ($remote_matlab_lib)  =$this_machine_string =~ /MATlib[\t\s]*(.*)/i;
+    $remote_matlab_lib =remove_white_space($remote_matlab_lib);
+    
+    my ($remote_matlab_module)  = $this_machine_string =~ /\bMAT\b[\t\s]*(.*)/i;
+    $remote_matlab_module =remove_white_space($remote_matlab_module);
+    
+    my ($remote_python_lib)  = $this_machine_string =~ /Pythonlib[\t\s]*(.*)/i;
     $remote_python_lib =remove_white_space($remote_python_lib);
     
-    my ($remote_python_module)  = $this_host =~ /\bPython\b[\t\s]*(.*)/i;
+    my ($remote_python_module)  = $this_machine_string =~ /\bPython\b[\t\s]*(.*)/i;
     $remote_python_module =remove_white_space($remote_python_module);
-
+    
     
     
     my $account  = $user . "@" . $host;
@@ -1677,7 +1698,11 @@ sub host{
     $ssh_config->{'pylib'}           = $remote_python_lib;
     
     return $ssh_config;
+
 }
+
+
+
 
 
 
@@ -1844,6 +1869,27 @@ my $date = {
     
     return $date;
 }
+
+
+
+#####################
+sub is_valid_machine{
+#####################
+    my ($machine) = @_;
+    my $ssh_config_all  = CJ::read_ssh_config();
+    return &CJ::check_hash($ssh_config_all, [$machine]) ? 1:0;
+}
+
+
+#####################
+sub is_valid_app{
+#####################
+    my ($app) = @_;
+    my $app_all  = CJ::read_app_list();
+    return &CJ::check_hash($ssh_config_all, [$machine]) ? 1:0;
+}
+
+
 
 # Check the package name given is valid
 sub is_valid_pid
@@ -2524,6 +2570,93 @@ sub create_pid_timestamp_file{
 sub create_run_history_file{
 &CJ::touch($run_history_file) unless ( -f $run_history_file);
 }
+
+
+
+
+sub install_software{
+
+    my ($app, $machine) = @_;
+    
+    my $empty = ($machine =~ /^\s*$/ || $app =~ /^\s*$/) ? 1:0;
+    &CJ::err('Incorrect specification \'install <app> <machine>\'.') if $empty;
+    
+    
+    #check that machine and app is available.
+    CJ::err("Application <$app> is not available.") unless &CJ::is_valid_app($app);
+    CJ::err("Machine <$machine> is not valid.") unless &CJ::is_valid_machine($machine);
+
+    CJ::message("Installing $app on $machine. ");
+
+    #my installObj = &CJ::Install->new();
+    #installObj->anaconda if $app eq anaconda
+
+
+}
+
+#sub install_anaconda{
+#  
+#
+#if( (!defined($master_script)) ||  ($master_script eq "")){
+#        my $docstring=<<DOCSTRING;
+#        # EXPERIMENT $program
+#        # COPYRIGHT  2014 CLUSTERJOB (CJ)
+#        # CONTACT:   Hatef Monajemi (monajemi AT stanford DOT edu)
+#        # DATE   :   $date->{datestr}
+#        DOCSTRING
+#        
+#        my $HEADER = &CJ::bash_header($bqs);
+#        $master_script=$HEADER;
+#        $master_script.="$docstring";
+#    }
+#    
+#    
+## Install required software in a virtualenv
+## from the following commit
+## commit 8ced93afebb9aaee12689d3aff473c9f02bb9d78
+## we are moving to anaconda virtual env
+#
+#module load anaconda
+#    
+#if [ -z \"\$\( which conda \)\" ];
+#    then
+#    echo "INSTALLING ANACONDA FOR PYTHON"
+#    wget -O https://repo.continuum.io/archive/Anaconda3-4.4.0-Linux-x86_64.sh
+#    Anaconda3-4.4.0-Linux-x86_64.sh -b -p \$HOME/CJanaconda
+#    rm Anaconda3-4.4.0-Linux-x86_64.sh
+#    echo \'export PATH=\"\$HOME/CJanaconda/bin:\$PATH\"\' >> \$HOME/.bashrc
+#    source \$HOME/.bashrc
+#    yes | conda update conda
+#    fi
+#    
+#    # IMPROVE: There must be a check here using $?.
+#    # in case installation fails
+#    
+#    
+#    #  If the venv already exists, just use it!
+#    #  For parallel package, this prevents buiding venv
+#    #  for each job!
+#    
+#    if [[ -z $( conda info --envs | grep python_venv_\$PID ) ]]; then
+#    echo "python_venv_\$PID  doesn't exist. Creating it..."
+#    conda create --yes -n python_venv_\$PID python=$python_version_tag anaconda
+#    else
+#        echo "using python_venv_\$PID"
+#        fi
+#        
+#    
+#}
+
+
+
+
+
+
+
+
+
+
+
 
 
 

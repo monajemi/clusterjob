@@ -160,8 +160,6 @@ my $user_required_pyLib = join (" ", split(":",$ssh->{'pylib'}) );
         
 my $script =<<'BASH';
     
-#module load <PYTHON_MODULE>
-
 <PYTHONLIB>
 
 <PYTHON_MODULE> <<HERE
@@ -192,45 +190,28 @@ exit();
 HERE
 
 # Get out of virtual env and remove it
-deactivate
-rm -rf $HOME/python_venv_$PID;
+source deactivate
+conda remove --yes -n $HOME/python_venv_$PID --all
     
 BASH
     
-    
-    
-    
-
 
     
 my $libs =<<LIB;
-# Install required software in a virtualenv
-# This can be different when container used.
 
-if [ -z \"\$\( which easy_install$python_version_tag \)\" ] \&\& [ -n \"\$\( which apt\-get \)\" ];
-  then
-    echo "INSTALLING PYTHON SOFTWARE REQ USING APT-GET"
-    sudo apt-get update
-    sudo apt-get -y upgrade
-    sudo apt-get install python-setuptools build-essential libssl-dev libffi-dev python-dev
-    sudo apt-get install -y python-pip
-    sudo apt-get install -y python3-pip
-fi
+# anaconda is assumed to be installed
+# prior to this
     
-# There must be a check here using $?.
-# If apt-get fails, we dont have
-    
-    
-easy_install$python_version_tag --user pip
-<PYTHON_MODULE>  -m pip install --user --upgrade pip
-<PYTHON_MODULE>  -m pip install --user --upgrade virtualenv
-<PYTHON_MODULE>  -m virtualenv \$HOME/python_venv_\$PID ;
-source \$HOME/python_venv_\$PID/bin/activate
-pip install numpy $user_required_pyLib
+# activate python venv
+source activate python_venv_\$PID
+conda install -n python_venv_\$PID numpy $user_required_pyLib
+
 
 # Freez the environment after you installed all the modules
-pip freeze > \${DIR}/$PID_py_requirements.txt
-    
+# Reproduce with:
+#      conda create --yes -n python_venv_\$PID --file req.txt
+conda list -e > \${DIR}/\$PID_py_conda_req.txt
+
 LIB
 
 $script =~ s|<PYTHONLIB>|$libs|;
