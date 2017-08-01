@@ -516,9 +516,14 @@ sub CJrun_body_script{
     my $self = shift;
     my ($ssh) = @_;
     
-    
 &CJ::err("Matlab module not defined in ssh_config file.") if not defined $ssh->{'mat'};
     
+my $script =<<'BASH';
+    
+module load <MATLAB_MODULE>
+unset _JAVA_OPTIONS
+matlab -nosplash -nodisplay <<HERE
+<MATPATH>
 my $script =<<'BASH';
     
 module load <MATLAB_MODULE>
@@ -541,7 +546,21 @@ HERE
     
 BASH
 
+% make sure each run has different random number stream
+myversion = version;
+mydate = date;
+RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
+globalStream = RandStream.getGlobalStream;
+CJsavedState = globalStream.State;
+fname = sprintf('CJrandState.mat');
+save(fname,'myversion','mydate', 'CJsavedState');
+cd $DIR
+run('${PROGRAM}');
+quit;
+HERE
     
+BASH
+
     
 my $pathText.=<<MATLAB;
 % add user defined path
@@ -573,9 +592,6 @@ $script =~ s|<MATLAB_MODULE>|$ssh->{mat}|;
     return $script;
     
 }
-
-
-
 
 ##########################
 sub CJrun_par_body_script{
@@ -671,13 +687,6 @@ $script =~ s|<MATLAB_MODULE>|$ssh->{mat}|;
 
 
 
-
-
-
-
-
-
-
 #############################
 sub buildParallelizedScript{
 #############################
@@ -699,14 +708,6 @@ my $new_script = "$TOP \n $FOR \n $INSERT \n $BOT";
 undef $INSERT;
 return $new_script;
 }
-
-
-
-
-
-
-
-
 
 
 
