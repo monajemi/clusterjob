@@ -1877,7 +1877,7 @@ sub is_valid_app{
     my ($app) = @_;
     my $app_all  = decode_json CJ::readFile($app_list_file);
     my $lc_app = lc $app;
-    return (&CJ::check_hash($app_all, [$lc_app]) and $app_all->{$lc_app} eq 1) ? 1:0;
+    return (&CJ::check_hash($app_all, [$lc_app]) and $app_all->{$lc_app} ne "") ? 1:0;
 }
 
 
@@ -2586,7 +2586,7 @@ sub install_software{
     
     &CJ::message("Installing $app on $machine.");
     
-    my $installObj = CJ::Install->new($app, $machine,undef);
+    my $installObj = CJ::Install->new($app,$machine,undef);
     $installObj->anaconda() if $lc_app eq 'anaconda';
 
 }
@@ -2639,11 +2639,79 @@ sub connect2cluster{
 
 
 sub list_available_clusters{
-    my $lines = &CJ::readFile($ssh_config_file);
     my $cmd = "less $ssh_config_file";
     my_system($cmd,1);
     return 1;
 }
+
+
+sub avail{
+    my ($tag) = @_;
+    
+    if( $tag =~ /^machine[s]?$|^cluster[s]?$/i ){
+            my $ssh_config_hashref =  &CJ::read_ssh_config();
+            
+            # find max size of strings
+            my @length;
+            for (keys %{$ssh_config_hashref} ){
+                push @length, length($_);
+            }
+            my $fieldsize = &CJ::max(@length) + 4;
+        
+            #print
+            foreach my $machine ( keys %{$ssh_config_hashref}){
+            my $account = $ssh_config_hashref->{$machine}->{'account'};
+            printf "\n\033[32m%-${fieldsize}s\033[0m%s", $machine, $account;
+            }
+            print "\n\n";
+
+    }elsif($tag =~ /^app[s]?$/)  {
+            # read the .app_list 
+            my $app_all  = decode_json CJ::readFile($app_list_file);
+        
+            # find max size of strings
+            my @length;
+            for (keys %{$app_all} ){
+                push @length, length($_);
+            }
+            my $fieldsize = &CJ::max(@length) + 4;
+
+        
+            #print
+            while (my ($app, $version) = each %{$app_all} ){
+                
+            printf "\n\033[32m%-${fieldsize}s\033[0m%s", $app, $version   unless $version eq "";
+             }
+        print "\n\n";
+        
+        
+    }else{
+        &CJ::err("unknown tag $tag");
+    }
+    
+    
+    
+    exit 0;
+}
+
+
+
+sub max {
+    my (@vars) = @_;
+    
+    my $max = shift @vars;
+    
+    for (@vars) {
+        $max = $_ if $_ > $max;
+    }
+    
+    return $max;
+}
+
+
+
+
+
 
 
 1;

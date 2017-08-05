@@ -496,20 +496,6 @@ sub uncomment_matlab_line{
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ########################
 sub CJrun_body_script{
 ########################
@@ -530,21 +516,6 @@ module load <MATLAB_MODULE>
 unset _JAVA_OPTIONS
 matlab -nosplash -nodisplay <<HERE
 <MATPATH>
-
-% make sure each run has different random number stream
-myversion = version;
-mydate = date;
-RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
-globalStream = RandStream.getGlobalStream;
-CJsavedState = globalStream.State;
-fname = sprintf('CJrandState.mat');
-save(fname,'myversion','mydate', 'CJsavedState');
-cd $DIR
-run('${PROGRAM}');
-quit;
-HERE
-    
-BASH
 
 % make sure each run has different random number stream
 myversion = version;
@@ -667,20 +638,6 @@ $script =~ s|<MATLAB_MODULE>|$ssh->{mat}|;
     
     return $script;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

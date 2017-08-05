@@ -138,14 +138,14 @@ my $spec = <<'EOSPEC';
                                                                 {$submit_defaults->{'mem'}=$memory}
      -runtime      <r_time>	                          run time requested (default=48:00:00) [nocase]
   	                                                          {$submit_defaults->{'runtime'}=$r_time}
-     avail         <tag> 		                  list available resources with tag
-								  { defer{ CJ::avail($tag) } }
+     avail         <tag> 		                  list available resources <tag> = cluster|app
+								  { defer{ &CJ::avail($tag) } }
      sync 	                                          force sync [nocase]
-		                				{defer{CJ::sync_forced($sync_status)}}								
+		                				{defer{&CJ::sync_forced($sync_status)}}								
      who 	                                          prints out user and agent info [nocase]
      update                                               updates installation to the most recent commit on GitHub [nocase]
      clusters 					          lists available clusters
-     connect      <cluster:/\S+/>	                          connect to a cluster
+     connect      <cluster:/\S+/>	                  connect to a cluster
      log          [<argin>]	                          log  -n|all|pid [nocase]
                                                                 {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin,$log_tag,$log_script) }}
      hist[ory]    [<argin>]	                          history of runs -n|all 
@@ -154,7 +154,7 @@ my $spec = <<'EOSPEC';
                                                                 {defer{ &CJ::add_cmd($cmdline); &CJ::clean($pid,$verbose); }}
      cmd          [<argin>]	                          command history -n|all [nocase]
                                                                 {defer{ &CJ::show_cmd_history($argin) }}
-deploy       <code:/\S+/> <cluster:/\S*/>	                  deploy code on the cluster [nocase] [requires: -m]
+     deploy       <code:/\S+/> <cluster:/\S*/>	          deploy code on the cluster [nocase] [requires: -m]
                                                                 {my $runflag = "deploy";
                                                                 {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                                 }
@@ -166,8 +166,8 @@ deploy       <code:/\S+/> <cluster:/\S*/>	                  deploy code on the c
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show_info($pid); }}
      init 	    					  initiates CJ installation [nocase]
               							{defer{CJ::init}}
-install      <app:/\S+/> <cluster:/\S*/>			  install app on a remote machine
-{&CJ::add_cmd($cmdline);defer{&CJ::install_software($app,$cluster)} }
+     install      <app:/\S+/> <cluster:/\S*/>	          install app on a remote machine
+								{&CJ::add_cmd($cmdline);defer{&CJ::install_software($app,$cluster)} }
      ls           [<pid> [[/] [<counter>]] ]	  	  shortcut for '--ls show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","ls") }}
      less         [<pid> [[/] [<counter>] [[/] <file>]] ]	  shortcut for '--less show' [nocase]

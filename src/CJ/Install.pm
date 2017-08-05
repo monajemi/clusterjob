@@ -35,7 +35,6 @@ sub new {
 sub anaconda{
     my $self = shift;
     
-    
 my $anaconda = "Anaconda3-4.4.0-Linux-x86_64";
 my $distro  = "https://repo.continuum.io/archive/${anaconda}.sh";
 my $installpath = "\$HOME/$self->{path}/anaconda";
