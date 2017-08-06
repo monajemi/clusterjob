@@ -144,8 +144,9 @@ my $spec = <<'EOSPEC';
 		                				{defer{&CJ::sync_forced($sync_status)}}								
      who 	                                          prints out user and agent info [nocase]
      update                                               updates installation to the most recent commit on GitHub [nocase]
-     clusters 					          lists available clusters
-     connect      <cluster:/\S+/>	                  connect to a cluster
+     config       [<cluster>] 				  list cluster configuration
+                                                    {defer{  &CJ::add_cmd($cmdline) ;&CJ::show_cluster_config($cluster)}}
+     connect       <cluster:/\S+/>	                  connect to a cluster
      log          [<argin>]	                          log  -n|all|pid [nocase]
                                                                 {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin,$log_tag,$log_script) }}
      hist[ory]    [<argin>]	                          history of runs -n|all 
@@ -177,7 +178,7 @@ my $spec = <<'EOSPEC';
 								  &CJ::rerun($pid,\@counter,$submit_defaults,$qSubmitDefault,$qsub_extra,$verbose) }}
      run          <code> <cluster>	                  run code on the cluster [nocase] [requires: -m]
                                                                  {my $runflag = "run";
-                                                                 {defer{&CJ::add_cmd($cmdline); run($cluster,$code,$runflag,$qsub_extra)}}
+                                                               {defer{&CJ::add_cmd($cmdline); run($cluster,$code,$runflag,$qsub_extra)}}
                                                                  }
      pardeploy    <code> <cluster>	                  pardeploy code on the cluster [nocase] [requires: -m]
                                                                {my $runflag = "pardeploy";
@@ -210,11 +211,6 @@ my $spec = <<'EOSPEC';
 EOSPEC
 
 my $opts = Getopt::Declare->new($spec);
-
-# List clusters
-if($opts->{'clusters'}){
-    &CJ::list_available_clusters();
-}
 
 
 if($opts->{'connect'}){

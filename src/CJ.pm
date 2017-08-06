@@ -2638,9 +2638,23 @@ sub connect2cluster{
 }
 
 
-sub list_available_clusters{
-    my $cmd = "less $ssh_config_file";
-    my_system($cmd,1);
+sub show_cluster_config{
+    
+    my ($cluster) = @_;
+
+    if (!defined $cluster || $cluster eq ""){
+        my $cmd = "less $ssh_config_file";
+        my_system($cmd,1);
+    }else{
+        CJ::err("No such cluster found. add $cluster to ssh_config.") if !is_valid_machine($cluster);
+        my $ssh_config_hashref =  &CJ::read_ssh_config();
+        my $fieldsize = 20;
+        while ( my ($key, $value) = each $ssh_config_hashref->{$cluster} ){
+            printf "\n\033[32m%-${fieldsize}s\033[0m%s", $key, $value;
+        }
+        print "\n\n";
+    }
+    
     return 1;
 }
 
@@ -2679,7 +2693,6 @@ sub avail{
         
             #print
             while (my ($app, $version) = each %{$app_all} ){
-                
             printf "\n\033[32m%-${fieldsize}s\033[0m%s", $app, $version   unless $version eq "";
              }
         print "\n\n";
