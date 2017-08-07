@@ -1,5 +1,6 @@
 {
-"anaconda":"Anaconda3-4.4.0-Linux-x86_64",
-"cvx":"1",
-"matlab":""
+"anaconda":{"version":"Anaconda3-4.4.0-Linux-x86_64","space":"6.9G", "install_time":"10 min"},
+"miniconda":{"version":"Miniconda3-latest-Linux-x86_64", "space":"1.3G", "install_time":" 1 min"},
+"cvx":{"version":"", "space":"", "install_time":""},
+"matlab":{"version":"", "space":"", "install_time":""}
 }

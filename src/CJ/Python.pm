@@ -201,6 +201,31 @@ my $libs =<<LIB;
 
 # anaconda is assumed to be installed
 # prior to this
+# from commit
+# 8ced93afebb9aaee12689d3aff473c9f02bb9d78
+# we are moving to anaconda virtual env
+# for python
+    
+#    #  If the venv already exists, just use it!
+#    #  For parallel package, this prevents buiding venv
+#    #  for each job!
+#
+#    if [[ -z $( conda info --envs | grep python_venv_\$PID ) ]]; then
+#    echo "python_venv_\$PID  doesn't exist. Creating it..."
+#    conda create --yes -n python_venv_\$PID python=$python_version_tag anaconda
+#    else
+#        echo "using python_venv_\$PID"
+#        fi
+#
+#
+#}
+
+
+    
+    
+    
+    
+    
     
 # activate python venv
 source activate python_venv_\$PID

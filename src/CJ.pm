@@ -1330,8 +1330,7 @@ sub get_state
 {
     my ($pid,$num) = @_;
     
-	#print "$pid\n";
-	
+    #print "$pid\n";
     my $info;
     if( (!defined $pid) || ($pid eq "") ){
         #read last_instance.info;
@@ -1365,11 +1364,14 @@ sub get_state
     
     my $states={};
 	
-if ( $runflag =~ m/^par*/ ){
+    if ( $runflag =~ m/^par*/ ){
     # par case
     my @job_ids = split(',',$job_id);
     my $jobs = join('|', @job_ids);
   
+        
+        
+        
     
     my $REC_STATES;
     my $REC_IDS;
@@ -1877,7 +1879,7 @@ sub is_valid_app{
     my ($app) = @_;
     my $app_all  = decode_json CJ::readFile($app_list_file);
     my $lc_app = lc $app;
-    return (&CJ::check_hash($app_all, [$lc_app]) and $app_all->{$lc_app} ne "") ? 1:0;
+    return (&CJ::check_hash($app_all, [$lc_app]) and $app_all->{$lc_app}->{'version'} ne "") ? 1:0;
 }
 
 
@@ -2588,7 +2590,7 @@ sub install_software{
     
     my $installObj = CJ::Install->new($app,$machine,undef);
     $installObj->anaconda() if $lc_app eq 'anaconda';
-
+    $installObj->miniconda() if $lc_app eq 'miniconda';
 }
 
 
@@ -2683,17 +2685,24 @@ sub avail{
             # read the .app_list 
             my $app_all  = decode_json CJ::readFile($app_list_file);
         
-            # find max size of strings
-            my @length;
+            # find max size of app name
+            my @length_0;
+            my @length_1;
+        
             for (keys %{$app_all} ){
-                push @length, length($_);
+                push @length_0, length($_);
+                push @length_1, length($app_all->{$_}->{'version'});
             }
-            my $fieldsize = &CJ::max(@length) + 4;
+            my $fieldsize_0 = &CJ::max(@length_0) + 4;
+            my $fieldsize_1 = &CJ::max(@length_1) + 4;
 
         
             #print
-            while (my ($app, $version) = each %{$app_all} ){
-            printf "\n\033[32m%-${fieldsize}s\033[0m%s", $app, $version   unless $version eq "";
+            for (keys %{$app_all} ){
+                my $version = $app_all->{$_}->{'version'};
+                my $space = $app_all->{$_}->{'space'};
+                my $time = $app_all->{$_}->{'install_time'};
+                printf "\n\033[32m%-${fieldsize_0}s\033[0m%-${fieldsize_1}s%-10s%s", $_, $version, $space, $time  unless $version eq "";
              }
         print "\n\n";
         
