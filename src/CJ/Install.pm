@@ -44,6 +44,7 @@ my $installpath = "\$HOME/$self->{path}/miniconda";
 
 # -------------------
 my $install_bash_script  =<<'BASH';
+#!/bin/bash -l
 
 #module load anaconda
 
@@ -58,33 +59,32 @@ else
     if [ -f <MINICONDA>.sh ]; then rm -f <MINICONDA>.sh; fi;
     wget "<DISTRO>"
 
-echo "INSTALLING Miniconda";
-if [ -d <INSTALLPATH> ]; then
-printf "ERROR: directory <INSTALLPATH> exists. Aborting install. \
-\nYou may use 'cj install -f ...' to remove this directory for a fresh install\n";
-exit 1;
-fi
+    echo "INSTALLING Miniconda";
+    if [ -d <INSTALLPATH> ]; then
+    printf "ERROR: directory <INSTALLPATH> exists. Aborting install. \
+    \nYou may use 'cj install -f ...' to remove this directory for a fresh install\n";
+    exit 1;
+    fi
 
-bash <MINICONDA>.sh -b -p <INSTALLPATH>;
+    bash <MINICONDA>.sh -b -p <INSTALLPATH>;
 
-rm <MINICONDA>.sh
-echo 'export PATH="<INSTALLPATH>/bin:$PATH" ' >> $HOME/.bashrc
-source $HOME/.bashrc
-yes | conda update conda
+    rm <MINICONDA>.sh
+    echo 'export PATH="<INSTALLPATH>/bin:$PATH" ' >> $HOME/.bashrc
+    source $HOME/.bashrc
+    conda update --yes conda
 
-if [ $? -eq 0 ]; then
-END=`date +%s`;
-RUNTIME=$((END-START));
-echo "INSTALL SUCCESSFUL ($RUNTIME seconds)"
-exit 0;
-else
+    if [ $? -eq 0 ]; then
+    END=`date +%s`;
+    RUNTIME=$((END-START));
+    echo "INSTALL SUCCESSFUL ($RUNTIME seconds)"
+    exit 0;
+    else
     echo "****INSTALL FAILED*****";
-exit 1;
-fi
+    exit 1;
+    fi
 
 fi
-
-
+    
 BASH
 
 $install_bash_script =~ s|<DISTRO>|$distro|g;
@@ -171,9 +171,6 @@ else
 fi
 
 
-    
-    
-    
     
 BASH
     

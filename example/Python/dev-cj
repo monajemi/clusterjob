@@ -1,0 +1,14 @@
+#!/bin/bash
+if [ "$1" == "run" ] && [ "$2" == "default" ];then
+perl ../../src/CJ.pl  run  simpleExample.py sherlock -dep ./ -m "test of CJ run" -mem "2G"
+elif [ "$1" == "rrun" ] && [ "$2" == "default" ];then
+perl ../../src/CJ.pl  rrun  simpleExample.py sherlock -dep ./ -m "test of CJ simple rrun" -mem "2G"
+elif [ "$1" == "parrun" ] && [ "$2" == "default" ];then
+perl ../../src/CJ.pl  parrun  simpleExample.py sherlock -dep ./ -m "test of CJ simple parrun" -mem "2G"
+elif [ "$1" == "parrun" ] && [ "$2" == "python"  ];then
+perl ../../src/CJ.pl  parrun myMatlabJob.py  sherlock -dep ./ -m "test of CJ parrun -- invoking Matlab for range" -mem "2G"
+elif [ "$1" == "reduce" ] && [ "$2" == "default" ];then
+perl ../../src/CJ.pl reduce Results.csv 
+else
+perl ../../src/CJ.pl "$@"
+fi

@@ -133,7 +133,55 @@ CJ::writeFile("$self->{path}/$rp_program", $rp_program_script);
 }
 
 
+##########################
+sub build_python_env_bash{
+##########################
+    my ($ssh) = @_;
 
+# Determine easy_install version
+my $python_version_tag = "";
+&CJ::err("python module not defined in ssh_config file.") if not defined $ssh->{'py'};
+
+if( $ssh->{'py'} =~ /python\D?((\d.\d).\d)/i ) {
+    $python_version_tag = $2;
+}elsif( $ssh->{'py'} =~ /python\D?(\d.\d)/i ){
+    $python_version_tag = $1;
+}else{
+    CJ::err("Cannot decipher pythonX.Y.Z version");
+}
+
+my $user_required_pyLib = join (" ", split(":",$ssh->{'pylib'}) );
+
+    
+# Conda should be aviable.
+# from commit
+# 8ced93afebb9aaee12689d3aff473c9f02bb9d78
+# we are moving to anaconda virtual env for python
+
+my $env =<<BASH;
+
+#  If the venv already exists, just use it!
+#  For parallel package, this prevents buiding venv
+#  for each job!
+
+if [ -z \$( conda info --envs | grep python_venv_\$PID ) ];then
+echo "python_venv_\$PID  doesn't exist. Creating it..."
+conda create --yes -n python_venv_\$PID python=$python_version_tag numpy $user_required_pyLib
+else
+echo "using python_venv_\$PID"
+fi
+
+# activate python venv
+source activate python_venv_\$PID
+
+# Freez the environment after you installed all the modules
+# Reproduce with:
+#      conda create --yes -n python_venv_\$PID --file req.txt
+conda list -e > \${DIR}/\$PID_py_conda_req.txt
+BASH
+
+    return $env;
+}
 
 
 
@@ -144,26 +192,11 @@ sub CJrun_body_script{
     my $self = shift;
     my ($ssh) = @_;
     
-# Determine easy_install version
-my $python_version_tag = "";
-&CJ::err("python module not defined in ssh_config file.") if not defined $ssh->{'py'};
-    
-if( $ssh->{'py'} =~ /python\D?((\d.\d).\d)/i ) {
-    $python_version_tag = "-".$2;
-}elsif( $ssh->{'py'} =~ /python\D?(\d.\d)/i ){
-    $python_version_tag = "-".$1;
-}else{
-    CJ::err("Cannot decipher pythonX.Y.Z version");
-}
-
-my $user_required_pyLib = join (" ", split(":",$ssh->{'pylib'}) );
-        
 my $script =<<'BASH';
     
-<PYTHONLIB>
-
-<PYTHON_MODULE> <<HERE
+<PYTHONENV>
     
+python <<HERE
 # make sure each run has different random number stream
 import os,sys,pickle,numpy,random;
 
@@ -191,61 +224,20 @@ HERE
 
 # Get out of virtual env and remove it
 source deactivate
-conda remove --yes -n $HOME/python_venv_$PID --all
+conda remove --yes -n python_venv_$PID --all
     
 BASH
     
-
     
-my $libs =<<LIB;
-
-# anaconda is assumed to be installed
-# prior to this
-# from commit
-# 8ced93afebb9aaee12689d3aff473c9f02bb9d78
-# we are moving to anaconda virtual env
-# for python
-    
-#    #  If the venv already exists, just use it!
-#    #  For parallel package, this prevents buiding venv
-#    #  for each job!
-#
-#    if [[ -z $( conda info --envs | grep python_venv_\$PID ) ]]; then
-#    echo "python_venv_\$PID  doesn't exist. Creating it..."
-#    conda create --yes -n python_venv_\$PID python=$python_version_tag anaconda
-#    else
-#        echo "using python_venv_\$PID"
-#        fi
-#
-#
-#}
-
-
-    
-    
-    
-    
-    
-    
-# activate python venv
-source activate python_venv_\$PID
-conda install -n python_venv_\$PID numpy $user_required_pyLib
-
-
-# Freez the environment after you installed all the modules
-# Reproduce with:
-#      conda create --yes -n python_venv_\$PID --file req.txt
-conda list -e > \${DIR}/\$PID_py_conda_req.txt
-
-LIB
-
-$script =~ s|<PYTHONLIB>|$libs|;
-$script =~ s|<PYTHON_MODULE>|$ssh->{'py'}|g;
-
+my $env = &CJ::Python::build_python_env_bash($ssh);
+$script =~ s|<PYTHONENV>|$env|;
 
 return $script;
     
 }
+
+
+
 
 
 
@@ -257,23 +249,24 @@ sub CJrun_par_body_script{
     my $self = shift;
     my ($ssh) = @_;
     
-# Determine easy_install version
-my $python_version_tag = "";
-&CJ::err("python module not defined in ssh_config file.") if not defined $ssh->{'py'};
-if( $ssh->{'py'} =~ /python.?((\d.\d).\d)/ ) {
-$python_version_tag = "-".$2;
-}
+    # Determine easy_install version
+    my $python_version_tag = "";
+    &CJ::err("python module not defined in ssh_config file.") if not defined $ssh->{'py'};
+    
+    if( $ssh->{'py'} =~ /python\D?((\d.\d).\d)/i ) {
+        $python_version_tag = "-".$2;
+    }elsif( $ssh->{'py'} =~ /python\D?(\d.\d)/i ){
+        $python_version_tag = "-".$1;
+    }else{
+        CJ::err("Cannot decipher pythonX.Y.Z version");
+    }
 
-# Libraries required
-my $user_required_pyLib = join (" ", split(":",$ssh->{'pylib'}) );
-
+    my $user_required_pyLib = join (" ", split(":",$ssh->{'pylib'}) );
     
 my $script =<<'BASH';
 
-module load <PYTHON_MODULE>
-
-<PYTHONLIB>
-
+<PYTHONENV>
+    
 python <<HERE
 
 # make sure each run has different random number stream
@@ -317,32 +310,14 @@ exit();
 HERE
 
 # Get out of virtual env and remove it
-deactivate
-rm -rf $HOME/python_venv_$PID;
+source deactivate
+conda remove --yes -n python_venv_$PID --all
 
 BASH
 
 
-
-my $libs =<<LIB;
-# Install required software in a virtualenv
-# This can be different when Container used.
-
-easy_install$python_version_tag --user pip
-python -m pip install --user --upgrade pip
-python -m pip install --user --upgrade virtualenv
-python -m virtualenv \$HOME/python_venv_\$PID ;
-source \$HOME/python_venv_\$PID/bin/activate
-pip install numpy $user_required_pyLib
-
-# Freez the environment after you installed all the modules
-pip freeze > \${DIR}/python_requirements.txt
-
-LIB
-
-$script =~ s|<PYTHONLIB>|$libs|;
-$script =~ s|<PYTHON_MODULE>|$ssh->{'py'}|;
-
+my $env = &CJ::Python::build_python_env_bash($ssh);
+$script =~ s|<PYTHONENV>|$env|;
 
 return $script;
 }

@@ -6,7 +6,7 @@ Repo		./
 MAT		matlab/2016b
 MATlib		~/cvx
 Python		python/3.4.3
-Pythonlib	numpy:pickle
+Pythonlib	scipy
 [osg]
 
 
@@ -18,7 +18,7 @@ Repo		/pylon2/cc3l6jp/monajemi/
 MAT		matlab/R2016a
 MATlib		~/cvx
 Python		python/3.4.3
-Pythonlib	numpy:scipy
+Pythonlib	scipy
 [bridges]
 
 
@@ -30,7 +30,7 @@ Repo		/work/04800/tg840998/CJRepo_Remote
 MAT		matlab/2016b
 MATlib		~/BPDN/CVX/cvx
 Python		python/3.4.3
-Pythonlib	numpy:scipy
+Pythonlib	scipy
 [stampede]
 
 
@@ -42,11 +42,11 @@ Repo		/scratch/users/monajemi/CJRepo_Remote
 MAT     	matlab/R2016b
 MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 Python		python/3.4.3
-Pythonlib	numpy:scipy
+Pythonlib	scipy
 [sherlock]
 
 
-[farmshare]
+[corn]
 Host		corn.stanford.edu
 User		monajemi
 Bqs		SGE
@@ -54,10 +54,10 @@ Repo		/farmshare/user_data/monajemi/CJRepo_Remote
 MAT     	matlab/r2016b
 MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 Python		python/3.4.3
-Pythonlib	numpy:scipy
-[farmshare]
+Pythonlib	scipy
+[corn]
 
-[farmshare2]
+[rice]
 Host		rice.stanford.edu
 User		monajemi
 Bqs		SLURM
@@ -65,8 +65,8 @@ Repo		/farmshare/user_data/monajemi/CJRepo_Remote
 MAT     	matlab/r2016b
 MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 Python		python/3.4.3
-Pythonlib	numpy:scipy
-[farmshare2]
+Pythonlib	scipy
+[rice]
 
 
 [gce]
@@ -77,7 +77,7 @@ Repo		/home/hatefmonajemi/CJRepo_Remote
 MAT     	""
 MATlib		""
 Python		python3.4
-Pythonlib	numpy:scipy
+Pythonlib	scipy
 [gce]
 
 
