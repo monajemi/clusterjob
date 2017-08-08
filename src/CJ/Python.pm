@@ -158,43 +158,68 @@ my $user_required_pyLib = join (" ", split(":",$ssh->{'pylib'}) );
 # 8ced93afebb9aaee12689d3aff473c9f02bb9d78
 # we are moving to anaconda virtual env for python
 
-my $env =<<BASH;
+my $env =<<'BASH';
 
 #  If the venv already exists, just use it!
 #  For parallel package, this prevents buiding venv
 #  for each job!
 
-if [ -z \$( conda info --envs | grep python_venv_\$PID ) ];then
-echo "python_venv_\$PID  doesn't exist. Creating it..."
-conda create --yes -n python_venv_\$PID python=$python_version_tag numpy $user_required_pyLib
+if [ -z "\$(conda info --envs | grep python_venv_${PID})" ];then
+echo "python_venv_${PID}  doesn't exist. Creating it..."
+conda create --yes -n python_venv_$PID python=<version_tag> numpy <libs>
 else
-echo "using python_venv_\$PID"
+echo "using python_venv_${PID}"
 fi
 
-# activate python venv
-source activate python_venv_\$PID
-
-# Freez the environment after you installed all the modules
-# Reproduce with:
-#      conda create --yes -n python_venv_\$PID --file req.txt
-conda list -e > \${DIR}/\$PID_py_conda_req.txt
 BASH
 
-    return $env;
+
+    
+ 
+$env =~ s|<version_tag>|$python_version_tag|;
+$env =~ s|<libs>|$user_required_pyLib|;
+
+return $env;
+
 }
 
-
-
+###################################
+sub getPIDJobCountExpr{
+# This is used only for
+# CJrun_body_script
+# and CJrun_par_body_script
+###################################
+    my ($ssh) = @_;
+    
+    my $WordCountExpr;
+    if($ssh->{'bqs'} =~ /^SGE$/i ){
+        $WordCountExpr = "qstat -xml | tr \'\n\' \' \' | sed \'s#<job_list[^>]*>#\\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t | grep \${PID} | wc -l";
+    }elsif($ssh->{'bqs'} =~ /^SLURM$/i){
+        $WordCountExpr = 'sacct -n --format=jobname%44 | grep -v "^[0-9]*\\." | grep ${PID} | wc -l';
+    }else{
+        &CJ::err("Unknown batch queueing system.");
+    }
+    
+    return $WordCountExpr;
+    
+}
 
 #######################
 sub CJrun_body_script{
 #######################
     my $self = shift;
     my ($ssh) = @_;
+   
+  
+my $WordCountExpr = getPIDJobCountExpr($ssh);
+   
     
 my $script =<<'BASH';
     
 <PYTHONENV>
+
+# activate python venv
+source activate python_venv_${PID}
     
 python <<HERE
 # make sure each run has different random number stream
@@ -222,16 +247,30 @@ import ${PROGRAM};
 exit();
 HERE
 
+    
+# Freez the environment after you installed all the modules
+# Reproduce with:
+#      conda create --yes -n python_venv_\$PID --file req.txt
+conda list -e > ${DIR}/${PID}_py_conda_req.txt
+    
 # Get out of virtual env and remove it
 source deactivate
+
+# remove the python venv if no other jobs using it are present
+WCL=`<WordCountExpr>`
+
+if [ ! "\$WCL" -gt 1 ]; then
 conda remove --yes -n python_venv_$PID --all
+fi
+
     
 BASH
     
-    
 my $env = &CJ::Python::build_python_env_bash($ssh);
 $script =~ s|<PYTHONENV>|$env|;
-
+$script =~ s|<WordCountExpr>|$WordCountExpr|;
+    
+    
 return $script;
     
 }
@@ -248,6 +287,8 @@ sub CJrun_par_body_script{
     
     my $self = shift;
     my ($ssh) = @_;
+ 
+    my $WordCountExpr = getPIDJobCountExpr($ssh);
     
     # Determine easy_install version
     my $python_version_tag = "";
@@ -311,13 +352,21 @@ HERE
 
 # Get out of virtual env and remove it
 source deactivate
-conda remove --yes -n python_venv_$PID --all
+    
+# remove the python venv if no other jobs using it are present
+WCL=`<WordCountExpr>`
 
+if [ ! "\$WCL" -gt 1 ]; then
+conda remove --yes -n python_venv_$PID --all
+fi
+    
+    
 BASH
 
 
 my $env = &CJ::Python::build_python_env_bash($ssh);
 $script =~ s|<PYTHONENV>|$env|;
+$script =~ s|<WordCountExpr>|$WordCountExpr|;
 
 return $script;
 }

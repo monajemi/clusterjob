@@ -1972,14 +1972,14 @@ if($bqs eq "SGE"){
 $shell_head.=<<'HEAD'
 echo JOB_ID $JOB_ID
 echo WORKDIR $SGE_O_WORKDIR
-echo START_DATE date
+echo START_DATE `date`
 HEAD
 
 }elsif($bqs eq "SLURM"){
 $shell_head.=<<'HEAD'
 echo JOB_ID $SLURM_JOBID
 echo WORKDIR $SLURM_SUBMIT_DIR
-echo START_DATE date
+echo START_DATE `date`
 HEAD
 }else{
 &CJ::err("unknown BQS $!");
@@ -1998,10 +1998,10 @@ my $shell_neck;
 $shell_neck = <<'MID';
 DIR=<remote_path>;
 PROGRAM="<PROGRAM>";
-PID=<PID>;
+PID="<PID>";
 cd $DIR;
-mkdir scripts
-mkdir logs
+    #mkdir scripts
+    #mkdir logs
 SHELLSCRIPT=${DIR}/scripts/CJrun.${PID}.sh;
 LOGFILE=${DIR}/logs/CJrun.${PID}.log;
 MID
@@ -2030,11 +2030,11 @@ my $shell_neck;
 $shell_neck = <<'MID';
 DIR=<remote_path>;
 PROGRAM="<PROGRAM>";
-PID=<PID>;
+PID="<PID>";
 COUNTER=<COUNTER>;
 cd $DIR;
-mkdir scripts
-mkdir logs
+    #mkdir scripts
+    #mkdir logs
 SHELLSCRIPT=${DIR}/scripts/CJrun.${PID}.${COUNTER}.sh;
 LOGFILE=${DIR}/logs/CJrun.${PID}.${COUNTER}.log;
 MID
