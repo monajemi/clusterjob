@@ -193,9 +193,9 @@ sub getPIDJobCountExpr{
     
     my $WordCountExpr;
     if($ssh->{'bqs'} =~ /^SGE$/i ){
-        $WordCountExpr = "qstat -xml | tr \'\n\' \' \' | sed \'s#<job_list[^>]*>#\\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t | grep \${PID} | wc -l";
+        $WordCountExpr = "qstat -xml | tr \'\n\' \' \' | sed \'s#<job_list[^>]*>#\\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t | grep -c \${PID}";
     }elsif($ssh->{'bqs'} =~ /^SLURM$/i){
-        $WordCountExpr = 'sacct -n --format=jobname%44 | grep -v "^[0-9]*\\." | grep ${PID} | wc -l';
+        $WordCountExpr = 'sacct -n --format=jobname%44 | grep -v "^[0-9]*\\." | grep -c ${PID}';
     }else{
         &CJ::err("Unknown batch queueing system.");
     }
@@ -257,9 +257,8 @@ conda list -e > ${DIR}/${PID}_py_conda_req.txt
 source deactivate
 
 # remove the python venv if no other jobs using it are present
-WCL=`<WordCountExpr>`
 
-if [ ! "\$WCL" -gt 1 ]; then
+if [ ! "\$(<WordCountExpr>)" -gt 1 ]; then
 conda remove --yes -n python_venv_$PID --all
 fi
 
@@ -354,12 +353,10 @@ HERE
 source deactivate
     
 # remove the python venv if no other jobs using it are present
-WCL=`<WordCountExpr>`
 
-if [ ! "\$WCL" -gt 1 ]; then
+if [ "\$(<WordCountExpr>)" -lt 2 ]; then
 conda remove --yes -n python_venv_$PID --all
 fi
-    
     
 BASH
 

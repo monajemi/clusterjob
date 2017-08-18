@@ -1,7 +1,7 @@
 #/usr/bin/perl -w
 #
 # Copyright (c) 2015 Hatef Monajemi (monajemi@stanford.edu)
-# visit www.clsuetrjob.org
+# visit http://clsuetrjob.org
 
 use strict;
 use FindBin qw($Bin);

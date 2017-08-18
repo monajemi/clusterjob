@@ -70,7 +70,12 @@ else
 
     rm <MINICONDA>.sh
     echo 'export PATH="<INSTALLPATH>/bin:$PATH" ' >> $HOME/.bashrc
-    source $HOME/.bashrc
+    echo 'export PATH="<INSTALLPATH>/bin:$PATH" ' >> $HOME/.bash_profile
+
+    
+    if [ -f "$HOME/.bashrc" ]; then source $HOME/.bashrc; fi
+    if [ -f "$HOME/.bash_profile" ] ; then source $HOME/.bash_profile; fi
+    
     conda update --yes conda
 
     if [ $? -eq 0 ]; then
@@ -79,8 +84,8 @@ else
     echo "INSTALL SUCCESSFUL ($RUNTIME seconds)"
     exit 0;
     else
-    echo "****INSTALL FAILED*****";
-    exit 1;
+    echo "****INSTALL FAILED***** $? "
+    exit 1
     fi
 
 fi
@@ -103,7 +108,7 @@ my $cmd = "scp $filepath $ssh->{account}:.";
 
 
 &CJ::message("----- START BASH ON $self->{'machine'}-----",1);
-$cmd = "ssh $ssh->{account} 'bash -l \$HOME/CJ_install_miniconda.sh 2>/dev/null' ";
+$cmd = "ssh $ssh->{account} 'cd \$HOME && bash -l CJ_install_miniconda.sh' ";
 system($cmd);
 
 $cmd = "ssh $ssh->{account} 'if [ -d \$HOME/$self->{path} ] ; then mv \$HOME/CJ_install_miniconda.sh \$HOME/$self->{path}/; fi' ";
@@ -190,7 +195,7 @@ my $cmd = "scp $filepath $ssh->{account}:.";
 
     
 &CJ::message("----- START BASH ON $self->{'machine'}-----",1);
-$cmd = "ssh $ssh->{account} 'bash -l \$HOME/CJ_install_anaconda.sh 2>/dev/null' ";
+$cmd = "ssh $ssh->{account} 'cd \$HOME && bash -l CJ_install_anaconda.sh' ";
 system($cmd);
 
 $cmd = "ssh $ssh->{account} 'if [ -d \$HOME/$self->{path} ] ; then mv \$HOME/CJ_install_anaconda.sh \$HOME/$self->{path}/; fi' ";
@@ -204,8 +209,92 @@ system($cmd);
 
 
 
+###################
+sub cvx {
+###################
+    
+    my $self = shift;
+
+my $cvx = "cvx-rd";
+my $distro  = "http://web.cvxr.com/cvx/${cvx}.tar.gz";
+my $installpath = "\$HOME/$self->{path}";
+
+    
+# -------------------
+my $install_bash_script  =<<'BASH';
+    
+START=`date +%s`
+
+echo "GETTING CVX from <DISTRO>";
+if [ -f <CVX>.tar.gz ]; then rm -f <CVX>.tar.gz; fi;
+wget "<DISTRO>"
+
+echo "INSTALLING in <INSTALLPATH>/cvx";
+if [ -d "<INSTALLPATH>/cvx" ]; then
+printf "ERROR: directory <INSTALLPATH>/cvx exists. Aborting install. \
+\nYou may use 'cj install -f ...' to remove this directory for a fresh install\n";
+exit 1;
+fi
+
+if [ ! -d  "<INSTALLPATH>"  ] ; then
+    mkdir <INSTALLPATH> ;
+fi
+    
+cp <CVX>.tar.gz <INSTALLPATH>/.
+cd <INSTALLPATH>
+tar -xzvf <CVX>.tar.gz
+rm -f <CVX>.tar.gz
+
+    END=`date +%s`;
+    RUNTIME=$((END-START));
+    echo "INSTALL SUCCESSFUL ($RUNTIME seconds)"
+    exit 0;
+    
+BASH
+    
+$install_bash_script =~ s|<DISTRO>|$distro|g;
+$install_bash_script =~ s|<CVX>|$cvx|g;
+$install_bash_script =~ s|<INSTALLPATH>|$installpath|g;
+# -----------------
+    
+    
+my $ssh = CJ::host($self->{'machine'});
+    
+my $filename = "CJ_install_cvx.sh";
+my $filepath = "/tmp/$filename";
+&CJ::writeFile($filepath, $install_bash_script);
+my $cmd = "scp $filepath $ssh->{account}:.";
+&CJ::my_system($cmd,0);
 
 
+&CJ::message("----- START BASH ON $self->{'machine'}-----",1);
+$cmd = "ssh $ssh->{account} 'cd \$HOME && bash -l CJ_install_cvx.sh' ";
+system($cmd);
+
+$cmd = "ssh $ssh->{account} 'if [ -d \$HOME/$self->{path} ] ; then mv \$HOME/CJ_install_cvx.sh \$HOME/$self->{path}/; fi' ";
+system($cmd);
+
+
+&CJ::message("----- END BASH ON $self->{'machine'}-----",1);
+
+return 1;
+}
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
 
 

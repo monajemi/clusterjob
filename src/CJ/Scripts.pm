@@ -305,11 +305,10 @@ sub make_shell_script{
     my ($ssh,$program,$pid,$bqs,$remote_path) = @_;
 
     my $sh_script  = &CJ::shell_head($bqs);
-    $sh_script    .= &CJ::shell_neck($program,$pid, $remote_path);  # setting PID, and SHELLSCRIPT, LOGFILE PATH
+    $sh_script    .= &CJ::shell_neck($program,$pid, $remote_path);             # setting PID, and SHELLSCRIPT, LOGFILE PATH
     $sh_script    .= &CJ::Scripts::make_CJrun_bash_script($ssh,$program,$bqs); # Program specific Mat, Py, R,
-    $sh_script    .= 'chmod a+x $SHELLSCRIPT' . "\n";
-    $sh_script    .= 'bash $SHELLSCRIPT > $LOGFILE' . "\n";
-    
+    $sh_script    .= &CJ::shell_toe($bqs);
+
 return $sh_script;
 }
 
@@ -325,8 +324,9 @@ my $codeobj = &CJ::CodeObj(undef,$program);  # This doesnt need a path at this s
 my  $CJrun_bash_script   = 'cat <<THERE > $SHELLSCRIPT' . "\n";
     $CJrun_bash_script  .= &CJ::bash_header($bqs);
     $CJrun_bash_script  .= $codeobj->CJrun_body_script($ssh);
-    $CJrun_bash_script  .= &CJ::shell_toe($bqs);
     $CJrun_bash_script  .= 'THERE' . "\n";
+    $CJrun_bash_script  .= 'chmod a+x $SHELLSCRIPT' . "\n";
+    $CJrun_bash_script  .= 'bash $SHELLSCRIPT > $LOGFILE' . "\n";
     
 return $CJrun_bash_script;
     
@@ -344,11 +344,13 @@ sub make_CJrun_par_bash_script{
     my $codeobj = CJ::CodeObj(undef,$program);  # This doesnt need a path at this stage;
     
     my  $CJrun_bash_script   = 'cat <<THERE > $SHELLSCRIPT' . "\n";
-    $CJrun_bash_script  .= &CJ::bash_header($bqs);
-    $CJrun_bash_script  .= $codeobj->CJrun_par_body_script($ssh);
-    $CJrun_bash_script  .= &CJ::shell_toe($bqs);
-    $CJrun_bash_script  .= 'THERE' . "\n";
-    return $CJrun_bash_script;
+    $CJrun_bash_script      .= &CJ::bash_header($bqs);
+    $CJrun_bash_script      .= $codeobj->CJrun_par_body_script($ssh);
+    $CJrun_bash_script      .= 'THERE' . "\n";
+    $CJrun_bash_script      .= 'chmod a+x $SHELLSCRIPT' . "\n";
+    $CJrun_bash_script      .= 'bash $SHELLSCRIPT > $LOGFILE' . "\n";
+
+        return $CJrun_bash_script;
 }
 
 
@@ -368,8 +370,8 @@ my ($ssh,$program,$pid,$bqs,$counter,$remote_path) = @_;
     my $sh_script    = &CJ::shell_head($bqs);
        $sh_script   .= &CJ::par_shell_neck($program,$pid,$counter,$remote_path);  # setting PID, and SHELLSCRIPT, LOGFILE PATH
        $sh_script   .= &CJ::Scripts::make_CJrun_par_bash_script($ssh,$program,$bqs); # Program specific Mat, Py, R,
-       $sh_script   .= 'chmod a+x $SHELLSCRIPT' . "\n";
-       $sh_script   .= 'bash $SHELLSCRIPT > $LOGFILE' . "\n";
+       $sh_script   .= &CJ::shell_toe($bqs);
+
     
 return $sh_script;
 }	    

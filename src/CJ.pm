@@ -1938,7 +1938,7 @@ if($bqs eq "SGE"){
 $shell_toe = <<'BASH_TOE';
 echo ending job $SHELLSCRIPT
 echo JOB_ID $JOB_ID
-echo END_DATE date
+echo END_DATE `date`
 echo "done"
 BASH_TOE
     
@@ -1947,7 +1947,7 @@ BASH_TOE
 $shell_toe = <<'BASH_TOE';
 echo ending job $SHELLSCRIPT
 echo JOB_ID $SLURM_JOBID
-echo END_DATE date
+echo END_DATE `date`
 echo "done"
 BASH_TOE
     
@@ -2149,14 +2149,16 @@ sub writeFile
     # it should generate a bak up later!
     my ($path, $contents, $flag) = @_;
     
-    open(FILE,">$path") or die "can't create file $path" if not defined($flag);
+    
+    my $fh;
+    open ( $fh , '>', "$path" ) or die "can't create file $path" if not defined($flag);
     
     if(defined($flag) && $flag eq '-a'){
-    open(FILE,">>$path") or die "can't create file $path";
+        open( $fh ,'>>',"$path") or die "can't create file $path";
     }
-        
-    print FILE $contents;
-    close FILE;
+    
+    print $fh $contents;
+    close $fh ;
 }
 
 
@@ -2591,6 +2593,8 @@ sub install_software{
     my $installObj = CJ::Install->new($app,$machine,undef);
     $installObj->anaconda() if $lc_app eq 'anaconda';
     $installObj->miniconda() if $lc_app eq 'miniconda';
+    $installObj->cvx() if $lc_app eq 'cvx';
+
 }
 
 
