@@ -258,7 +258,6 @@ $master_script.="$docstring";
     }elsif(defined($counter)){
     
     
-        ### FIXME: THIS CAN BE DELETED IF WE BUILD THESE TWO FILDERS LOCALLY
         # Add QSUB to MASTER SCRIPT
         $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/logs"    . "\n" ;
         $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/scripts" . "\n" ;

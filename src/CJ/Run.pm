@@ -303,6 +303,8 @@ foreach my $i (0..$parser->{nloop}-1){
     my @range = split(',', $ranges->{$keys[$i]});
     $totalJobs = (0+@range) * ($totalJobs);
 }
+    
+    
 my $max_jobs = &CJ::max_jobs_allowed($ssh,$self->{qsub_extra});
 &CJ::err("Maximum jobs allowed on $self->{machine} ($max_jobs) exceeded by your request ($totalJobs). Rewrite FOR loops to submit in smaller chunks.") unless  ($max_jobs >= $totalJobs);
 
@@ -364,6 +366,7 @@ $cmd = "rsync -arvz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
 
 $self->{runflag} eq "pardeploy" ? &CJ::message("Deployed.") : &CJ::message("Submitting job(s)");
 my $wait = int($totalJobs/300) + 2 ; # add more wait time for large jobs so the other server finish writing.
+$wait = $wait>5? $wait: 5;
 $cmd = "ssh $ssh->{account} 'source ~/.bashrc;cd $remoteDir; tar -xzf ${tarfile} ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep $wait'";
 &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "pardeploy");
 

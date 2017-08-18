@@ -309,9 +309,9 @@ sub reduce_one_pid{
     
     
     #print "$collect_bash_script";
-   
     
-    my $CJ_reduce_matlab = "$install_dir/CJ/CJ_reduce.m";
+    
+    my $CJ_reduce_matlab = "$src_dir/CJ/CJ_reduce.m";
     my $collect_name = "cj_collect.sh";
     my $collect_bash_path = "/tmp/$collect_name";
     &CJ::writeFile($collect_bash_path,$collect_bash_script);
@@ -334,20 +334,20 @@ sub reduce_one_pid{
 	        my $cmd = "ssh $account 'cd $remote_path; srun bash -l $collect_name'";
 	        #my $cmd = "ssh $account 'cd $remote_path; qsub $collect_name'";
 		    &CJ::my_system($cmd,1);
-		    &CJ::message("Reducing results done! Please use \"CJ get $short_pid \" to get your results.");
+		    &CJ::message("Reducing results done! Use \"CJ get $short_pid \" to get your results.");
 		
 	    }elsif(lc($yesno) eq "n" or lc($yesno) eq "no"){
 	        my $cmd = "ssh $account 'cd $remote_path; bash -l $collect_name'";
 		    &CJ::my_system($cmd,1);
-		    &CJ::message("Reducing results done! Please use \"CJ get $short_pid \" to get your results.");
+		    &CJ::message("Reducing results done! Use \"CJ get $short_pid \" to get your results.");
 	    }else{
 	        &CJ::message("Reduce Canceled!");
 	        exit 0;
 	    }	
     }else{
-    my $cmd = "ssh $account 'cd $remote_path; bash -l $collect_name'";
-    &CJ::my_system($cmd,1);
-    &CJ::message("Reducing results done! Please use \"CJ get $short_pid \" to get your results.");
+            my $cmd = "ssh $account 'cd $remote_path; bash -l $collect_name'";
+            &CJ::my_system($cmd,1);
+            &CJ::message("Reducing results done! Please use \"CJ get $short_pid \" to get your results.");
  
     }
 
@@ -655,9 +655,6 @@ BASH
 
 
 
-#FIXME: TEST THIS FUNCTION. Once PASSED Extend to Python.
-
-
 #############################
 sub make_MAT_collect_script{
 #############################
@@ -749,9 +746,9 @@ MATLAB
 
 
 
-my $script;
-$script=<<BASH;
-&CJ::bash_header($bqs)
+my $script = &CJ::bash_header($bqs);
+    
+$script .=<<BASH;
 echo starting collection
 echo FILE_NAME $res_filename
     

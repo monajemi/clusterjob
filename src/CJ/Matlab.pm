@@ -220,6 +220,7 @@ sub findIdxTagRange
 	    }
 	}
     
+    
 	return (\@idx_tags,$ranges);
 }
 
@@ -279,14 +280,12 @@ sub read_matlab_index_set
             my $floating_pattern = "[-+]?[0-9]*[\.]?[0-9]+(?:[eE][-+]?[0-9]+)?";
             my $fractional_pattern = "(?:${floating_pattern}\/)?${floating_pattern}";
             my @vals = $numbers =~ /[\;\,]?($fractional_pattern)[\;\,]?/g;
-             
+                
             my $high = 1+$#vals;
             my @range = ($low..$high);
             $range = join(',',@range);
                 
             }
-            
-           
             
         }elsif($rightarray[1] =~ /\s*(\D+)\s*/) {
             #print "$rightarray[1]"."\n";
