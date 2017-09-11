@@ -42,8 +42,21 @@ Repo		/scratch/users/monajemi/CJRepo_Remote
 MAT     	matlab/R2016b
 MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 Python		python/3.4.3
-Pythonlib	scipy
+Pythonlib	scipy:torch:argparse:matplotlib:torchvision
 [sherlock]
+
+
+[sherlock2]
+Host		login.sherlock.stanford.edu
+User		monajemi
+Bqs		SLURM
+Repo		/scratch/users/monajemi/CJRepo_Remote
+MAT     	matlab/R2016b
+MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
+Python		python/3.4.3
+Pythonlib	scipy
+[sherlock2]
+
 
 
 [corn]

@@ -234,6 +234,9 @@ seed = numpy.sum(100*numpy.array([mydate.astype(object).year, mydate.astype(obje
 random.seed(seed);
 numpy.random.seed(seed);
     
+# may be add torch random torch.manual_seed(args.seed) if torch is imported
+
+    
 CJsavedState = {'myversion': sys.version, 'mydate':mydate, 'numpy_CJsavedState': numpy.random.get_state(), 'CJsavedState': random.getstate()}
     
 fname = "$DIR/CJrandState.pickle";
@@ -244,6 +247,7 @@ with open(fname, 'wb') as RandStateFile:
     
 os.chdir("$DIR")
 import ${PROGRAM};
+#exec(open('${PROGRAM}').read())
 exit();
 HERE
 
@@ -346,6 +350,8 @@ del deli,path,seed_0,seed_1,seed,CJsavedState;
 
 os.chdir("$DIR")
 import ${PROGRAM};
+#exec(open('${PROGRAM}').read())
+
 exit();
 HERE
 
@@ -440,8 +446,8 @@ sub read_python_index_set{
     # split at 'in' keyword.
     my @myarray    = split(/\s*\bin\b\s*/,$forline);
     my @tag        = split(/\s/,$myarray[0]);
-    my $idx_tag    = $tag[-1];
     
+    my $idx_tag    = (split(/,/, $tag[-1]))[0];   # to cover -> for i,d in enumerate(V)
     
     my $range = undef;   # This will be defined below
     # The right of in keyword
@@ -495,9 +501,6 @@ sub read_python_index_set{
         $range      = join(',',@range);
         
     }else{
-        
-        
-
         
         $range = undef;
         #&CJ::err("strcuture of for loop not recognized by clusterjob. try rewriting your for loop using 'i = 1:10' structure");
@@ -572,28 +575,33 @@ foreach my $i (0..$#{$for_lines}){
 my $tag = $tag_list->[$i];
 my $forline = $for_lines->[$i];
 chomp($forline);
-$forline = &CJ::remove_white_space($forline);
+
+my ($level) = $forline =~ m/^(\s*).+/ ;  # determin our level of indentation
+    
+    
+    
+#$forline = &CJ::remove_white_space($forline);  # python should respect indent
 # print  "$tag: $forline\n";
 
 my $tag_file = "\'/tmp/$tag\.tmp\'";
 $python_interpreter_script .=<<PYTHON
-$tag\_fid = open($tag_file,'w');
+$level$tag\_fid = open($tag_file,'w');
 $forline
-\t$tag\_fid.write(\"%i\\n\" \% $tag);
-$tag\_fid.close();
+$level$level$tag\_fid.write(\"%i\\n\" \% $tag);
+$level$tag\_fid.close();
 PYTHON
 }
 my $name = "CJ_python_interpreter_script";
-my $path = "/tmp";
-&CJ::writeFile("$path/$name.py",$python_interpreter_script);
+#my $path = "/tmp";
+&CJ::writeFile("$self->{path}/$name.py",$python_interpreter_script);
 #&CJ::message("$name is built in $path",1);
 
 
 my $python_interpreter_bash = <<BASH;
 #!/bin/bash -l
 # dump everything user-generated from top in /tmp
-cd /tmp/
-python <<HERE &>$junk;
+cd $self->{'path'}
+python -B <<HERE &>$junk;
 import sys;
 sys.path.append('$self->{path}');
 sys.path.append('$self->{path}/$self->{dep_folder}');
@@ -623,10 +631,12 @@ $range->{$tag} = join(',', @tmp_array);
 # print $range->{$tag} . "\n";
 &CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp  
 }
+    
+    print  Dumper($range);
 
-
+    die;
 # remove the files you made in /tmp
-&CJ::my_system("rm -f $test_name $junk $check_path/$check_name $path/$name.py");
+&CJ::my_system("rm -f $test_name $junk $check_path/$check_name $self->{path}/$name.py");
 
 return $range;
 
@@ -657,10 +667,16 @@ sub findIdxTagRange{
         
         my ($idx_tag, $range) = $self->read_python_index_set($this_forline, $TOP,$verbose);
         
+        
+        #print $idx_tag;
         #FIX
         
         CJ::err("Index tag cannot be established for $this_forline") unless ($idx_tag);
         push @idx_tags, $idx_tag;   # This will keep order.
+        
+        
+        
+        
         
         if(defined($range)){
             $ranges->{$idx_tag} = $range;
