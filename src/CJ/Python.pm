@@ -389,8 +389,10 @@ sub read_python_array_values{
     if($string =~ /(.*array\(\[)?\s*($fractional_pattern)+\s*(\]\))?/){
         my ($numbers) = $string =~ /(?:.*array\(\[)?\s*(.+)\s*(?:\]\))?/;
         @vals = $numbers =~ /[\;\,]?($fractional_pattern)[\;\,]?/g;
+        return \@vals;
+    }else{
+        return undef;
     }
-    return @vals;
 }
 
 
@@ -409,12 +411,12 @@ sub read_python_lohi{
         
     }elsif ($input =~ /\s*len\(\s*(.+)\s*\)/) {
         my $this_line = &CJ::grep_var_line($1,$TOP);
+        
         #extract the range
         my @this_array    = split(/\s*=\s*/,$this_line);
         
-        my @vals = $self->read_python_array_values($this_array[1]);  # This reads the vals;
-        $lohi = 1+$#vals;
-        $lohi = undef if (!&CJ::isnumeric($lohi));
+        my $vals = $self->read_python_array_values($this_array[1]);  # This reads the vals;
+        $lohi = 1+$#{ $vals } unless not defined($vals);
         
     }elsif($input =~ /\s*(\D+)\s*:/){
         # CASE var
@@ -422,8 +424,8 @@ sub read_python_lohi{
         
         #extract the range
         my @this_array    = split(/\s*=\s*/,$this_line);
-        
-        $lohi = ($self->read_python_array_values($this_array[1]))[0];  # This reads a number;
+        my $vals = $self->read_python_array_values($this_array[1]);
+        $lohi = $vals->[0];  # This reads a number;
         $lohi = undef if (!&CJ::isnumeric($lohi));
     }
     
@@ -490,16 +492,15 @@ sub read_python_index_set{
         }
         
     }elsif($right =~ /^\s*(\w+)\s*:$/){
-
+        print "Its here $right\n";
         #CASE: for i in array;
         print $1 . "\n";
         my $this_line = &CJ::grep_var_line($1,$TOP);
         #extract the range
         my @this_array    = split(/\s*=\s*/,$this_line);
-        my @range = $self->read_python_array_values($this_array[1]);
-        
+        my $range = $self->read_python_array_values($this_array[1]);
+        my @range = @{$range};
         $range      = join(',',@range);
-        
     }else{
         
         $range = undef;
@@ -592,7 +593,6 @@ $level$tag\_fid.close();
 PYTHON
 }
 my $name = "CJ_python_interpreter_script";
-#my $path = "/tmp";
 &CJ::writeFile("$self->{path}/$name.py",$python_interpreter_script);
 #&CJ::message("$name is built in $path",1);
 
@@ -603,7 +603,6 @@ my $python_interpreter_bash = <<BASH;
 cd $self->{'path'}
 python -B <<HERE &>$junk;
 import sys;
-sys.path.append('$self->{path}');
 sys.path.append('$self->{path}/$self->{dep_folder}');
 import $name
 HERE
@@ -612,11 +611,7 @@ BASH
 
 &CJ::message("finding range of indices...",1);
 
-CJ::my_system("source hatef.rc",$verbose);
-CJ::my_system("source ~/.bash_profile",$verbose);
-CJ::my_system("source ~/.profile",$verbose);
-CJ::my_system("source ~/.bashrc",$verbose);
-CJ::my_system("printf '%s' $python_interpreter_bash",$verbose);
+CJ::my_system("source ~/.bash_profile; source ~/.profile; source ~/.bashrc; printf '%s' $python_interpreter_bash",$verbose);
     
 &CJ::message("Closing Python session!",1);
 
@@ -631,10 +626,7 @@ $range->{$tag} = join(',', @tmp_array);
 # print $range->{$tag} . "\n";
 &CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp  
 }
-    
-    print  Dumper($range);
 
-    die;
 # remove the files you made in /tmp
 &CJ::my_system("rm -f $test_name $junk $check_path/$check_name $self->{path}/$name.py");
 

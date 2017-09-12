@@ -188,6 +188,8 @@ my $local_master_path="$local_sep_Dir/master.sh";
 #==============================================
 #    PROPAGATE THE FILES AND RUN ON CLUSTER
 #==============================================
+&CJ::message("Compressing files to propagate...");
+    
 my $tarfile="$pid".".tar.gz";
 my $cmd="cd $localDir; tar  --exclude '.git' --exclude '*~' --exclude '*.pdf'  -czf $tarfile $pid/  ; rm -rf $local_sep_Dir  ; cd $self->{path}";
 &CJ::my_system($cmd,$self->{verbose});
@@ -350,6 +352,7 @@ my $local_master_path="$local_sep_Dir/master.sh";
 #       PROPAGATE THE FILES
 #       AND RUN ON CLUSTER
 #==================================
+&CJ::message("Compressing files to propagate...");
 my $tarfile="$pid".".tar.gz";
 my $cmd="cd $localDir; tar --exclude '.git' --exclude '*~' --exclude '*.pdf' -czf  $tarfile $pid/   ; rm -rf $local_sep_Dir  ; cd $self->{path}";
 &CJ::my_system($cmd,$self->{verbose});
@@ -365,8 +368,8 @@ $cmd = "rsync -arvz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
 
 
 $self->{runflag} eq "pardeploy" ? &CJ::message("Deployed.") : &CJ::message("Submitting job(s)");
-my $wait = int($totalJobs/300) + 2 ; # add more wait time for large jobs so the other server finish writing.
-$wait = $wait>5? $wait: 5;
+my $wait = int($totalJobs/300) + 2 ; # add more wait time for large jobs.
+$wait = $wait > 5 ? $wait: 5;
 $cmd = "ssh $ssh->{account} 'source ~/.bashrc;cd $remoteDir; tar -xzf ${tarfile} ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep $wait'";
 &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "pardeploy");
 
@@ -548,6 +551,8 @@ my $array_bashMain_script = &CJ::Scripts::build_rrun_bashMain_script($extra);
 #       PROPAGATE THE FILES
 #       AND RUN ON CLUSTER
 #==================================
+&CJ::message("Compressing files to propagate...");
+    
 my $tarfile="$pid".".tar.gz";
 my $cmd="cd $localDir; tar --exclude '.git' --exclude '*~' --exclude '*.pdf' -czf  $tarfile $pid/   ; rm -rf $local_sep_Dir  ; cd $self->{path}";
 &CJ::my_system($cmd,$self->{verbose});
@@ -631,54 +636,6 @@ message       => $self->{message},
 &CJ::add_record($runinfo);
 &CJ::write2firebase($pid,$runinfo, $date->{epoch},0);  # send to CJ server
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

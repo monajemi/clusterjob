@@ -419,28 +419,21 @@ end
 fclose($tag\_fid);
 MATLAB
 }
-    #print  "$matlab_interpreter_script\n";
-    
-    my $name = "CJ_matlab_interpreter_script.m";
-    my $path = "/tmp";
-    &CJ::writeFile("$path/$name",$matlab_interpreter_script);
-    #&CJ::message("$name is built in $path",1);
+#print  "$matlab_interpreter_script\n";
+
+my $name = "CJ_matlab_interpreter_script.m";
+&CJ::writeFile("$self->{path}/$name",$matlab_interpreter_script);
 
     
-    
-#FIXME: addpath(genpath('$self->{path}/$self->{dep_folder}'));
-# This needs to direct to only the dep folder. Otherwise you may pick up
-# Things, you dont need and this causes crash.
-# ALso if this is not successful and doesnt give index.tmp, we need to issue error.
+#FIXME if this is not successful and doesnt give index.tmp, we need to issue error.
     
 my $matlab_interpreter_bash = <<BASH;
 #!/bin/bash -l
 # dump everything user-generated from top in /tmp
-cd /tmp/
+cd $self->{'path'}
 matlab -nodisplay -nodesktop -nosplash  <<HERE &>$junk;
-addpath('$self->{path}');
-addpath(genpath('$self->{path}/$self->{dep_folder}'));
-run('$path/$name')
+addpath('$self->{path}/$self->{dep_folder}');
+run('$self->{path}/$name')
 HERE
 BASH
 
@@ -450,9 +443,12 @@ BASH
     #&CJ::writeFile("$bash_path/$bash_name",$matlab_interpreter_bash);
     #&CJ::message("$bash_name is built in $bash_path");
 
+    
+    
 &CJ::message("finding range of indices...",1);
-CJ::my_system("source ~/.bash_profile; source ~/.bashrc; printf '%s' $matlab_interpreter_bash",$verbose);  # this will generate a 
+CJ::my_system("source ~/.bash_profile; source ~/.bashrc; printf '%s' $matlab_interpreter_bash",$verbose);
 &CJ::message("Closing Matlab session!",1);
+    
     
 # Read the files, and put it into $numbers
 # open a hashref
@@ -468,7 +464,7 @@ foreach my $tag (@$tag_list){
 
 
 # remove the files you made in /tmp
-&CJ::my_system("rm -f $test_name $junk $check_path/$check_name $path/$name");
+&CJ::my_system("rm -f $test_name $junk $check_path/$check_name $self->{path}/$name");
 
     return $range;
 	
