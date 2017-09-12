@@ -143,7 +143,8 @@ my $spec = <<'EOSPEC';
      sync 	                                          force sync [nocase]
 		                				{defer{&CJ::sync_forced($sync_status)}}								
      who 	                                          prints out user and agent info [nocase]
-     update                                               updates installation to the most recent commit on GitHub [nocase]
+     update						  updates installation to the most recent commit on GitHub [nocase]
+                                                            {defer{&CJ::add_cmd($cmdline);update_install}}
      config       [<cluster>] 				  list cluster configuration
                                                     {defer{  &CJ::add_cmd($cmdline) ;&CJ::show_cluster_config($cluster)}}
      connect       <cluster:/\S+/>	                  connect to a cluster
@@ -218,9 +219,9 @@ if($opts->{'connect'}){
     &CJ::connect2cluster($opts->{'connect'});
 }
 
-if($opts->{'update'}){
+sub update_install {
 	my $star_line = '*' x length($install_dir);
-    # make sure s/he really want a deletion
+    # make sure s/he really wants a deletion
 	CJ::message("This update results in cloning the newest version of ClusterJob in");
 	CJ::message("$star_line",1);
 	CJ::message("$install_dir",1);
@@ -244,7 +245,7 @@ if($opts->{'update'}){
 	   CJ::my_system($cmd,$verbose);  
        CJ::message("Installation updated.");
 	   
-	   exit;	
+	   exit 0;
 }
 
 if($opts->{who})
