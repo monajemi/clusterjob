@@ -104,7 +104,7 @@ mkdir "$local_sep_Dir" unless (-d $local_sep_Dir);
 my $cmd = "cp $self->{path}/$self->{program} $local_sep_Dir/";
 &CJ::my_system($cmd,$self->{verbose});
 # cp dependencies
-$cmd   = "cp -r $self->{dep_folder}/* $local_sep_Dir/";
+$cmd   = "cp -r $self->{dep_folder}/* $local_sep_Dir/" unless not defined($self->{dep_folder});
 &CJ::my_system($cmd,$self->{verbose});
 
 

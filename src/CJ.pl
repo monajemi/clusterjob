@@ -53,7 +53,7 @@ if( (!-d "$info_dir" || !defined($AgentID)) & ($cjcmd0 ne "init") ){
 #=========================================
 
 $message           = "";
-$dep_folder        = ".";
+$dep_folder        = undef;
 $verbose           = 0;         # default - redirect to CJlog
 $text_header_lines = undef;
 $show_tag          = "program";
