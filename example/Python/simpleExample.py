@@ -6,13 +6,14 @@ import csv;
 SUID = 'monajemi'
 file = SUID+'_results.csv';
 
-Var  = np.array([1,2,3,4,10,5]);
-
-for i in range(len(Var)):
-    for j in np.array([1,2,3,6]):    # This is a comment
+Var0  = np.array([1,2,3]);
+Var1  = np.array([1,2,3,4,10,5]);
+with open('file.txt','w') as myfile:
+    for i in range(len(Var0)):
+        for j in range(len(Var1)):    # This is a comment
         # write to a text file for testing reduce
-        with open(file,'a') as csvfile:
-            resultswriter = csv.writer(csvfile,delimiter=',');
-            resultswriter.writerow([i,j,i+j]);
+            with open(file,'a') as csvfile:
+                resultswriter = csv.writer(csvfile,delimiter=',');
+                resultswriter.writerow([i,j,i+j]);
 													
 	

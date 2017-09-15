@@ -75,7 +75,7 @@ sub build_rrun_master_script
     my $ssh = $extra->{ssh};
     my $total_jobs = $extra->{totalJobs};
     my $master_script;
-     $master_script = &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$total_jobs);
+     $master_script = &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$total_jobs);
     return  $master_script;
 }
 
@@ -173,23 +173,91 @@ sub build_nloop_code
         #my $cmd = "mkdir  $local_sep_Dir/$counter/logs; mkdir  $local_sep_Dir/$counter/scripts";
         #&CJ::my_system($cmd,0);
     
-       $master_script = &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$counter);
+       $master_script = &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$counter);
 	   return ($counter,$master_script);
 }
+
+
+
+
+
+
+
+
+
+
+##########################
+sub build_conda_venv_bash{
+##########################
+    my ($ssh) = @_;
+
+# Determine easy_install version
+my $python_version_tag = "";
+&CJ::err("python module not defined in ssh_config file.") if not defined $ssh->{'py'};
+
+if( $ssh->{'py'} =~ /python\D?(((\d).\d).\d)/i ) {
+$python_version_tag = $3;
+}elsif( $ssh->{'py'} =~ /python\D?((\d).\d)/i ){
+$python_version_tag = $2;
+}else{
+CJ::err("Cannot decipher pythonX.Y.Z version");
+}
+
+my $user_required_pyLib = join (" ", split(":",$ssh->{'pylib'}) );
+
+
+# Conda should be aviable.
+# from commit
+# 8ced93afebb9aaee12689d3aff473c9f02bb9d78
+# we are moving to anaconda virtual env for python
+my $venv = "CJ_python_venv";
+
+my $env =<<'BASH';
+
+#  For python, if conda venv already exists, just use it!
+if [ -z "$(conda info --envs | grep  <CONDA_VENV>)" ];then
+echo " <CONDA_VENV> doesn't exist. Creating it..."
+echo " conda create --yes -n  <CONDA_VENV> python=<version_tag> numpy <libs>"
+conda create --yes -n  <CONDA_VENV> python=<version_tag> numpy <libs>
+    
+else
+echo "using  <CONDA_VENV>"
+fi
+
+BASH
+
+
+
+$env =~ s|<version_tag>|$python_version_tag|g;
+$env =~ s|<libs>|$user_required_pyLib|g;
+$env =~ s|<CONDA_VENV>|$venv|g;
+
+return $env;
+    
+}
+
+
+
+
+
+
+
+
 
 #######################
 # Build master script
 sub make_master_script{
 #######################
-my($master_script,$runflag,$program,$date,$pid,$bqs,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$counter) = @_;
+my($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$counter) = @_;
     
     my $mem = $submit_defaults->{mem};
     my $runtime = $submit_defaults->{runtime};
+    my $bqs = $ssh->{'bqs'};
     #my $numberTasks = $submit_defaults->{numberTasks};
     
     
     
-    
+# one time only
 if( (!defined($master_script)) ||  ($master_script eq "")){
 my $docstring=<<DOCSTRING;
 # EXPERIMENT $program
@@ -201,6 +269,7 @@ DOCSTRING
 my $HEADER = &CJ::bash_header($bqs);
 $master_script=$HEADER;
 $master_script.="$docstring";
+
 }
 
 

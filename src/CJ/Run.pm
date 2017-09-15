@@ -162,8 +162,16 @@ my $self = shift;
 # create directories etc.
 my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
 
+    
+# for python only; check conda exists on the cluster and setup env
+$self->setup_conda_venv($ssh) if($program_type eq 'python');
+    
+    
+    
+    
 &CJ::message("Creating reproducible script(s) reproduce_$self->{program}");
-    &CJ::CodeObj($local_sep_Dir,$self->{program},$self->{dep_folder})->build_reproducible_script($self->{runflag});
+my $codeobj = &CJ::CodeObj($local_sep_Dir,$self->{program},$self->{dep_folder});
+$codeobj->build_reproducible_script($self->{runflag});
 
 #===========================================
 # BUILD A BASH WRAPPER
@@ -175,15 +183,15 @@ my $local_sh_path = "$local_sep_Dir/bashMain.sh";
 # Build master-script for submission
 my $master_script;
     
-# Add installation of anaconda to beginning of master
-    #my $master_script = &CJ::insatll_anaconda()
-    
-    
-$master_script = &CJ::Scripts::make_master_script($master_script,$self->{runflag},$self->{program},$date,$pid,$ssh->{bqs},$self->{submit_defaults},$self->{qSubmitDefault},$remote_sep_Dir,$self->{qsub_extra});
+$master_script = &CJ::Scripts::make_master_script($master_script,$self->{runflag},$self->{program},$date,$pid,$ssh,$self->{submit_defaults},$self->{qSubmitDefault},$remote_sep_Dir,$self->{qsub_extra});
+
 
 my $local_master_path="$local_sep_Dir/master.sh";
 &CJ::writeFile($local_master_path, $master_script);
 
+    
+    
+    
 
 #==============================================
 #    PROPAGATE THE FILES AND RUN ON CLUSTER
@@ -205,8 +213,9 @@ $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
 # copy tar.gz file to remoteDir
 $cmd = "rsync -avz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
 &CJ::my_system($cmd,$self->{verbose});
-
-
+    
+    
+    
 &CJ::message("Submitting job");
 $cmd = "ssh $ssh->{account} 'source ~/.bashrc; cd $remoteDir; tar -xzvf ${tarfile} ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep 3'";
 &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "deploy");
@@ -287,7 +296,13 @@ my $self = shift;
 # create directories etc.
 my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
 
-
+    
+    
+    # for python only; check conda exists on the cluster and setup env
+    $self->setup_conda_venv($ssh) if($program_type eq 'python');
+    
+    
+    
     
     
 # read the script, parse it out and
@@ -475,24 +490,38 @@ my $self = shift;
 # create directories etc.
 my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
 
-&CJ::err("RRUN works for SLURM batch queueing system only. Use parrun instead.") unless ($ssh->{bqs} eq "SLURM");
     
 
-# Check max allowable jobs
-# read the script, parse it out and
-# find the for loops
-my $matlab = CJ::Matlab->new($self->{path},$self->{program});
-my $parser = $matlab->parse();
-my ($idx_tags,$ranges) = $matlab->findIdxTagRange($parser,$self->{verbose});
+&CJ::err("RRUN works for SLURM batch queueing system only. Use parrun instead.") unless ($ssh->{bqs} eq "SLURM");
 
-#  Check that number of jobs doesnt exceed Maximum jobs for user on chosen cluster
-#  later check all resources like mem, etc.
-my @keys  = keys %$ranges;
-my $totalJobs = 1;
-foreach my $i (0..$parser->{nloop}-1){
-my @range = split(',', $ranges->{$keys[$i]});
-$totalJobs = (0+@range) * ($totalJobs);
-}
+    
+    
+    # for python only; check conda exists on the cluster and setup env
+    $self->setup_conda_venv($ssh) if($program_type eq 'python');
+    
+    
+  
+    
+    
+    
+    
+    
+    
+    # read the script, parse it out and
+    # find the for loops
+    my $codeobj            = &CJ::CodeObj($self->{path},$self->{program},$self->{dep_folder});
+    my $parser             = $codeobj->parse();
+    my ($idx_tags,$ranges) = $codeobj->findIdxTagRange($parser,$self->{verbose});
+    
+    
+    # Check that number of jobs doesnt exceed Maximum jobs for user on chosen cluster
+    # later check all resources like mem, etc.
+    my @keys  = keys %$ranges;
+    my $totalJobs = 1;
+    foreach my $i (0..$parser->{nloop}-1){
+        my @range = split(',', $ranges->{$keys[$i]});
+        $totalJobs = (0+@range) * ($totalJobs);
+    }
     
 
 # find max array size allowed
@@ -503,11 +532,9 @@ my $max_arraySize   = &CJ::max_slurm_arraySize($ssh);
 &CJ::err("Maximum jobs allowed in array mode on $self->{machine} ($max_arraySize) exceeded by your request ($totalJobs). Rewrite FOR loops to submit in smaller chunks.") unless  ($max_arraySize >= $totalJobs);
     
 # Check that user has initialized for loop vars
-$matlab->check_initialization($parser,$idx_tags,$self->{verbose});
+$codeobj->check_initialization($parser,$idx_tags,$self->{verbose});
 
 
-    
-    
     
 #==============================================
 #        MASTER SCRIPT
@@ -641,6 +668,44 @@ message       => $self->{message},
 
 
 
+
+#########################
+sub setup_conda_venv{
+#########################
+    my ($self,$ssh) = @_;
+    # check to see conda is installed for python jobs
+    my $response =`ssh $ssh->{account} 'which conda'`;
+    &CJ::err("CJ cannot find conda required for Python jobs. use 'cj install miniconda $self->{machine}'") unless ($response =~ m/^.*\/bin\/conda$/);
+    
+    # create conda env for python
+    
+    
+    # Build conda-venv-script
+    my $conda_venv = "conda_venv.sh";
+    my  $conda_venv_script = &CJ::Scripts::build_conda_venv_bash($ssh);
+    &CJ::writeFile("/tmp/$conda_venv", $conda_venv_script);
+    
+    
+    &CJ::message("Creating/checking conda venv. This may take a while the first time...");
+    my $cmd = "scp /tmp/$conda_venv $ssh->{account}:.";
+    &CJ::my_system($cmd,$self->{verbose});
+    $cmd = "ssh $ssh->{account} 'source ~/.bashrc;  bash -l conda_venv.sh > /tmp/cj_conda_env.txt 2>&1'";
+    &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "deploy");
+    
+    # check that installation has been successful
+    my $venv = 'CJ_python_venv';
+    $response =`ssh $ssh->{account} 'conda info --envs | grep  $venv'`;chomp($response);
+    if ($response !~ m/$venv/ ){
+        &CJ::message("CJ failed to create $venv on $self->{machine}");
+        &CJ::message("*********************************************");
+        
+        $cmd = "ssh $ssh->{account} 'cat /tmp/cj_conda_env.txt' ";
+        system($cmd);
+        exit 1;
+    }
+    
+    
+}
 
 
 

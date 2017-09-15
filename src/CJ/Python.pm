@@ -133,55 +133,6 @@ CJ::writeFile("$self->{path}/$rp_program", $rp_program_script);
 }
 
 
-##########################
-sub build_python_env_bash{
-##########################
-    my ($ssh) = @_;
-
-# Determine easy_install version
-my $python_version_tag = "";
-&CJ::err("python module not defined in ssh_config file.") if not defined $ssh->{'py'};
-
-if( $ssh->{'py'} =~ /python\D?((\d.\d).\d)/i ) {
-    $python_version_tag = $2;
-}elsif( $ssh->{'py'} =~ /python\D?(\d.\d)/i ){
-    $python_version_tag = $1;
-}else{
-    CJ::err("Cannot decipher pythonX.Y.Z version");
-}
-
-my $user_required_pyLib = join (" ", split(":",$ssh->{'pylib'}) );
-
-    
-# Conda should be aviable.
-# from commit
-# 8ced93afebb9aaee12689d3aff473c9f02bb9d78
-# we are moving to anaconda virtual env for python
-
-my $env =<<'BASH';
-
-#  If the venv already exists, just use it!
-#  For parallel package, this prevents buiding venv
-#  for each job!
-
-if [ -z "\$(conda info --envs | grep python_venv_${PID})" ];then
-echo "python_venv_${PID}  doesn't exist. Creating it..."
-conda create --yes -n python_venv_$PID python=<version_tag> numpy <libs>
-else
-echo "using python_venv_${PID}"
-fi
-
-BASH
-
-
-    
- 
-$env =~ s|<version_tag>|$python_version_tag|;
-$env =~ s|<libs>|$user_required_pyLib|;
-
-return $env;
-
-}
 
 ###################################
 sub getPIDJobCountExpr{
@@ -211,15 +162,12 @@ sub CJrun_body_script{
     my ($ssh) = @_;
    
   
-my $WordCountExpr = getPIDJobCountExpr($ssh);
-   
+#my $WordCountExpr = getPIDJobCountExpr($ssh);
     
 my $script =<<'BASH';
     
-<PYTHONENV>
-
 # activate python venv
-source activate python_venv_${PID}
+source activate <PY_VENV>
     
 python <<HERE
 # make sure each run has different random number stream
@@ -259,20 +207,12 @@ conda list -e > ${DIR}/${PID}_py_conda_req.txt
     
 # Get out of virtual env and remove it
 source deactivate
-
-# remove the python venv if no other jobs using it are present
-
-if [ ! "\$(<WordCountExpr>)" -gt 1 ]; then
-conda remove --yes -n python_venv_$PID --all
-fi
-
     
 BASH
     
-my $env = &CJ::Python::build_python_env_bash($ssh);
-$script =~ s|<PYTHONENV>|$env|;
-$script =~ s|<WordCountExpr>|$WordCountExpr|;
+my $venv_name = "CJ_python_venv";
     
+$script =~ s|<PY_VENV>|$venv_name|;
     
 return $script;
     
@@ -291,7 +231,7 @@ sub CJrun_par_body_script{
     my $self = shift;
     my ($ssh) = @_;
  
-    my $WordCountExpr = getPIDJobCountExpr($ssh);
+    #my $WordCountExpr = getPIDJobCountExpr($ssh);
     
     # Determine easy_install version
     my $python_version_tag = "";
@@ -308,9 +248,10 @@ sub CJrun_par_body_script{
     my $user_required_pyLib = join (" ", split(":",$ssh->{'pylib'}) );
     
 my $script =<<'BASH';
-
-<PYTHONENV>
     
+# activate python venv
+source activate <PY_VENV>
+
 python <<HERE
 
 # make sure each run has different random number stream
@@ -358,18 +299,15 @@ HERE
 # Get out of virtual env and remove it
 source deactivate
     
-#FIXME: This needs rethinking and fix. 
-# remove the python venv if no other jobs using it are present
-if [ "\$(<WordCountExpr>)" -lt 2 ]; then
-conda remove --yes -n python_venv_$PID --all
-fi
     
 BASH
 
-
-my $env = &CJ::Python::build_python_env_bash($ssh);
-$script =~ s|<PYTHONENV>|$env|;
-$script =~ s|<WordCountExpr>|$WordCountExpr|;
+    
+my $venv_name = "CJ_python_venv";
+$script =~ s|<PY_VENV>|$venv_name|;
+    
+    
+    
 
 return $script;
 }
@@ -581,22 +519,29 @@ my ($level) = $forline =~ m/^(\s*).+/ ;  # determin our level of indentation
     
     
     
-#$forline = &CJ::remove_white_space($forline);  # python should respect indent
+$forline = &CJ::remove_white_space($forline);
 # print  "$tag: $forline\n";
 
+    
+my @top_lines = split /^/, $TOP;
+    my $last_top_line = $top_lines[$#top_lines];
+    
 my $tag_file = "\'/tmp/$tag\.tmp\'";
+  
+$python_interpreter_script .= "${level}pass" if ( $last_top_line =~ /^[^:]*:\s*$/ );
+    
 $python_interpreter_script .=<<PYTHON
-$level$tag\_fid = open($tag_file,'w');
-$forline
-$level$level$tag\_fid.write(\"%i\\n\" \% $tag);
-$level$tag\_fid.close();
+    
+$tag\_fid = open($tag_file,'w')
+$forline$tag\_fid.write(\"%i\\n\" \% $tag);
+$tag\_fid.close()
 PYTHON
 }
 my $name = "CJ_python_interpreter_script";
 &CJ::writeFile("$self->{path}/$name.py",$python_interpreter_script);
 #&CJ::message("$name is built in $path",1);
 
-
+    
 my $python_interpreter_bash = <<BASH;
 #!/bin/bash -l
 # dump everything user-generated from top in /tmp
@@ -624,12 +569,17 @@ my $tmp_array = &CJ::readFile("$tag_file");
 my @tmp_array  = split /\n/,$tmp_array;
 $range->{$tag} = join(',', @tmp_array);
 # print $range->{$tag} . "\n";
-&CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp  
+&CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp
 }
 
+    
+    
+    
+    
 # remove the files you made in /tmp
 &CJ::my_system("rm -f $test_name $junk $check_path/$check_name $self->{path}/$name.py");
 
+    
 return $range;
 
 }
@@ -680,7 +630,8 @@ sub findIdxTagRange{
     }
     
     
-    if ( @tags_to_python_interpret ) { # if we need to run python
+    if ( @tags_to_python_interpret ) {
+        # if we need to run python
         my $range_run_interpret = $self->run_python_index_interpreter($TOP,\@tags_to_python_interpret,\@forlines_to_python_interpret, $verbose);
         
         

@@ -51,10 +51,10 @@ Host		login.sherlock.stanford.edu
 User		monajemi
 Bqs		SLURM
 Repo		/scratch/users/monajemi/CJRepo_Remote
-MAT     	matlab/R2016b
+MAT     	matlab/R2017a
 MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
-Python		python/3.4.3
-Pythonlib	scipy
+Python		python/3.6
+Pythonlib	pytorch:torchvision:cuda80:scipy:matplotlib:torchvision:-c soumith
 [sherlock2]
 
 
