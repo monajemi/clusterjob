@@ -60,8 +60,9 @@ my $short_pid = &CJ::short_pid($pid);  # we use an 8 character abbrviation
 
 #  Check to see if the file and dep folder exists
 &CJ::err("$self->{path}/$self->{program} not found") if(! -e "$self->{path}/$self->{program}" );
+if(defined($self->{dep_folder})){
 &CJ::err("Dependency folder $self->{path}/$self->{dep_folder} not found") if(! -d "$self->{path}/$self->{dep_folder}" );
-
+}
 
 #=======================================
 #    BUILD DOCSTRING
