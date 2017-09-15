@@ -34,8 +34,8 @@ $array_bashMain_script.="$docstring";
     
 if($bqs eq "SLURM"){
         
-$array_bashMain_script.="mkdir ${remote_sep_Dir}/\$SLURM_ARRAY_TASK_ID/logs\n";
-$array_bashMain_script.="mkdir ${remote_sep_Dir}/\$SLURM_ARRAY_TASK_ID/scripts\n";
+    #$array_bashMain_script.="mkdir ${remote_sep_Dir}/\$SLURM_ARRAY_TASK_ID/logs\n";
+    #$array_bashMain_script.="mkdir ${remote_sep_Dir}/\$SLURM_ARRAY_TASK_ID/scripts\n";
 $array_bashMain_script.="bash  ${remote_sep_Dir}/\$SLURM_ARRAY_TASK_ID/bashMain.sh\n";
     
 }else{
@@ -115,10 +115,6 @@ sub nForLoop
 
 
 
-################### FIX ME######################
-#  THE INPUT needs to follow PYTHON syntax.
-#   SLIGHTLY LANGUAGE DEPENDENT
-################################################
 
 sub build_nloop_code
 {		   
@@ -170,8 +166,9 @@ sub build_nloop_code
        &CJ::writeFile($local_sh_path, $sh_script);
     
        # build logs and scripts directories
-        #my $cmd = "mkdir  $local_sep_Dir/$counter/logs; mkdir  $local_sep_Dir/$counter/scripts";
-        #&CJ::my_system($cmd,0);
+       # this is essentail for rrun!
+       my $cmd = "mkdir  $local_sep_Dir/$counter/logs; mkdir  $local_sep_Dir/$counter/scripts";
+       &CJ::my_system($cmd,0);
     
        $master_script = &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$counter);
 	   return ($counter,$master_script);
