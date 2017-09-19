@@ -679,6 +679,12 @@ my @BOT_lines = split /^/, $BOT;
 my ($level) = $BOT_lines[0] =~ m/^(\s*).+/ ;  # determin our level of indentation
     
 my $new_script = "$TOP\n$FOR\n$level$INSERT\n$BOT";
+    
+# For relative data path, we need to replace every occurance
+# of './' to '.'  to ../ or .
+# They should only be within
+    
+    
 undef $INSERT;
 return $new_script;
 }

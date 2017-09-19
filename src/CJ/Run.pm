@@ -215,10 +215,13 @@ $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
 $cmd = "rsync -avz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
 &CJ::my_system($cmd,$self->{verbose});
     
+&CJ::message("Extracting package...");
+$cmd = "ssh $ssh->{account} 'source ~/.bashrc; cd $remoteDir; tar -xzf ${tarfile} --exclude=\"._*\";exit 0'";
+&CJ::my_system($cmd,$self->{verbose});
     
     
-&CJ::message("Submitting job");
-$cmd = "ssh $ssh->{account} 'source ~/.bashrc; cd $remoteDir; tar -xzvf ${tarfile} --exclude=\"._*\" ; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep 3'";
+$self->{runflag} eq "deploy" ? &CJ::message("Deployed.") : &CJ::message("Submitting job...");
+$cmd = "ssh $ssh->{account} 'source ~/.bashrc; cd $remoteDir/${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep 3'";
 &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "deploy");
 
 
@@ -382,11 +385,17 @@ $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
 $cmd = "rsync -arvz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
 &CJ::my_system($cmd,$self->{verbose});
 
+    
+&CJ::message("Extracting package...");
+$cmd = "ssh $ssh->{account} 'source ~/.bashrc; cd $remoteDir; tar -xzf ${tarfile} --exclude=\"._*\";exit 0'";
+&CJ::my_system($cmd,$self->{verbose});
+    
+    
 
 $self->{runflag} eq "pardeploy" ? &CJ::message("Deployed.") : &CJ::message("Submitting job(s)");
 my $wait = int($totalJobs/300) + 2 ; # add more wait time for large jobs.
 $wait = $wait > 5 ? $wait: 5;
-$cmd = "ssh $ssh->{account} 'source ~/.bashrc;cd $remoteDir; tar -xzf ${tarfile} --exclude=\"._*\"; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep $wait'";
+$cmd = "ssh $ssh->{account} 'source ~/.bashrc;cd $remoteDir/${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep $wait'";
 &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "pardeploy");
 
 
@@ -594,11 +603,15 @@ $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
 $cmd = "rsync -arvz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
 &CJ::my_system($cmd,$self->{verbose});
 
+&CJ::message("Extracting package...");
+$cmd = "ssh $ssh->{account} 'source ~/.bashrc; cd $remoteDir; tar -xzf ${tarfile} --exclude=\"._*\";exit 0'";
+&CJ::my_system($cmd,$self->{verbose});
+ 
 
-&CJ::message("Submitting job(s)");
+$self->{runflag} eq "rdeploy" ? &CJ::message("Deployed.") : &CJ::message("Submitting jobs...");
 my $wait = int($totalJobs/300) + 2 ; # add more wait time for large jobs so the other server finish writing.
-$cmd = "ssh $ssh->{account} 'source ~/.bashrc;cd $remoteDir; tar -xzf ${tarfile} --exclude=\"._*\"; cd ${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep $wait'";
-&CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "pardeploy");
+$cmd = "ssh $ssh->{account} 'source ~/.bashrc; cd $remoteDir/${pid}; bash -l master.sh > $remote_sep_Dir/qsub.info; sleep $wait'";
+&CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "rdeploy");
 
 
 
