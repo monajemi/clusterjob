@@ -451,17 +451,17 @@ sub rerun
     my $master_script;
     if ($#job_ids eq 0) { # if there is only one job
         #run
-        $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$remote_path,$qsub_extra);
+        $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$info,$submit_defaults,$qSubmitDefault,$remote_path,$qsub_extra);
     }else{
         #parrun
         if(@$counter){
             foreach my $count (@$counter){
-                $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$remote_path,$qsub_extra,$count);
+                $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$info,$submit_defaults,$qSubmitDefault,$remote_path,$qsub_extra,$count);
             }
         }else{
             # Package is parrun, run the whole again!
             foreach my $i (0..$#job_ids){
-               $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$remote_path,$qsub_extra,$i);
+               $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$info,$submit_defaults,$qSubmitDefault,$remote_path,$qsub_extra,$i);
             }
         }
     }
