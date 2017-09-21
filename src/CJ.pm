@@ -486,7 +486,7 @@ my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
     
     
     &CJ::message("Submitting job(s)");
-    $cmd = "ssh $account 'source ~/.bashrc;cd $remote_path; bash -l rerun_master.sh > $remote_path/rerun_qsub.info; sleep 2'";
+    $cmd = "ssh $account 'source ~/.bashrc && cd $remote_path && bash -l rerun_master.sh > $remote_path/rerun_qsub.info && sleep 2'";
     &CJ::my_system($cmd,$verbose);
     
     
