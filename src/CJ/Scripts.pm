@@ -295,8 +295,8 @@ $master_script.="$docstring";
     }elsif(!($runflag =~ /^par.*/) ){
         
         
-        $master_script .= "mkdir ${remote_sep_Dir}"."/logs" . "\n" ;
-        $master_script .= "mkdir ${remote_sep_Dir}"."/scripts" . "\n" ;
+        # $master_script .= "mkdir ${remote_sep_Dir}"."/logs" . "\n" ;
+        # $master_script .= "mkdir ${remote_sep_Dir}"."/scripts" . "\n" ;
     
         my $tagstr="CJ_$pid\_$programName";
         if($bqs eq "SGE"){
@@ -325,8 +325,8 @@ $master_script.="$docstring";
     
     
         # Add QSUB to MASTER SCRIPT
-        $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/logs"    . "\n" ;
-        $master_script .= "mkdir ${remote_sep_Dir}/$counter". "/scripts" . "\n" ;
+        #$master_script .= "mkdir ${remote_sep_Dir}/$counter". "/logs"    . "\n" ;
+        #$master_script .= "mkdir ${remote_sep_Dir}/$counter". "/scripts" . "\n" ;
         
         
         my $tagstr="CJ_$pid\_$counter\_$programName";

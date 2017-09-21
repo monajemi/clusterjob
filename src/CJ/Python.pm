@@ -34,12 +34,21 @@ sub parse {
 	# script lines will have blank lines or comment lines removed;
 	# ie., all remaining lines are effective codes
 	# that actually do something.
+    my @CJbang;
 	my $script_lines;
 	    open my $fh, "$self->{path}/$self->{program}" or CJ::err("Couldn't open file: $!");
 		while(<$fh>){
-            $_ = $self->uncomment_python_line($_);
-            if (!/^\s*$/){
-	         $script_lines .= $_;
+            
+            #if line starts with CJbang, keep them in CJbang!
+            
+            if($_ =~ /^\#CJ\s*(.*)$/){
+                push @CJbang, $1;
+            }else{
+            
+                $_ = $self->uncomment_python_line($_);
+                if (!/^\s*$/){
+                    $script_lines .= $_;
+                }
             }
 	}
 	close $fh;
@@ -87,8 +96,9 @@ sub parse {
 	$parser->{FOR} = $FOR;	
 	$parser->{BOT} = $BOT;
 	$parser->{nloop} = $#forlines_idx_set+1;
+    $parser->{CJbang} = \@CJbang;
 
-    
+
     return $parser;
 	
 }
@@ -528,7 +538,7 @@ my @top_lines = split /^/, $TOP;
     
 my $tag_file = "\'/tmp/$tag\.tmp\'";
   
-$python_interpreter_script .= "${level}pass" if ( $last_top_line =~ /^[^:]*:\s*$/ );
+$python_interpreter_script .= "${level}pass" if ( $i==0 && $last_top_line =~ /^[^:]*:\s*$/ );
     
 $python_interpreter_script .=<<PYTHON
     
@@ -680,14 +690,94 @@ my ($level) = $BOT_lines[0] =~ m/^(\s*).+/ ;  # determin our level of indentatio
     
 my $new_script = "$TOP\n$FOR\n$level$INSERT\n$BOT";
     
-# For relative data path, we need to replace every occurance
-# of './' to '.'  to ../ or .
-# They should only be within
-    
+# if there is #CJ -s directive do the substitute
+# This is good for including remote data for parrun
+$new_script = $self->_CJbang_substitute($new_script);
     
 undef $INSERT;
 return $new_script;
+
 }
+
+
+
+#######################
+sub _CJbang_substitute{
+#######################
+    my $self = shift;
+    my ($script) = @_;
+
+    my @CJbang=$self->get_CJbang();
+    
+    foreach my $bang (@CJbang){
+        # subs
+        if($bang =~ m/^-s\s*(.*)/){
+            my @tmp = split(/\s/, $1);
+            &CJ::err('I expected 2 inputs but got 1 in #CJ -s directive.') if ($#tmp < 1 );
+            my $first  = shift @tmp;
+            my $second = shift @tmp;
+            eval{$script =~ s/$first/$second/g;};
+            &CJ::err('$bang generated invalid regexp $sub') if $@;
+        }else{
+            CJ::err("I don't recognize option '#CJ $bang'.");
+        }
+        
+    }
+
+    
+    return $script;
+
+}
+
+
+
+
+
+
+#####################
+sub get_CJbang {
+#####################
+    my $self = shift;
+    
+    my @CJbang;
+    open my $fh, "$self->{path}/$self->{program}" or CJ::err("Couldn't open file: $!");
+    while(<$fh>){
+        
+        #if line starts with CJbang, keep them in CJbang!
+        
+        if($_ =~ /^\#CJ\s*(.*)$/){
+            push @CJbang, $1;
+        }
+    }
+close $fh;
+
+
+return @CJbang;
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
