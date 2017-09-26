@@ -3,7 +3,7 @@
 
 file = 'results.txt';
 
-for i = 1:2 
+for i = 1:2
 	for j = 1:4
 				% write to a text file for testing reduce 	        
 		        fid = fopen(file,'at');                     % This is a test

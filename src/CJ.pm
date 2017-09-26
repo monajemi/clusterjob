@@ -959,13 +959,13 @@ sub clean
   	   	 #print $avail_ids  . "\n";
 			
 	}elsif($bqs eq "SLURM"){
-		$avail_ids = `ssh ${account} ' sacct -n --format=jobid,jobname%15 | grep -v "^[0-9]*\\." | grep CJ_$short_pid ' | awk \'{print \$1}\' | tr '\n' ' '  `;
+		$avail_ids = `ssh ${account} ' sacct -n --format=jobid,jobname%15 | grep -v "^\\s*[0-9\_]*\\."  | grep CJ_$short_pid ' | awk \'{print \$1}\' | tr '\n' ' '  `;
 	}else{
 		 &CJ::err("Unknown batch queueing system");
 	}
 	
-	
-	
+    $avail_ids = $job_id if $info->{runflag} eq "rrun";
+    
     if (defined($avail_ids) && $avail_ids ne "") {
         CJ::message("Deleting jobs associated with package $short_pid");
 		
@@ -1224,8 +1224,8 @@ sub get_summary
 	
 		
     }elsif($bqs eq "SLURM"){
-       # $REC_STATES = (`ssh ${account} 'sacct --format=state | grep -v "^[0-9]*\\."'`) ;chomp($REC_STATES);
-        $REC_PIDS_STATES = (`ssh ${account} 'sacct -n --format=jobname%15,state | grep -v "^[0-9]*\\."'     2>$CJlog_error`);chomp($REC_PIDS_STATES);
+       # $REC_STATES = (`ssh ${account} 'sacct --format=state | grep -v "^\\s*[0-9\_]*\\." '`) ;chomp($REC_STATES);
+        $REC_PIDS_STATES = (`ssh ${account} 'sacct -n --format=jobname%15,state | grep -v "^\\s*[0-9\_]*\\." '     2>$CJlog_error`);chomp($REC_PIDS_STATES);
 		
     }else{
         &CJ::err("Unknown batch queueing system");
@@ -1364,7 +1364,7 @@ sub get_state
     
     my $states={};
 	
-    if ( $runflag =~ m/^par*/ ){
+if ( $runflag =~ m/^parrun$/ ){
     # par case
     my @job_ids = split(',',$job_id);
     my $jobs = join('|', @job_ids);
@@ -1380,8 +1380,8 @@ sub get_state
         $REC_IDS = (`ssh ${account} 'qstat -u \\* | grep -E "$jobs" ' | awk \'{print \$1}\'`) ;chomp($REC_IDS);
         
     }elsif($bqs eq "SLURM"){
-        $REC_STATES = (`ssh ${account} 'sacct -n --jobs=$job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$6}\'`) ;chomp($REC_STATES);
-        $REC_IDS =  (`ssh ${account} 'sacct -n --jobs=$job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$1}\'`) ;chomp($REC_IDS);
+        $REC_STATES = (`ssh ${account} 'sacct -n --jobs=$job_id   --format=state%10 | grep -v "^\\s*[0-9\_]*\\." ' | awk \'{print \$1}\'`) ;chomp($REC_STATES);
+        $REC_IDS =  (`ssh ${account} 'sacct -n --jobs=$job_id --format=jobid%20 | grep -v "^\\s*[0-9\_]*\\."  ' | awk \'{print \$1}\'`) ;chomp($REC_IDS);
         
         #$states = (`ssh ${account} 'sacct -n --format=state --jobs=$job_id'`) ;chomp($state);
         
@@ -1398,12 +1398,29 @@ sub get_state
         $states->{$key} = $val;		
     }
 	
+}elsif ($runflag =~ m/^rrun$/){
+
+    
+    # SLURM ONLY
+    my $REC_IS_STATE= (`ssh ${account} 'sacct -n --jobs=$job_id   --format=jobid%20,state%10 | grep -v "^\\s*[0-9\_]*\\." ' | awk \'{print \$1,\$2}\'`) ;
+    chomp($REC_IS_STATE);
+    
+    my @REC_IS_STATE = split /^/, $REC_IS_STATE;
+    
+    
+    foreach my $i (0..$#REC_IS_STATE){
+        chomp($REC_IS_STATE[$i]);
+        my ($key, $val) = split(/\s/,$REC_IS_STATE[$i],2);
+        $states->{$key} = $val;
+    }
+
+
 }else{
 	    my $state;
 	    if($bqs eq "SGE"){
 	        $state = (`ssh ${account} 'qstat | grep $job_id' | awk \'{print \$5}\'`) ;chomp($state);
 	    }elsif($bqs eq "SLURM"){
-	        $state = (`ssh ${account} 'sacct | grep $job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$6}\'`) ;chomp($state);
+	        $state = (`ssh ${account} 'sacct | grep $job_id | grep -v "^\\s*[0-9\_]*\\."  ' | awk \'{print \$6}\'`) ;chomp($state);
 	    }else{
 	        &CJ::err("Unknown batch queueing system");
 	    }
@@ -1477,14 +1494,10 @@ sub get_print_state
     my $runflag = $info->{'runflag'};
 	
 	
-	
-	
-	
-	
 	my $states = &CJ::get_state($pid,$num);
 	my $size = scalar keys %$states;
  
-if($size eq 1){
+if($runflag =~ m/^run$/){
 
 	my ($job_id) = keys %$states; 	
 	my $state  = $states->{$job_id};chomp($state);
@@ -1495,6 +1508,46 @@ if($size eq 1){
     print "state: $state\n";
 
 	
+}elsif($runflag =~ m/^rrun$/){
+    my @job_ids = keys %$states;
+    
+    
+    my @allocated;
+    my @not_allocated;
+    my $array_id;
+    foreach my $i (0..$#job_ids)
+    {
+        ($array_id, my $task) = split('_',$job_ids[$i],2);chomp($task);
+        $task =~ m/^\d+$/ ? push @allocated , $task : push @not_allocated , $task;
+
+    }
+    
+    
+    my @sorted_counter = sort { $a <=> $b } @allocated if(@allocated);
+    
+     print "\n";
+     print "\033[32mpid $info->{'pid'}\033[0m\n";
+     print "remote_account: $account\n";
+
+    foreach my $i (0..$#sorted_counter)
+    {
+            my $key = "$array_id\_$sorted_counter[$i]";
+            my $state = $states->{$key}; chomp($state);
+            $state =~ s/[^A-Za-z]//g;
+            printf "%-20s%-10s\n", $key, $state;
+    }
+    
+    foreach my $i (0..$#not_allocated)
+    {
+        my $key = "$array_id\_$not_allocated[$i]";
+        my $state = $states->{$key}; chomp($state);
+        $state =~ s/[^A-Za-z]//g;
+        printf "%-20s%-10s\n", $key, $state;
+    }
+    
+    
+    print '-' x 35;print "\n";
+
 }else{
     my @job_ids = split(',',$job_id);
 	
@@ -1513,19 +1566,19 @@ if($size eq 1){
             }
             #$state = s/^\s+|\s+$/;
             $state =~ s/[^A-Za-z]//g;
-            print "$counter     " . "$job_ids[$i]      "  . "$state" . "\n";
+            printf "%-10i%-20s%-10s\n",$counter , $job_ids[$i],$state;
         }
     }elsif(&CJ::isnumeric($num) && $num <= $#job_ids+1){
         print '-' x 50;print "\n";
         print "\033[32mpid $info->{'pid'}\033[0m\n";
         print "remote_account: $account\n";
-        my $tmp = $num -1;
+        my $tmp = $num-1;
         my $val = $states->{$job_ids[$tmp]};
         if (! $val){
         $val = "unknwon";
         }
-        print "$num     " . "$job_ids[$tmp]      "  . "$val" . "\n";
-        
+        printf "%-10i%-20s%-10s\n",$num , $job_ids[$tmp] ,$val;
+
         
     }else{
         my $lim =1+$#job_ids;

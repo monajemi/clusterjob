@@ -241,6 +241,9 @@ if($self->{runflag} eq "run"){
     # read run info
     my $local_qsub_info_file = "$info_dir/"."qsub.info";
     my ($job_ids,$errors) = &CJ::read_qsub($local_qsub_info_file);
+        
+    $self->_checkSubmitSuccess($job_ids,$ssh,$local_sep_Dir,$remote_sep_Dir,$errors);
+    
     $job_id = $job_ids->[0]; # there is only one in this case
     my $numJobs = $#{$job_ids}+1;
     CJ::message("$numJobs job(s) submitted ($job_id)");
@@ -414,6 +417,11 @@ if($self->{runflag} eq "parrun"){
     my $errors;
     my $local_qsub_info_file = "$info_dir/"."qsub.info";
     ($job_ids,$errors) = &CJ::read_qsub($local_qsub_info_file);
+    
+    
+    $self->_checkSubmitSuccess($job_ids,$ssh,$local_sep_Dir,$remote_sep_Dir,$errors);
+    
+
     $job_id = join(',', @{$job_ids});
     my $numJobs = $#{$job_ids}+1;
     
@@ -466,7 +474,26 @@ my $runinfo={
 
 
 
+sub _checkSubmitSuccess{
 
+    my ($self,$job_ids,$ssh,$local_sep_Dir,$remote_sep_Dir,$errors) = @_;
+    
+    # in case we dont get job ID
+    if( !defined($job_ids->[0]) || $job_ids->[0] =~ m/^\s*$/ ){
+        print "\_$job_ids->[0]\_\n";
+        
+        #delete remote directories
+        my $local_clean     = "$local_sep_Dir\*";
+        my $remote_clean    = "$remote_sep_Dir\*";
+        my $cmd = "rm -rf $local_clean; ssh $ssh->{account} 'rm -rf $remote_clean' " ;
+        &CJ::my_system($cmd,$self->{verbose});
+        foreach my $error (@{$errors}) {
+            CJ::warning($error);
+        }
+        CJ::err('Job submission failed. try running with --v option for more info');
+    }
+
+}
 
 
 
@@ -621,39 +648,38 @@ $cmd = "rsync -avz $ssh->{account}:$qsubfilepath  $info_dir/";
 &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "pardeploy");
 
 
-
-my $job_ids;
-my $job_id;
-if($self->{runflag} eq "parrun"){
-# read run info
-my $errors;
-my $local_qsub_info_file = "$info_dir/"."qsub.info";
-($job_ids,$errors) = &CJ::read_qsub($local_qsub_info_file);
-$job_id = join(',', @{$job_ids});
-my $numJobs = $#{$job_ids}+1;
-
-CJ::message("$numJobs job(s) submitted ($job_ids->[0]-$job_ids->[-1])");
-
-foreach my $error (@{$errors}) {
-    CJ::warning($error);
-}
-
-
-#delete the local qsub.info after use
-#my $cmd = "rm $local_qsub_info_file";
-#&CJ::my_system($cmd,$self->{verbose});
-
-}else{
-$job_ids = "";
-$job_id = "";
-}
-
-
+    
+    
+    
+    
+    my $array_job_id;
+    if($self->{runflag} eq "rrun"){
+        # read run info
+        my $local_qsub_info_file = "$info_dir/"."qsub.info";
+        my ($job_ids,$errors) = &CJ::read_qsub($local_qsub_info_file);
+        
+        
+        $self->_checkSubmitSuccess($job_ids,$ssh,$local_sep_Dir,$remote_sep_Dir,$errors);
+        
+        
+        $array_job_id = $job_ids->[0]; # there is only one in this case
+        #my $numJobs = $#{$job_ids}+1;
+        CJ::message("$totalJobs job(s) submitted ($array_job_id\_[1-$totalJobs])");
+        foreach my $error (@{$errors}) {
+            CJ::warning($error);
+        }
+        #delete the local qsub.info after use
+        #my $cmd = "rm $local_qsub_info_file";
+        #&CJ::my_system($cmd,$self->{verbose});
+    }else{
+       $array_job_id ="";
+    }
+    
 
 
 my $runinfo={
 pid           => ${pid},
-user          => ${CJID},  # will be changed to CJusername later
+user          => ${CJID},
 agent		  => ${AgentID},
 local_ip      => ${localIP},
 local_un      => ${localUserName},
@@ -664,7 +690,8 @@ local_prefix  => ${localPrefix},
 local_path    => "${localDir}/${pid}",
 remote_prefix => $ssh->{remote_repo},
 remote_path   => "${remoteDir}/${pid}",
-job_id        => $job_id,
+job_id        => $array_job_id,
+num_tasks     => $totalJobs,                 # This is only for array_jobs
 bqs           => $ssh->{bqs},
 save_prefix   => ${savePrefix},
 save_path     => "${saveDir}/${pid}",
