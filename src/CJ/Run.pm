@@ -305,8 +305,8 @@ my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir
 
     
     
-    # for python only; check conda exists on the cluster and setup env
-    $self->setup_conda_venv($ssh) if($program_type eq 'python');
+# for python only; check conda exists on the cluster and setup env
+$self->setup_conda_venv($ssh) if($program_type eq 'python');
     
     
     
