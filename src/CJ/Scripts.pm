@@ -295,8 +295,8 @@ $master_script.="$docstring";
     }elsif(!($runflag =~ /^par.*/) ){
         
         
-        # $master_script .= "mkdir ${remote_sep_Dir}"."/logs" . "\n" ;
-        # $master_script .= "mkdir ${remote_sep_Dir}"."/scripts" . "\n" ;
+         $master_script .= "mkdir ${remote_sep_Dir}"."/logs" . "\n" ;
+         $master_script .= "mkdir ${remote_sep_Dir}"."/scripts" . "\n" ;
     
         my $tagstr="CJ_$pid\_$programName";
         if($bqs eq "SGE"){
