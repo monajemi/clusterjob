@@ -769,7 +769,7 @@ sub show_log{
         $log_argin = "";
     }elsif( $log_argin =~ m/^\-?all$/ ){
 		my $pid_timestamp = &CJ::read_pid_timestamp();
-		$num_show = keys $pid_timestamp;
+		$num_show = keys %$pid_timestamp;
     }elsif( $log_argin =~ m/^\-?\d*$/ ){
         $log_argin =~ s/\D//g;     #remove any non-digit
         $num_show = $log_argin;
@@ -841,7 +841,7 @@ sub show_log{
         print "script: $info->{program}\n";
         #print "remote_path: $info->{remote_path}\n";
         print "initial_flag: $info->{runflag}\n";
-        print "reruned: ", 0+keys($info->{rerun}) . " times \n" if($info->{rerun}) ;
+           print "reruned: ", 0+keys(%{$info->{rerun}}) . " times \n" if($info->{rerun}) ;
         print "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
         print "\n";
         print ' ' x 10; print "$info->{message}\n";
@@ -1162,7 +1162,7 @@ sub show_info
     print "script: $info->{program}\n";
     print "remote_path: $info->{remote_path}\n";
     print "initial_flag: $info->{runflag}\n";
-    print "reruned: ", 0+keys($info->{rerun}) . " times \n" if($info->{rerun}) ;
+    print "reruned: ", 0+keys(%{ $info->{rerun} }) . " times \n" if($info->{rerun}) ;
     print "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
     print "\n";
     print ' ' x 10; print "$info->{message}\n";
@@ -2708,7 +2708,7 @@ sub show_cluster_config{
         CJ::err("No such cluster found. add $cluster to ssh_config.") if !is_valid_machine($cluster);
         my $ssh_config_hashref =  &CJ::read_ssh_config();
         my $fieldsize = 20;
-        while ( my ($key, $value) = each $ssh_config_hashref->{$cluster} ){
+        while ( my ($key, $value) = each %{ $ssh_config_hashref->{$cluster} } ){
             printf "\n\033[32m%-${fieldsize}s\033[0m%s", $key, $value;
         }
         print "\n\n";

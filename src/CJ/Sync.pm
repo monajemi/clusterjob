@@ -196,7 +196,7 @@ sub push_timestamp{
 # than the remote counterpart, it sends to the server the local info that hasnt been pushed.
 my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
 my $fb_get = $firebase->get("users/${CJID}/agents/$agent");
-        
+    
 return unless defined($fb_get);
 my $remote_push_timestamp = $fb_get->{push_timestamp};
 return unless defined($remote_push_timestamp);
