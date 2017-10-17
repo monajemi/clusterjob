@@ -234,7 +234,7 @@ sub update_install {
 	my $date = CJ::date();
 	my $datetag = $date->{year}-$date->{month}-$date->{day};
 	# update installation
-	my $cmd = "cd /tmp && curl -sL  https://github.com/monajemi/clusterjob/tarball/master | tar -zx -";  
+	my $cmd = "cd /tmp && curl -sL  https://github.com/monajemi/clusterjob/tarball/master | tar -zx ";  
 	   $cmd .= "&& mv monajemi-clusterjob-* clusterjob-$datetag";
 	   $cmd .= "&& cp -r /tmp/clusterjob-$datetag/src $install_dir/";
 	   $cmd .= "&& cp -r /tmp/clusterjob-$datetag/example $install_dir/";
