@@ -12,7 +12,7 @@ use Time::Piece;
 use JSON::PP;
 use Data::Dumper;
 use Data::UUID;
-use GetOpt::Declare;
+use Getopt::Declare;
 use feature 'say';
 
 
