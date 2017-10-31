@@ -160,6 +160,8 @@ my $spec = <<'EOSPEC';
                                                                 {my $runflag = "deploy";
                                                                 {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                                 }
+     err[or]      [<pid> [[/] [<counter>]] ]	  	  shortcut for '--ls err' [nocase]
+                                                    {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","error") }}
      gather       <pattern>  <dir_name> [<pid>]	          gather results of parrun [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);&CJ::Get::gather_results($pid,$pattern,$dir_name,$verbose)}}
      get          [<pid> [/] [<subfolder>]]	          bring results (fully/partially) back to local machine [nocase]
@@ -172,9 +174,6 @@ my $spec = <<'EOSPEC';
 								{&CJ::add_cmd($cmdline);defer{&CJ::install_software($app,$cluster)} }
      ls           [<pid> [[/] [<counter>]] ]	  	  shortcut for '--ls show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","ls") }}
-     err[or]          [<pid> [[/] [<counter>]] ]	  	  shortcut for '--ls err' [nocase]
-                                                                 {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","error") }}
-     
      less         [<pid> [[/] [<counter>] [[/] <file>]] ]	  shortcut for '--less show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,"less") }}
      rerun        [<pid> [[/] [<counter>...]]]	          rerun certain (failed) job [nocase]
