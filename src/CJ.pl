@@ -172,6 +172,9 @@ my $spec = <<'EOSPEC';
 								{&CJ::add_cmd($cmdline);defer{&CJ::install_software($app,$cluster)} }
      ls           [<pid> [[/] [<counter>]] ]	  	  shortcut for '--ls show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","ls") }}
+     err[or]          [<pid> [[/] [<counter>]] ]	  	  shortcut for '--ls err' [nocase]
+                                                                 {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","error") }}
+     
      less         [<pid> [[/] [<counter>] [[/] <file>]] ]	  shortcut for '--less show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,"less") }}
      rerun        [<pid> [[/] [<counter>...]]]	          rerun certain (failed) job [nocase]
@@ -234,7 +237,7 @@ sub update_install {
 	my $date = CJ::date();
 	my $datetag = $date->{year}-$date->{month}-$date->{day};
 	# update installation
-	my $cmd = "cd /tmp && curl -sL  https://github.com/monajemi/clusterjob/tarball/master | tar -zx ";  
+	my $cmd = "cd /tmp && curl -sL  https://github.com/monajemi/clusterjob/tarball/master | tar -zx ";
 	   $cmd .= "&& mv monajemi-clusterjob-* clusterjob-$datetag";
 	   $cmd .= "&& cp -r /tmp/clusterjob-$datetag/src $install_dir/";
 	   $cmd .= "&& cp -r /tmp/clusterjob-$datetag/example $install_dir/";

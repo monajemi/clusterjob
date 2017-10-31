@@ -1031,9 +1031,7 @@ exit 0;
 sub show
 {
     my ($pid, $num, $file, $show_tag) = @_;
-    
-	
-	
+    	
     my $info;
     if( (!defined $pid) || ($pid eq "") ){
         #read last_instance.info;
