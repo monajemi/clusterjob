@@ -716,7 +716,7 @@ sub setup_conda_venv{
 #########################
     my ($self,$ssh) = @_;
     # check to see conda is installed for python jobs
-    my $response =`ssh $ssh->{account} 'which conda' 2>$CJlog_error`;
+    my $response =`ssh $ssh->{account} 'source ~/.bashrc ; source ~/.bash_profile; which conda' 2>$CJlog_error`;
     &CJ::err("CJ cannot find conda required for Python jobs. use 'cj install miniconda $self->{machine}'") unless ($response =~ m/^.*\/bin\/conda$/);
     
     # create conda env for python
@@ -736,7 +736,7 @@ sub setup_conda_venv{
     
     # check that installation has been successful
     my $venv = 'CJ_python_venv';
-    $response =`ssh $ssh->{account} 'conda info --envs | grep  $venv' 2>$CJlog_error`;chomp($response);
+    $response =`ssh $ssh->{account} 'source ~/.bashrc ; source ~/.bash_profile;conda info --envs | grep  $venv' 2>$CJlog_error`;chomp($response);
     if ($response !~ m/$venv/ ){
         &CJ::message("CJ failed to create $venv on $self->{machine}");
         &CJ::message("*********************************************");
