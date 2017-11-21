@@ -21,7 +21,8 @@ torch.manual_seed(seed)
 if use_gpu:
     torch.cuda.manual_seed(seed)
     print('using GPU')
-
+else:
+    print('using CPUs only')
 
 
 # load data using torchvision and do some transformations
