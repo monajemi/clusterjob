@@ -170,11 +170,10 @@ my $spec = <<'EOSPEC';
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show_info($pid); }}
      init 	    					  initiates CJ installation [nocase]
               							{defer{CJ::init}}
-     install      <app:/\S+/> <cluster:/\S*/>	          install app on a remote machine
-								{&CJ::add_cmd($cmdline);defer{&CJ::install_software($app,$cluster)} }
+     install      [-f[<orce>]] <app:/\S+/> <cluster:/\S*/>	          install app on a remote machine
      ls           [<pid> [[/] [<counter>]] ]	  	  shortcut for '--ls show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","ls") }}
-     less         [<pid> [[/] [<counter>] [[/] <file>]] ]	  shortcut for '--less show' [nocase]
+     less         [<pid> [ [/] [<counter>] [/] <file>] ]	  shortcut for '--less show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,"less") }}
      rerun        [<pid> [[/] [<counter>...]]]	          rerun certain (failed) job [nocase]
                                                                  {defer{&CJ::add_cmd($cmdline);
@@ -273,10 +272,13 @@ if($opts->{'reduce'})
     &CJ::Get::reduce_results($opts->{'reduce'}{'<pid>'},$opts->{'reduce'}{'<filename>'},$verbose,$text_header_lines, $force_tag);
 }
 
+if($opts->{'install'})
+{
+    &CJ::add_cmd($cmdline);
+    my $force_tag = defined($opts->{'install'}{'-f'}) ? 1 : 0;
+    &CJ::install_software($opts->{'install'}{'<app>'},$opts->{'install'}{'<cluster>'}, $force_tag)
+}
 
-
-
-        
 
 
 

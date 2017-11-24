@@ -2630,7 +2630,7 @@ sub create_run_history_file{
 
 sub install_software{
 
-    my ($app, $machine) = @_;
+    my ($app, $machine, $force_tag) = @_;
     my $lc_app = lc($app);
     # Sanity checks
     &CJ::err('Incorrect specification \'install <app> <machine>\'.') if ($machine =~ /^\s*$/ || $app =~ /^\s*$/);
@@ -2642,9 +2642,9 @@ sub install_software{
     &CJ::message("Installing $app on $machine.");
     
     my $installObj = CJ::Install->new($app,$machine,undef);
-    $installObj->anaconda() if $lc_app eq 'anaconda';
-    $installObj->miniconda() if $lc_app eq 'miniconda';
-    $installObj->cvx() if $lc_app eq 'cvx';
+    $installObj->anaconda($force_tag) if $lc_app eq 'anaconda';
+    $installObj->miniconda($force_tag) if $lc_app eq 'miniconda';
+    $installObj->cvx($force_tag) if $lc_app eq 'cvx';
 
 }
 

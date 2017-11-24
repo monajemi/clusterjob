@@ -36,6 +36,8 @@ sub new {
 sub miniconda{
 
 my $self = shift;
+my ($force_tag) = @_;
+
     
 my $miniconda = "Miniconda3-latest-Linux-x86_64";
 my $distro  = "https://repo.continuum.io/miniconda/${miniconda}.sh";
@@ -100,6 +102,17 @@ $install_bash_script =~ s|<INSTALLPATH>|$installpath|g;
 
 my $ssh = CJ::host($self->{'machine'});
 
+    
+# if forced clear the previous installation if any
+if($force_tag == 1){
+    &CJ::message("(forced) removing prior installation of miniconda in $installpath");
+    my $cmd = "ssh $ssh->{account} 'rm -rf $installpath' ";
+    &CJ::my_system($cmd,0);
+}
+    
+    
+    
+    
 my $filename = "CJ_install_miniconda.sh";
 my $filepath = "/tmp/$filename";
 &CJ::writeFile($filepath, $install_bash_script);
@@ -126,7 +139,8 @@ system($cmd);
 ################
 sub anaconda{
     my $self = shift;
-    
+    my ($force_tag) = @_;
+
 my $anaconda = "Anaconda3-4.4.0-Linux-x86_64";
 my $distro  = "https://repo.continuum.io/archive/${anaconda}.sh";
 my $installpath = "\$HOME/$self->{path}/anaconda";
@@ -187,6 +201,18 @@ $install_bash_script =~ s|<INSTALLPATH>|$installpath|g;
     
 my $ssh = CJ::host($self->{'machine'});
 
+    
+    
+# if forced clear the previous installation if any
+    if($force_tag == 1){
+        &CJ::message("(forced) removing prior installation of anaconda in $installpath");
+        my $cmd = "ssh $ssh->{account} 'rm -rf $installpath' ";
+        &CJ::my_system($cmd,0);
+    }
+    
+    
+    
+    
 my $filename = "CJ_install_anaconda.sh";
 my $filepath = "/tmp/$filename";
 &CJ::writeFile($filepath, $install_bash_script);
@@ -214,6 +240,7 @@ sub cvx {
 ###################
     
     my $self = shift;
+    my ($force_tag) = @_;
 
 my $cvx = "cvx-rd";
 my $distro  = "http://web.cvxr.com/cvx/${cvx}.tar.gz";
@@ -259,6 +286,18 @@ $install_bash_script =~ s|<INSTALLPATH>|$installpath|g;
     
     
 my $ssh = CJ::host($self->{'machine'});
+    
+    
+
+# if forced clear the previous installation if any
+if($force_tag == 1){
+    &CJ::message("(forced) removing prior installation of cvx in $installpath");
+    my $cmd = "ssh $ssh->{account} 'rm -rf $installpath' ";
+    &CJ::my_system($cmd,0);
+}
+    
+    
+   
     
 my $filename = "CJ_install_cvx.sh";
 my $filepath = "/tmp/$filename";
