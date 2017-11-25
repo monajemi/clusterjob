@@ -166,7 +166,7 @@ my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir
 
     
 # for python only; check conda exists on the cluster and setup env
-$self->setup_conda_venv($ssh) if($program_type eq 'python');
+$self->setup_conda_venv($pid,$ssh) if($program_type eq 'python');
     
     
     
@@ -309,7 +309,7 @@ my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir
     
     
 # for python only; check conda exists on the cluster and setup env
-$self->setup_conda_venv($ssh) if($program_type eq 'python');
+$self->setup_conda_venv($pid,$ssh) if($program_type eq 'python');
     
     
     
@@ -537,7 +537,7 @@ my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir
     
     
     # for python only; check conda exists on the cluster and setup env
-    $self->setup_conda_venv($ssh) if($program_type eq 'python');
+    $self->setup_conda_venv($pid,$ssh) if($program_type eq 'python');
     
     
   
@@ -716,7 +716,7 @@ message       => $self->{message},
 #########################
 sub setup_conda_venv{
 #########################
-    my ($self,$ssh) = @_;
+    my ($self,$pid,$ssh) = @_;
     # check to see conda is installed for python jobs
     my $response =`ssh $ssh->{account} 'source ~/.bashrc ; source ~/.bash_profile; which conda' 2>$CJlog_error`;
     &CJ::err("CJ cannot find conda required for Python jobs. use 'cj install miniconda $self->{machine}'") unless ($response =~ m/^.*\/bin\/conda$/);
@@ -725,7 +725,7 @@ sub setup_conda_venv{
     
     
     # Build conda-venv-script
-    my $conda_venv = "conda_venv.sh";
+    my $conda_venv = "$pid_conda_venv.sh";
     my  $conda_venv_script = &CJ::Scripts::build_conda_venv_bash($ssh);
     &CJ::writeFile("/tmp/$conda_venv", $conda_venv_script);
     
@@ -733,7 +733,7 @@ sub setup_conda_venv{
     &CJ::message("Creating/checking conda venv. This may take a while the first time...");
     my $cmd = "scp /tmp/$conda_venv $ssh->{account}:.";
     &CJ::my_system($cmd,$self->{verbose});
-    $cmd = "ssh $ssh->{account} 'source ~/.bashrc;  bash -l conda_venv.sh > /tmp/cj_conda_env.txt 2>&1'";
+    $cmd = "ssh $ssh->{account} 'source ~/.bashrc;  bash -l conda_venv.sh > /tmp/$pid_conda_env.txt 2>&1'";
     &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "deploy");
     
     # check that installation has been successful
@@ -743,11 +743,10 @@ sub setup_conda_venv{
         &CJ::message("CJ failed to create $venv on $self->{machine}");
         &CJ::message("*********************************************");
         
-        $cmd = "ssh $ssh->{account} 'cat /tmp/cj_conda_env.txt' ";
+        $cmd = "ssh $ssh->{account} 'cat /tmp/$pid_conda_env.txt' ";
         system($cmd);
         exit 1;
     }
-    
     
 }
 
