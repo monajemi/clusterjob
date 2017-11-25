@@ -725,7 +725,7 @@ sub setup_conda_venv{
     
     
     # Build conda-venv-script
-    my $conda_venv = "$pid_conda_venv.sh";
+    my $conda_venv = "${pid}_conda_venv.sh";
     my  $conda_venv_script = &CJ::Scripts::build_conda_venv_bash($ssh);
     &CJ::writeFile("/tmp/$conda_venv", $conda_venv_script);
     
