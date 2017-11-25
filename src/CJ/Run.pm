@@ -733,7 +733,7 @@ sub setup_conda_venv{
     &CJ::message("Creating/checking conda venv. This may take a while the first time...");
     my $cmd = "scp /tmp/$conda_venv $ssh->{account}:.";
     &CJ::my_system($cmd,$self->{verbose});
-    $cmd = "ssh $ssh->{account} 'source ~/.bashrc;  bash -l conda_venv.sh > /tmp/$pid_conda_env.txt 2>&1'";
+    $cmd = "ssh $ssh->{account} 'source ~/.bashrc;  bash -l conda_venv.sh > /tmp/${pid}_conda_env.txt 2>&1'";
     &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "deploy");
     
     # check that installation has been successful
@@ -743,7 +743,7 @@ sub setup_conda_venv{
         &CJ::message("CJ failed to create $venv on $self->{machine}");
         &CJ::message("*********************************************");
         
-        $cmd = "ssh $ssh->{account} 'cat /tmp/$pid_conda_env.txt' ";
+        $cmd = "ssh $ssh->{account} 'cat /tmp/${pid}_conda_env.txt' ";
         system($cmd);
         exit 1;
     }
