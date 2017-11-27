@@ -640,7 +640,13 @@ sub findIdxTagRange{
     }
     
     
+    
+    
+    
+    
+    
     if ( @tags_to_python_interpret ) {
+        
         # if we need to run python
         my $range_run_interpret = $self->run_python_index_interpreter($TOP,\@tags_to_python_interpret,\@forlines_to_python_interpret, $verbose);
         
@@ -650,6 +656,8 @@ sub findIdxTagRange{
             #print"$_:$range_run_interpret->{$_} \n";
         }
     }
+    
+
     
     return (\@idx_tags,$ranges);
 }

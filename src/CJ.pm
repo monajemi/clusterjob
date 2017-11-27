@@ -1105,10 +1105,27 @@ sub show
 			
             $script = (`ssh ${account} 'less -C1 $remote_path/$file'`) ;chomp($script);
         }
+    }elsif($show_tag eq "json" ){
+        
+        
+        if(!defined($file)){
+            $file=$num;
+            $num = "";
+        }
+        
+        if($num){
+            $script = (`ssh ${account} 'python -m json.tool $remote_path/$num/$file'`) ;chomp($script);
+        }else{
+            $script = (`ssh ${account} 'python -m json.tool $remote_path/$file'`) ;chomp($script);
+        }
     }
-        
+
+    
+    
+
+    
     print "$script \n";
-        
+    
     exit 0;
     
 }

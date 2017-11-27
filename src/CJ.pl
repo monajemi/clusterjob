@@ -120,6 +120,8 @@ my $spec = <<'EOSPEC';
                                                               {$show_tag="error"}
      --no-submit-default	                          turns off default submit parameters [nocase]
                                                               {$qSubmitDefault=0}
+     --json      	                                  json tag for show [nocase]  [requires: show]
+                                                                    {$show_tag="json";}
      --less      	                                  less tag for show [nocase]  [requires: show]
                                                                {$show_tag="less";}
      --ls      	                                          list tag for show [nocase]  [requires: show]
@@ -170,10 +172,13 @@ my $spec = <<'EOSPEC';
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show_info($pid); }}
      init 	    					  initiates CJ installation [nocase]
               							{defer{CJ::init}}
-     install      [-f[<orce>]] <app:/\S+/> <cluster:/\S*/>	          install app on a remote machine
+     install      [-f[<orce>]] <app:/\S+/> <cluster:/\S*/>  install app on a remote machine
+
+     json         [<pid> [[/] [<counter>] [[/] <file>]] ]	shortcut for '--json show' [nocase]
+                                                        {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,"json") }}
      ls           [<pid> [[/] [<counter>]] ]	  	  shortcut for '--ls show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","ls") }}
-     less         [<pid> [ [/] [<counter>] [/] <file>] ]	  shortcut for '--less show' [nocase]
+     less         [<pid> [[/] [<counter>] [[/] <file>]] ]	shortcut for '--less show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,"less") }}
      rerun        [<pid> [[/] [<counter>...]]]	          rerun certain (failed) job [nocase]
                                                                  {defer{&CJ::add_cmd($cmdline);
@@ -202,7 +207,7 @@ my $spec = <<'EOSPEC';
      state        [<pid> [[/] [<counter>]]]	          state of package [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::get_print_state($pid,$counter) }}
      summary      <cluster>	                          gives a summary of the number of jobs on particlur cluster with their states [nocase]
-                                                        {defer{&CJ::add_cmd($cmdline); &CJ::CheckConnection($cluster);&CJ::get_summary($cluster)}}
+                                                             {defer{&CJ::add_cmd($cmdline); &CJ::CheckConnection($cluster);&CJ::get_summary($cluster)}}
      @<cmd_num:+i>	                                  re-executes a previous command avaiable in command history [nocase]
                                                                {defer{&CJ::reexecute_cmd($cmd_num,$verbose) }}
      @$	                                                  re-executes the last command avaiable in command history [nocase]
