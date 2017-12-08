@@ -2704,10 +2704,10 @@ sub getExtension{
 
 
 sub connect2cluster{
-    my ($machine) = @_;
+    my ($machine, $verbose) = @_;
     my $ssh = &CJ::host($machine);
     my $cmd = "ssh $ssh->{account}";
-    system($cmd,1);
+    my_system($cmd,$verbose);
     return 1;
 }
 

@@ -221,7 +221,7 @@ my $opts = Getopt::Declare->new($spec);
 
 if($opts->{'connect'}){
     CJ::message("connecting to $opts->{'connect'}");
-    &CJ::connect2cluster($opts->{'connect'});
+    &CJ::connect2cluster($opts->{'connect'}, $verbose);
 }
 
 sub update_install {
