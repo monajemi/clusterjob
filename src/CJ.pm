@@ -2707,7 +2707,7 @@ sub connect2cluster{
     my ($machine) = @_;
     my $ssh = &CJ::host($machine);
     my $cmd = "ssh $ssh->{account}";
-    system($cmd);
+    system($cmd,1);
     return 1;
 }
 
