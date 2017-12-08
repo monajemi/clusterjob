@@ -172,7 +172,7 @@ my $spec = <<'EOSPEC';
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show_info($pid); }}
      init 	    					  initiates CJ installation [nocase]
               							{defer{CJ::init}}
-     install      [-f[<orce>]] <app:/\S+/> <cluster:/\S*/>  install app on a remote machine
+     install      [-f[<orce>]] <app:/\S+/> <cluster:/\S*/>	install app on a remote machine
      json         [<pid> [[/] [<counter>] [[/] <file>]] ]	shortcut for '--json show' [nocase]
                                                         {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,"json") }}
      ls           [<pid> [[/] [<counter>]] ]	  	  shortcut for '--ls show' [nocase]
