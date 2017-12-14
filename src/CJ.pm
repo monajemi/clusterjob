@@ -1216,7 +1216,7 @@ sub get_summary
 	#my $remoteinfo  = &CJ::remote();
 	
     my $qstat = "qstat";
-    $qstat = "squeue" if($bqs eq "SLURM");
+    $qstat = 'squeue --format="%.18i %.9P %.8j %.20u %.2t %.10M %.6D %R"' if($bqs eq "SLURM");
     
     
 	my $live_jobs = (`ssh ${account} '$qstat | grep $user  | wc -l' 2>$CJlog_error` ); chomp($live_jobs);
