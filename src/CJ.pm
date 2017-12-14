@@ -1394,25 +1394,36 @@ if ( $runflag =~ m/^parrun$/ ){
         $REC_STATES = (`ssh ${account} 'qstat -u \\* | grep -E "$jobs" ' | awk \'{print \$5}\'`) ;chomp($REC_STATES);
         $REC_IDS = (`ssh ${account} 'qstat -u \\* | grep -E "$jobs" ' | awk \'{print \$1}\'`) ;chomp($REC_IDS);
         
-    }elsif($bqs eq "SLURM"){
-        $REC_STATES = (`ssh ${account} 'sacct -n --jobs=$job_id   --format=state%10 | grep -v "^\\s*[0-9\_]*\\." ' | awk \'{print \$1}\'`) ;chomp($REC_STATES);
-        $REC_IDS =  (`ssh ${account} 'sacct -n --jobs=$job_id --format=jobid%20 | grep -v "^\\s*[0-9\_]*\\."  ' | awk \'{print \$1}\'`) ;chomp($REC_IDS);
+        my @rec_states = split('\n',$REC_STATES);
+        my @rec_ids = split('\n',$REC_IDS);
         
-        #$states = (`ssh ${account} 'sacct -n --format=state --jobs=$job_id'`) ;chomp($state);
+        foreach my $i (0..$#rec_ids){
+            my $key = $rec_ids[$i];
+            my $val = $rec_states[$i];
+            $states->{$key} = $val;
+        }
+
+        
+    }elsif($bqs eq "SLURM"){
+       
+        my $REC_IS_STATE= (`ssh ${account} 'sacct -n --jobs=$job_id   --format=jobid%20,state%10 | grep -v "^\\s*[0-9\_]*\\." ' | awk \'{print \$1,\$2}\'`) ;
+        chomp($REC_IS_STATE);
+        
+        my @REC_IS_STATE = split /^/, $REC_IS_STATE;
+        
+        
+        foreach my $i (0..$#REC_IS_STATE){
+            chomp($REC_IS_STATE[$i]);
+            my ($key, $val) = split(/\s/,$REC_IS_STATE[$i],2);
+            $states->{$key} = $val;
+        }
+
         
     }else{
         &CJ::err("Unknown batch queueing system");
     }
     
-    my @rec_states = split('\n',$REC_STATES);
-    my @rec_ids = split('\n',$REC_IDS);
-
-    foreach my $i (0..$#rec_ids){
-        my $key = $rec_ids[$i];
-        my $val = $rec_states[$i];
-        $states->{$key} = $val;		
-    }
-	
+    
 }elsif ($runflag =~ m/^rrun$/){
 
     
