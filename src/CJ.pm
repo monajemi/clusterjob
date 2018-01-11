@@ -1292,6 +1292,7 @@ sub get_summary
 		my @this_states = values  %$this_states;
 		my @this_unique_states = do { my %seen; grep { !$seen{$_}++ } @this_states};
 		
+        
 		push @unique_states, @this_unique_states;
 		
 		#print $this_unique_states[0] . "\n"; 
@@ -1345,7 +1346,6 @@ sub get_state
 {
     my ($pid,$num) = @_;
     
-    #print "$pid\n";
     my $info;
     if( (!defined $pid) || ($pid eq "") ){
         #read last_instance.info;
@@ -1407,6 +1407,7 @@ if ( $runflag =~ m/^parrun$/ ){
     }elsif($bqs eq "SLURM"){
        
         my $REC_IS_STATE= (`ssh ${account} 'sacct -n --jobs=$job_id   --format=jobid%20,state%10 | grep -v "^\\s*[0-9\_]*\\." ' | awk \'{print \$1,\$2}\'`) ;
+        
         chomp($REC_IS_STATE);
         
         my @REC_IS_STATE = split /^/, $REC_IS_STATE;
@@ -1415,7 +1416,7 @@ if ( $runflag =~ m/^parrun$/ ){
         foreach my $i (0..$#REC_IS_STATE){
             chomp($REC_IS_STATE[$i]);
             my ($key, $val) = split(/\s/,$REC_IS_STATE[$i],2);
-            $states->{$key} = $val;
+            $states->{$key} = $val if ($key);
         }
 
         
@@ -1446,7 +1447,7 @@ if ( $runflag =~ m/^parrun$/ ){
 	    if($bqs eq "SGE"){
 	        $state = (`ssh ${account} 'qstat | grep $job_id' | awk \'{print \$5}\'`) ;chomp($state);
 	    }elsif($bqs eq "SLURM"){
-	        $state = (`ssh ${account} 'sacct | grep $job_id | grep -v "^\\s*[0-9\_]*\\."  ' | awk \'{print \$6}\'`) ;chomp($state);
+                $state = (`ssh ${account} 'sacct -n --jobs=$job_id | grep -v "^\\s*[0-9\_]*\\."  ' | awk \'{print \$6}\'`) ;chomp($state);
 	    }else{
 	        &CJ::err("Unknown batch queueing system");
 	    }
@@ -1456,7 +1457,7 @@ if ( $runflag =~ m/^parrun$/ ){
 	    }
         my $key = $job_id;
         my $val = $state;
-        $states->{$key} = $val;	
+        $states->{$key} = $val if ($key);
 }
 
     return $states;

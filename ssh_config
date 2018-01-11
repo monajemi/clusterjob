@@ -97,7 +97,7 @@ Pythonlib	pytorch:cuda80:scipy:matplotlib:torchvision:-c soumith
 
 
 [gce]
-Host	       35.197.83.58
+Host	        35.197.104.45
 User		hatefmonajemi
 Bqs		SLURM
 Repo		/home/hatefmonajemi/CJRepo_Remote
