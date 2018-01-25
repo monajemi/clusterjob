@@ -586,7 +586,8 @@ else
       firstline=\$(head -n 1 $completed_filename)
       COUNTER=`grep -o "[0-9]*" <<< \$firstline`
 
-      touch $res_filename;
+      mkdir -p "$(dirname "$res_filename")" && touch "$res_filename"
+    
       cat "\$COUNTER/$res_filename" > "$res_filename";
     
         # Pop the first line of remaining_list and add it to collect_list
