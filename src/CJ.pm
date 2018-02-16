@@ -2674,11 +2674,12 @@ sub create_ssh_config_md5{
 }
 
 
+
+
 sub ssh_config_md5{
     my ($mode) = @_;
     
     if ( $mode eq 'update' ){
-    
         &CJ::message("updating CJ_python_venv",1);
         my $cmd = `md5 $ssh_config_file > $ssh_config_md5`;
         return 1;
