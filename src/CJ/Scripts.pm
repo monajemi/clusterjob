@@ -202,7 +202,17 @@ CJ::err("Cannot decipher pythonX.Y.Z version");
 
 my $user_required_pyLib = join (" ", split(":",$ssh->{'pylib'}) );
 
+    
+# we check to see if the file has been changed.
+my $ssh_config_check;
+if( -f $ssh_config_md5 ){
+    $ssh_config_check = &CJ::ssh_config_md5('check')
+}else{
+    $ssh_config_check = 1;
+}
 
+&CJ::ssh_config_md5('update') if ($ssh_config_check);
+    
 # Conda should be aviable.
 # from commit
 # 8ced93afebb9aaee12689d3aff473c9f02bb9d78
@@ -211,13 +221,15 @@ my $venv = "CJ_python_venv";
 
 my $env =<<'BASH';
 
-#  For python, if conda venv already exists, just use it!
-if [ -z "$(conda info --envs | grep  <CONDA_VENV>)" ];then
+# if venv does not exists and ssh_config has changed since last time
+# create a new venv
+if [ -z "$(conda info --envs | grep  <CONDA_VENV>)" ] || [ <ssh_config_check> -eq 1 ]  ;then
 echo " <CONDA_VENV> doesn't exist. Creating it..."
 echo " conda create --yes -n  <CONDA_VENV> python=<version_tag> numpy <libs>"
 conda create --yes -n  <CONDA_VENV> python=<version_tag> numpy <libs>
-    
+  
 else
+#  For python, if conda venv already exists, just use it!
 echo "using  <CONDA_VENV>"
 fi
 
@@ -228,7 +240,8 @@ BASH
 $env =~ s|<version_tag>|$python_version_tag|g;
 $env =~ s|<libs>|$user_required_pyLib|g;
 $env =~ s|<CONDA_VENV>|$venv|g;
-
+$env =~ s|<ssh_config_check>|$ssh_config_check|g;
+    
 return $env;
     
 }

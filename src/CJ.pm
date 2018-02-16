@@ -64,6 +64,11 @@ sub init{
 	&CJ::writeFile($AgentIDPATH, $AgentID);  # Record the AgentID in a file. 
 	&CJ::create_info_files();
 	
+    
+    # record the md5 file of ssh_config
+    &CJ::create_ssh_config_md5();
+    
+    
 	if(defined($CJKEY)){
 		# Add this agent to the the list of agents
 		eval{
@@ -2655,6 +2660,37 @@ sub create_pid_timestamp_file{
 sub create_run_history_file{
 &CJ::touch($run_history_file) unless ( -f $run_history_file);
 }
+
+
+
+sub create_ssh_config_md5{
+    
+    &CJ::touch($ssh_config_md5) unless ( -f $ssh_config_md5);
+
+    # Keep track of file changes for next time
+    if( -f $ssh_config_file ){
+       ssh_config_md5('update')
+    }
+}
+
+
+sub ssh_config_md5{
+    my ($mode) = @_;
+    
+    if ( $mode eq 'update' ){
+    
+        &CJ::message("updating CJ_python_venv",1);
+        my $cmd = `md5 $ssh_config_file > $ssh_config_md5`;
+        return 1;
+    }elsif($mode eq 'check'){
+        # check whether things are modified
+        my $cmd = `grep \"\$(md5 $ssh_config_file)\" $ssh_config_md5 || echo 1`;chomp($cmd);   # find or else exit 1.
+        return ($cmd eq "1") ? 1:0;
+    }
+    
+}
+
+
 
 
 sub install_software{

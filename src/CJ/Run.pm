@@ -723,6 +723,8 @@ sub setup_conda_venv{
     
     # create conda env for python
     
+    &CJ::message("Creating/checking conda venv. This may take a while the first time...");
+
     
     # Build conda-venv-script
     my $conda_venv = "${pid}_conda_venv.sh";
@@ -730,7 +732,6 @@ sub setup_conda_venv{
     &CJ::writeFile("/tmp/$conda_venv", $conda_venv_script);
     
     
-    &CJ::message("Creating/checking conda venv. This may take a while the first time...");
     my $cmd = "scp /tmp/$conda_venv $ssh->{account}:.";
     &CJ::my_system($cmd,$self->{verbose});
     $cmd = "ssh $ssh->{account} 'source ~/.bashrc;  bash -l $conda_venv > /tmp/${pid}_conda_env.txt 2>&1; rm $conda_venv'";

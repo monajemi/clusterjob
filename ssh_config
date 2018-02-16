@@ -6,7 +6,7 @@ Repo		/scratch/users/monajemi/CJRepo_Remote
 MAT     	matlab/R2017a
 MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 Python		python/3.6
-Pythonlib	pytorch:torchvision:cuda80:scipy:matplotlib:torchvision:-c soumith
+Pythonlib	pytorch:pandas:cuda80:scipy:matplotlib:torchvision:-c soumith   
 [sherlock2]
 
 
@@ -18,7 +18,7 @@ Repo		/farmshare/user_data/monajemi/CJRepo_Remote
 MAT     	matlab/r2016b
 MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 Python		python/3.4.3
-Pythonlib	scipy
+Pythonlib	scipy:pytorch
 [corn]
 
 
@@ -30,7 +30,7 @@ Repo		/farmshare/user_data/monajemi/CJRepo_Remote
 MAT     	matlab/r2016b
 MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 Python		python/3.4.3
-Pythonlib	scipy
+Pythonlib	scipy:matplotlib
 [rice]
 
 
