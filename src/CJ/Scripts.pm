@@ -226,7 +226,7 @@ my $env =<<'BASH';
 if [ -z "$(conda info --envs | grep  <CONDA_VENV>)" ] || [ <ssh_config_check> -eq 1 ]  ;then
 echo " Creating/Updating <CONDA_VENV> ..."
 echo " conda remove -n <CONDA_VENV> -all"
-conda remove -n <CONDA_VENV> --all
+conda remove --yes -n <CONDA_VENV> --all
 echo " conda create --yes -n  <CONDA_VENV> python=<version_tag> numpy <libs>"
 conda create --yes -n  <CONDA_VENV> python=<version_tag> numpy <libs>
   
