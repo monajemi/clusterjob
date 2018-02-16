@@ -2626,7 +2626,6 @@ sub create_history_file{
 if( ! -f $history_file ){
 	 &CJ::touch($history_file);
 	 
-		
  	#my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%-30s", "count", "date", "pid", "action", "machine", "job_id", "message");
  	my $header = sprintf("%-15s%-15s%-15s%-10s%-15s%-40s", "count", "date", "pid", "action", "machine","message");
 		
