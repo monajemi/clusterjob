@@ -224,15 +224,15 @@ my $env =<<'BASH';
 # if venv does not exists and ssh_config has changed since last time
 # create a new venv
 if [ -z "$(conda info --envs | grep  <CONDA_VENV>)" ] ;then
-echo " Creating <CONDA_VENV> ..."
-echo " conda create --yes -n  <CONDA_VENV> python=<version_tag> numpy <libs>"
-conda create --yes -n  <CONDA_VENV> python=<version_tag> numpy <libs>
-  
+    echo " Creating <CONDA_VENV> ..."
+    echo " conda create --yes -n  <CONDA_VENV> python=<version_tag> numpy <libs>"
+    conda create --yes -n  <CONDA_VENV> python=<version_tag> numpy <libs>
+      
 elif [ <ssh_config_check> -eq 1 ]; then
    
     echo " Updating <CONDA_VENV> ..."
-    echo "conda remove --yes -n <CONDA_VENV> --all"
-    conda remove --yes -n <CONDA_VENV> --all
+    echo "conda env remove --yes -n <CONDA_VENV>"
+    conda env remove --yes -n <CONDA_VENV>
     echo " conda create --yes -n  <CONDA_VENV> python=<version_tag> numpy <libs>"
     conda create --yes -n  <CONDA_VENV> python=<version_tag> numpy <libs>
 
