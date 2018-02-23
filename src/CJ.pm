@@ -165,7 +165,8 @@ if($bqs eq "SLURM"){
     }elsif(  defined($alloc->{'--partition'}->{'<partitions>'})  ){
         $qos = $alloc->{'--partition'}->{'<partitions>'};
     }else{
-        $qos = `ssh $account 'sacctmgr -n list assoc where user=$user format=defaultqos'`; chomp($qos);
+        #$qos = `ssh $account 'sacctmgr -n list assoc where user=$user format=defaultqos'`; chomp($qos);
+        $qos = `ssh $account 'sacctmgr -n list assoc where user=$user format=qos'`; chomp($qos);
         $qos = &CJ::remove_white_space($qos);
         &CJ::message("no SLURM partition specified. CJ is using default partition: $qos");
     }
@@ -181,6 +182,7 @@ if($bqs eq "SLURM"){
         $live_jobs = (`ssh ${account} 'qstat | grep "\\b$user\\b"  | wc -l'  2>$CJlog_error`); chomp($live_jobs);
 
     }elsif($bqs eq "SLURM"){
+        
 		$max_u_jobs = `ssh $account 'sacctmgr show qos -n format=Name,MaxSubmitJobs | grep "\\b$qos\\b"' | awk \'{print \$2}\' `; chomp($max_u_jobs);
         #currently live jobs
         $live_jobs = (`ssh ${account} 'qstat | grep "\\b$qos\\b" | grep "\\b$user\\b"  | wc -l'  2>$CJlog_error`); chomp($live_jobs);
