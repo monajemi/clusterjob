@@ -107,5 +107,26 @@ Python		python3.4
 Pythonlib	pytorch:torchvision:cuda80:pandas:matplotlib:-c soumith
 [gce]
 
+[az]
+Host		104.42.101.85
+User		ubuntu
+Bqs		SLURM
+Repo		/home/ubuntu/CJRepo_Remote
+MAT     	""
+MATlib		""
+Python		python3.4
+Pythonlib	pytorch:torchvision:cuda80:pandas:matplotlib:-c soumith
+[az]
+
+[ec2]
+Host	        34.215.135.99
+User		ubuntu
+Bqs		SLURM
+Repo		/home/ubuntu/CJRepo_Remote
+MAT     	""
+MATlib		""
+Python		python3.4
+Pythonlib	pytorch:torchvision:cuda80:pandas:-c soumith
+[ec2]
 
 

@@ -719,7 +719,25 @@ sub setup_conda_venv{
     my ($self,$pid,$ssh) = @_;
     # check to see conda is installed for python jobs
     my $response =`ssh $ssh->{account} 'source ~/.bashrc ; source ~/.bash_profile; which conda' 2>$CJlog_error`;
-    &CJ::err("CJ cannot find conda required for Python jobs. use 'cj install miniconda $self->{machine}'") unless ($response =~ m/^.*\/bin\/conda$/);
+    if (  $response !~ m/^.*\/bin\/conda$/ ) {
+        
+        my $app = 'miniconda';
+        CJ::message("No conda found on this machine. Do you want me to install '$app' on '$self->{'machine'}'?");
+        my $yesno = <STDIN>; chomp($yesno);
+        
+        if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
+            my $force_tag = 1;
+            my $q_yesno = 0;# anythin other than 1 will avoid asking the same yesno again
+            &CJ::install_software($app,$self->{'machine'}, $force_tag, $q_yesno)
+        }elsif(lc($yesno) eq "n" or lc($yesno) eq "no"){
+            &CJ::err("CJ cannot find conda required for Python jobs. use 'cj install miniconda $self->{machine}'");
+        }else{
+            &CJ::message("Unknown response. Please answer by typing Yes/No");
+            exit 0;
+        }
+        
+    }
+    
     
     # create conda env for python
     
@@ -734,7 +752,7 @@ sub setup_conda_venv{
     
     my $cmd = "scp /tmp/$conda_venv $ssh->{account}:.";
     &CJ::my_system($cmd,$self->{verbose});
-    $cmd = "ssh $ssh->{account} 'source ~/.bashrc;  bash -l $conda_venv > /tmp/${pid}_conda_env.txt 2>&1; rm $conda_venv'";
+    $cmd = "ssh $ssh->{account} 'source ~/.bashrc; bash -l $conda_venv > /tmp/${pid}_conda_env.txt 2>&1; rm $conda_venv'";
     &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "deploy");
     
     # check that installation has been successful

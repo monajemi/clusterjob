@@ -1263,7 +1263,7 @@ sub get_summary
 		my ($longpid,$state) = split(' ',$rec_pids_states[$i]);
 		#print $longpid . "\n";
 		if ( $longpid =~ m/^CJ\_.*/){
-		push @rec_pids, substr($longpid,3,8); # remove the first 3 (CJ_), and read the firt 8 from the rest
+		push @rec_pids, substr($longpid,3,8); # remove the first 3 (CJ_), and read the first 8 from the rest
 		push @rec_states, $state;
 	}
 	}
@@ -2697,13 +2697,16 @@ sub ssh_config_md5{
 
 sub install_software{
 
-    my ($app, $machine, $force_tag) = @_;
+    my ($app, $machine, $force_tag, $q_yesno) = @_;
+    #set the default to 1
+    $q_yesno = defined($q_yesno) ? $q_yesno : 1;
+
     my $lc_app = lc($app);
     # Sanity checks
     &CJ::err('Incorrect specification \'install <app> <machine>\'.') if ($machine =~ /^\s*$/ || $app =~ /^\s*$/);
     &CJ::err("Application <$app> is not available.") unless &CJ::is_valid_app($app);
     &CJ::err("Machine <$machine> is not valid.") unless &CJ::is_valid_machine($machine);
-    &CJ::yesno("Are you sure you would like to install '$lc_app' on '$machine'");
+    &CJ::yesno("Are you sure you would like to install '$lc_app' on '$machine'") if ($q_yesno eq 1);
     
     
     &CJ::message("Installing $app on $machine.");
