@@ -124,6 +124,8 @@ my $spec = <<'EOSPEC';
                                                                     {$show_tag="json";}
      --less      	                                  less tag for show [nocase]  [requires: show]
                                                                {$show_tag="less";}
+     --runlog      	                                  runlog tag for show [nocase]  [requires: show]
+                                                                {$show_tag="runlog";}
      --ls      	                                          list tag for show [nocase]  [requires: show]
                                                                {$show_tag="ls";}
      --script [=]  <pattern>	                          shows log of specific script [requires: log]
@@ -162,7 +164,7 @@ my $spec = <<'EOSPEC';
                                                                 {my $runflag = "deploy";
                                                                 {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                                 }
-     err[or]      [<pid> [[/] [<counter>]] ]	  	  shortcut for '--ls err' [nocase]
+     err[or]      [<pid> [[/] [<counter>]] ]	  	  shortcut for '--err show' [nocase]
                                                     {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","error") }}
      gather       <pattern>  <dir_name> [<pid>]	          gather results of parrun [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);&CJ::Get::gather_results($pid,$pattern,$dir_name,$verbose)}}
@@ -199,6 +201,8 @@ my $spec = <<'EOSPEC';
                                                                 {my $runflag = "rrun";
                                                                 {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                                 }
+     runlog       [<pid> [[/] [<counter>]] ]	  	  shows the run log of a script  [nocase]
+                                                                {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","runlog") }}
      save         <pid> [<path>]	                  save a package in path [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
      show         [<pid> [[/] [<counter>] [[/] <file>]] ]	  show program/error of certain package [nocase]

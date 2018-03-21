@@ -1091,7 +1091,13 @@ sub show
          }else{
            $script = (`ssh ${account} 'cat $remote_path/logs/*stderr'`) ;chomp($script);
          }
-        
+    
+    }elsif($show_tag eq "runlog" ){
+        if($num){
+            $script = (`ssh ${account} 'less $remote_path/$num/logs/CJrun*.log'`) ;chomp($script);
+        }else{
+            $script = (`ssh ${account} 'less $remote_path/logs/CJrun*.log'`) ;chomp($script);
+        }
     }elsif($show_tag eq "ls" ){
         if($num){
             $script = (`ssh ${account} 'ls -C1 $remote_path/$num/'`) ;chomp($script);

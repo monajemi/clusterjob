@@ -5,7 +5,7 @@
 # Stanford, CA
 
 import numpy, os.path
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import torch
 import torchvision
 import torchvision.transforms as transforms

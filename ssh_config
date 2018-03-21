@@ -119,7 +119,7 @@ Pythonlib	pytorch:torchvision:cuda80:pandas:matplotlib:-c soumith
 [az]
 
 [ec2]
-Host	        34.215.135.99
+Host	        35.163.65.135
 User		ubuntu
 Bqs		SLURM
 Repo		/home/ubuntu/CJRepo_Remote
