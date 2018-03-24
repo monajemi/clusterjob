@@ -2,6 +2,7 @@
 #
 # Copyright (c) 2015 Hatef Monajemi (monajemi@stanford.edu)
 # visit http://clsuetrjob.org
+#
 
 use strict;
 use FindBin qw($Bin);
@@ -418,13 +419,6 @@ sub run{
     }
 }
     
-
-
-
-
-
-
-
 
 
 #====================================

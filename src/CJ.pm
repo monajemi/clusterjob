@@ -517,16 +517,15 @@ my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
 # write changes to the run_history file
 #=======================================
   # - replace the old job_id's by the new one
-    
-    if($#job_ids eq 0){
-           $job_id =~ s/$job_ids[0]/$rerun_job_ids->[0]/g;
+   if($#job_ids eq 0){
+           $job_id =~ s/\b$job_ids[0]\b/\b$rerun_job_ids->[0]\b/g;
         &CJ::message("job-id: $rerun_job_ids->[0]");
 
     }else{
         &CJ::message("job-id: $rerun_job_ids->[0]-$rerun_job_ids->[-1]");
         foreach my $i (0..$#{$counter}){
             my $this = $counter->[$i] - 1;
-            $job_id =~ s/$job_ids[$this]/$rerun_job_ids->[$i]/g;
+            $job_id =~ s/\b$job_ids[$this]\b/\b$rerun_job_ids->[$i]\b/g;
         }
     }
 
@@ -556,7 +555,6 @@ my $newinfo = &CJ::add_change_to_run_history($pid, $change, $type);
 
 
 &CJ::add_to_history($newinfo,$date,$type);
-
 
 # write runinfo to FB as well
 my $timestamp  = $date->{epoch};    
@@ -2397,7 +2395,8 @@ if(lc($type) eq "clean"){
 sub update_record{
     my ($pid,$new_info) = @_;
     my $new_record = encode_json($new_info);
-    my $cmd="sed -i '' 's|.*$pid.*|$new_record|'  $run_history_file";
+    #backup run history file with -i flag
+    my $cmd="sed -i '.bak' 's|.*$pid.*|$new_record|'  $run_history_file";
     &CJ::my_system($cmd,0);
 }
 
