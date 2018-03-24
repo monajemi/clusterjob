@@ -518,14 +518,14 @@ my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
 #=======================================
   # - replace the old job_id's by the new one
    if($#job_ids eq 0){
-           $job_id =~ s/\b$job_ids[0]\b/\b$rerun_job_ids->[0]\b/g;
+           $job_id =~ s/\b$job_ids[0]\b/$rerun_job_ids->[0]/g;
         &CJ::message("job-id: $rerun_job_ids->[0]");
 
     }else{
         &CJ::message("job-id: $rerun_job_ids->[0]-$rerun_job_ids->[-1]");
         foreach my $i (0..$#{$counter}){
             my $this = $counter->[$i] - 1;
-            $job_id =~ s/\b$job_ids[$this]\b/\b$rerun_job_ids->[$i]\b/g;
+            $job_id =~ s/\b$job_ids[$this]\b/$rerun_job_ids->[$i]/g;
         }
     }
 
