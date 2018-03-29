@@ -2720,6 +2720,7 @@ sub install_software{
     $installObj->anaconda($force_tag) if $lc_app eq 'anaconda';
     $installObj->miniconda($force_tag) if $lc_app eq 'miniconda';
     $installObj->cvx($force_tag) if $lc_app eq 'cvx';
+    $installObj->composer($force_tag) if $lc_app eq 'composer';
 
 }
 

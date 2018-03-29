@@ -2,5 +2,7 @@
 "anaconda":{"version":"Anaconda3-4.4.0-Linux-x86_64","space":"6.9G", "install_time":"10-20 min"},
 "miniconda":{"version":"Miniconda3-latest-Linux-x86_64", "space":"392M", "install_time":" 1-5  min"},
 "cvx":{"version":"cvx-rd", "space":"108M", "install_time":"20-60 sec"},
-"matlab":{"version":"", "space":"", "install_time":""}
+"matlab":{"version":"", "space":"", "install_time":""},
+"composer":{"version":"latest", "space":"", "install_time":""}
+
 }

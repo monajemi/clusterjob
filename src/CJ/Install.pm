@@ -31,6 +31,122 @@ sub new {
 
 
 
+sub composer{
+    my $self = shift;
+    my($force_tag) = @_;
+
+my $distro="https://composer.github.io/installer.sig";
+my $composer = "composer-setup.php";
+my $installer   = "https://getcomposer.org/installer";
+my $installpath = "\$HOME/$self->{path}/PHP/composer";
+    
+# -------------------
+my $install_bash_script =<<'BASH';
+    
+    # INSTALL PHP if not installed
+    if [ -n "$(which php)" ] ; then
+        sudo apt-get update
+        sudo apt-get install php
+    fi
+
+    
+    if [ -n "$(which composer)" ] ; then
+        echo "composer is already installed in $(which composer)";
+        exit 0;
+    elif [ -n "$(command -v composer)" ] ; then
+        echo "composer is already installed in $(command -v composer)";
+        exit 0;
+    else
+        START=`date +%s`
+    
+        
+        echo "GETTING composer from <DISTRO>";
+        if [ -f <COMPOSER_SETUP> ]; then rm -f <COMPOSER_SETUP>; fi;
+        EXPECTED_SIGNATURE=$(wget -q -O - "<DISTRO>")
+    
+        echo "INSTALLING composer";
+        if [ -d <INSTALLPATH> ]; then
+            printf "ERROR: directory <INSTALLPATH> exists. Aborting install. \
+            \nYou may use 'cj install -f ...' to remove this directory for a fresh install\n";
+            exit 1;
+        else
+            mkdir -p <INSTALLPATH>
+        fi
+    
+        php -r "copy('<INSTALLER>', '<COMPOSER_SETUP>');"
+        ACTUAL_SIGNATURE=$(php -r "echo hash_file('SHA384', '<COMPOSER_SETUP>');")
+    
+    
+        if [ "$EXPECTED_SIGNATURE" != "$ACTUAL_SIGNATURE" ];then
+            printf "ERROR: Invalid installer signature"
+            rm <COMPOSER_SETUP>
+            exit 1
+        fi
+        
+        php composer-setup.php --install-dir=<INSTALLPATH> --filename=composer
+        rm <COMPOSER_SETUP>
+        echo 'export PATH="<INSTALLPATH>:$PATH" ' >> $HOME/.bashrc
+        echo 'export PATH="<INSTALLPATH>:$PATH" ' >> $HOME/.bash_profile
+        
+        
+        if [ -f "$HOME/.bashrc" ]; then source $HOME/.bashrc; fi
+        if [ -f "$HOME/.bash_profile" ] ; then source $HOME/.bash_profile; fi
+        
+        composer self-update
+        if [ $? -eq 0 ]; then
+            END=`date +%s`;
+            RUNTIME=$((END-START));
+            echo "INSTALL SUCCESSFUL ($RUNTIME seconds)"
+            exit 0;
+        else
+            echo "****INSTALL FAILED***** $? "
+            exit 1
+        fi
+            
+    fi
+
+
+BASH
+  
+$install_bash_script =~ s|<DISTRO>|$distro|g;
+$install_bash_script =~ s|<INSTALLER>|$installer|g;
+$install_bash_script =~ s|<COMPOSER_SETUP>|$composer|g;
+$install_bash_script =~ s|<INSTALLPATH>|$installpath|g;
+    
+   
+#---------------------
+my $ssh = CJ::host($self->{'machine'});
+
+
+# if forced clear the previous installation if any
+if($force_tag == 1){
+    &CJ::message("(forced) removing prior installation of $self->{app} in $installpath");
+    my $cmd = "ssh $ssh->{account} 'rm -rf $installpath' ";
+    &CJ::my_system($cmd,0);
+}
+
+
+
+
+my $filename = "CJ_install_". $self->{app} . ".sh";
+my $filepath = "/tmp/$filename";
+&CJ::writeFile($filepath, $install_bash_script);
+my $cmd = "scp $filepath $ssh->{account}:.";
+&CJ::my_system($cmd,1);
+
+&CJ::message("----- START BASH ON $self->{'machine'}-----",1);
+$cmd = "ssh $ssh->{account} 'cd \$HOME && bash -l $filename' ";
+system($cmd);
+
+$cmd = "ssh $ssh->{account} 'if [ -d \$HOME/$self->{path} ] ; then mv \$HOME/$filename \$HOME/$self->{path}/; fi' ";
+system($cmd);
+
+&CJ::message("----- END BASH ON $self->{'machine'}-----",1);
+
+return 1;
+
+}
+
 
 
 sub miniconda{
