@@ -1387,7 +1387,14 @@ sub get_state
     my $job_id  = $info->{'job_id'};
     my $bqs     = $info->{'bqs'};
     my $runflag = $info->{'runflag'};
+
     
+    
+    # This is a workaround for a bug in SLURM
+    my $date = &CJ::date();
+    my $starttime = sprintf ("%04d-%02d-%02d", $date->{year},$date->{numericmonth},$date->{day});
+    
+
     my $states={};
 	
 if ( $runflag =~ m/^parrun$/ ){
@@ -1417,7 +1424,7 @@ if ( $runflag =~ m/^parrun$/ ){
         
     }elsif($bqs eq "SLURM"){
        
-        my $REC_IS_STATE= (`ssh ${account} 'sacct -n --jobs=$job_id   --format=jobid%20,state%10 | grep -v "^\\s*[0-9\_]*\\." ' | awk \'{print \$1,\$2}\'`) ;
+        my $REC_IS_STATE= (`ssh ${account} 'sacct  -S $starttime -n --jobs=$job_id   --format=jobid%20,state%10 | grep -v "^\\s*[0-9\_]*\\." ' | awk \'{print \$1,\$2}\'`) ;
         
         chomp($REC_IS_STATE);
         
@@ -1440,7 +1447,7 @@ if ( $runflag =~ m/^parrun$/ ){
 
     
     # SLURM ONLY
-    my $REC_IS_STATE= (`ssh ${account} 'sacct -n --jobs=$job_id   --format=jobid%20,state%10 | grep -v "^\\s*[0-9\_]*\\." ' | awk \'{print \$1,\$2}\'`) ;
+    my $REC_IS_STATE= (`ssh ${account} 'sacct  -S $starttime -n --jobs=$job_id   --format=jobid%20,state%10 | grep -v "^\\s*[0-9\_]*\\." ' | awk \'{print \$1,\$2}\'`) ;
     chomp($REC_IS_STATE);
     
     my @REC_IS_STATE = split /^/, $REC_IS_STATE;
@@ -1458,7 +1465,8 @@ if ( $runflag =~ m/^parrun$/ ){
 	    if($bqs eq "SGE"){
 	        $state = (`ssh ${account} 'qstat | grep $job_id' | awk \'{print \$5}\'`) ;chomp($state);
 	    }elsif($bqs eq "SLURM"){
-                $state = (`ssh ${account} 'sacct -n --jobs=$job_id | grep -v "^\\s*[0-9\_]*\\."  ' | awk \'{print \$6}\'`) ;chomp($state);
+        
+                $state = (`ssh ${account} 'sacct  -S $starttime -n --jobs=$job_id | grep -v "^\\s*[0-9\_]*\\."  ' | awk \'{print \$6}\'`) ;chomp($state);
 	    }else{
 	        &CJ::err("Unknown batch queueing system");
 	    }
@@ -1938,9 +1946,12 @@ my ($gmt_offset_hour, $remainder_in_second) = (int($abs_offset/3600), $abs_offse
 my $offset = sprintf("%s%02d:%02d:%02d", $sign,$gmt_offset_hour,$gmt_offset_min,$remainder_in_second);
 my $datestr = sprintf ("%04d-%03s-%02d  %02d:%02d:%02d  \(GMT %s\)", $year, $month_abbr[$mon], $mday, $hour,$min, $sec, $offset);
 
+my $numeric_month = sprintf ("%02d", 1+$mon);
+    
 my $date = {
         year    	=> $t->year,
         month   	=> $month_abbr[$mon],
+        numericmonth => 1+$mon,
         day     	=> $mday,
         hour    	=> $hour,
         min     	=> $min,
