@@ -1351,6 +1351,27 @@ sub get_summary
 
 
 
+sub numeric_month(){
+    my ($mon) = @_;
+    
+    # Given 3 character month, give the number.
+    my $month_map = {"Jan" => 1,
+        "Feb" => 2,
+        "Mar" => 3,
+        "Apr" => 4,
+        "May" => 5,
+        "Jun" => 6,
+        "Jul" => 7,
+        "Aug" => 8,
+        "Sep" => 9,
+        "Oct" => 10,
+        "Nov" => 11,
+        "Dec" => 12
+        };
+        
+        return $month_map->{$mon};
+}
+
 
 
 sub get_state
@@ -1387,12 +1408,17 @@ sub get_state
     my $job_id  = $info->{'job_id'};
     my $bqs     = $info->{'bqs'};
     my $runflag = $info->{'runflag'};
-
+    
     
     
     # This is a workaround for a bug in SLURM
-    my $date = &CJ::date();
-    my $starttime = sprintf ("%04d-%02d-%02d", $date->{year},$date->{numericmonth},$date->{day});
+    # one must provide start time of the job
+    
+    my $yy = $info->{'date'}{year};
+    my $dd = $info->{'date'}{day};
+    my $mm = &CJ::check_hash( $info->{'date'}, ['numericmonth'] )  ? $info->{'date'}{numericmonth}:&CJ::numeric_month($info->{'date'}{month});
+    
+    my $starttime = sprintf ("%04d-%02d-%02d",$yy,$mm,$dd);
     
 
     my $states={};
@@ -1402,8 +1428,6 @@ if ( $runflag =~ m/^parrun$/ ){
     my @job_ids = split(',',$job_id);
     my $jobs = join('|', @job_ids);
   
-        
-        
         
     
     my $REC_STATES;
