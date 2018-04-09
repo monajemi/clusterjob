@@ -1743,7 +1743,7 @@ sub read_ssh_config{
     
     # read the contents
     
-    my %machine_hash = $file_content =~ /\[(\w+)\](.*?)\[\g{-2}\]/isg;
+    my %machine_hash = $file_content =~ /\[([\w\-]+)\](.*?)\[\g{-2}\]/isg;
     
     foreach my $machine (keys %machine_hash){
         $ssh_config->{$machine} = &CJ::parse_ssh_config($machine_hash{$machine});
