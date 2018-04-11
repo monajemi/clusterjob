@@ -115,6 +115,7 @@ my $spec = <<'EOSPEC';
      -v 	          [ditto] [undocumented]
      --v[erbose]	                                  verbose mode [nocase]
                                                               {$verbose=1}
+     -vv[v[v[v]]]	                                      [ditto] [undocumented]
      --clean      	                                  show cleaned packages in log [nocase]  [requires: log]
                                                                {$log_tag="showclean";}
      --err[or]	                                          error tag for show [nocase] [requires: show]
@@ -148,69 +149,69 @@ my $spec = <<'EOSPEC';
      sync 	                                          force sync [nocase]
 		                				{defer{&CJ::sync_forced($sync_status)}}								
      who 	                                          prints out user and agent info [nocase]
-     update						  updates installation to the most recent commit on GitHub [nocase]
-                                                            {defer{&CJ::add_cmd($cmdline);update_install}}
-     config       [<cluster>] 				  list cluster configuration
-                                                    {defer{  &CJ::add_cmd($cmdline) ;&CJ::show_cluster_config($cluster)}}
-     connect       <cluster:/\S+/>	                  connect to a cluster
-     log          [<argin>]	                          log  -n|all|pid [nocase]
+     update						  updates installation to the most recent commit on GitHub [nocase][repeatable]
+     config         [<cluster>]		          list cluster configuration
+                                                {defer{&CJ::add_cmd($cmdline); &CJ::show_cluster_config($cluster) }}
+     config-update  <cluster>  [<keyval>...]		  update cluster configuration
+     connect        <cluster:/\S+/>	                  connect to a cluster
+     log            [<argin>]	                          log  -n|all|pid [nocase]
                                                                 {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin,$log_tag,$log_script) }}
-     hist[ory]    [<argin>]	                          history of runs -n|all 
+     hist[ory]      [<argin>]	                          history of runs -n|all 
                                                                 {defer{&CJ::add_cmd($cmdline); &CJ::show_history($argin) }}
-     clean        [<pid>]		                  clean certain package [nocase]
+     clean          [<pid>]		                  clean certain package [nocase]
                                                                 {defer{ &CJ::add_cmd($cmdline); &CJ::clean($pid,$verbose); }}
-     cmd          [<argin>]	                          command history -n|all [nocase]
+     cmd            [<argin>]	                          command history -n|all [nocase]
                                                                 {defer{ &CJ::show_cmd_history($argin) }}
-     deploy       <code:/\S+/> <cluster:/\S*/>	          deploy code on the cluster [nocase] [requires: -m]
+     deploy         <code:/\S+/> <cluster:/\S*/>	  deploy code on the cluster [nocase] [requires: -m]
                                                                 {my $runflag = "deploy";
                                                                 {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                                 }
-     err[or]      [<pid> [[/] [<counter>]] ]	  	  shortcut for '--err show' [nocase]
-                                                    {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","error") }}
-     gather       <pattern>  <dir_name> [<pid>]	          gather results of parrun [nocase]
+     err[or]        [<pid> [[/] [<counter>]] ]	  	  shortcut for '--err show' [nocase]
+                                                    		{defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","error") }}
+     gather         <pattern>  <dir_name> [<pid>]	  gather results of parrun [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);&CJ::Get::gather_results($pid,$pattern,$dir_name,$verbose)}}
-     get          [<pid> [/] [<subfolder>]]	          bring results (fully/partially) back to local machine [nocase]
+     get            [<pid> [/] [<subfolder>]]	          bring results (fully/partially) back to local machine [nocase]
                                                              {defer{&CJ::add_cmd($cmdline);&CJ::Get::get_results($pid,$subfolder,$verbose)}}
-     info         [<pid>]	                          info of certain package [nocase]
+     info           [<pid>]	                          info of certain package [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show_info($pid); }}
      init 	    					  initiates CJ installation [nocase]
               							{defer{CJ::init}}
-     install      [-f[<orce>]] <app:/\S+/> <cluster:/\S*/>	install app on a remote machine
-     json         [<pid> [[/] [<counter>] [[/] <file>]] ]	shortcut for '--json show' [nocase]
+     install        [-f[<orce>]] <app:/\S+/> <cluster:/\S*/>	install app on a remote machine
+     json           [<pid> [[/] [<counter>] [[/] <file>]] ]	shortcut for '--json show' [nocase]
                                                         {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,"json") }}
-     ls           [<pid> [[/] [<counter>]] ]	  	  shortcut for '--ls show' [nocase]
+     ls             [<pid> [[/] [<counter>]] ]	  	  shortcut for '--ls show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","ls") }}
-     less         [<pid> [[/] [<counter>] [[/] <file>]] ]	shortcut for '--less show' [nocase]
+     less           [<pid> [[/] [<counter>] [[/] <file>]] ]	shortcut for '--less show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,"less") }}
-     rerun        [<pid> [[/] [<counter>...]]]	          rerun certain (failed) job [nocase]
+     rerun          [<pid> [[/] [<counter>...]]]	          rerun certain (failed) job [nocase]
                                                                  {defer{&CJ::add_cmd($cmdline);
 								  &CJ::rerun($pid,\@counter,$submit_defaults,$qSubmitDefault,$qsub_extra,$verbose) }}
-     run          <code> <cluster>	                  run code on the cluster [nocase] [requires: -m]
+     run            <code> <cluster>	                  run code on the cluster [nocase] [requires: -m]
                                                                  {my $runflag = "run";
                                                                {defer{&CJ::add_cmd($cmdline); run($cluster,$code,$runflag,$qsub_extra)}}
                                                                  }
-     pardeploy    <code> <cluster>	                  pardeploy code on the cluster [nocase] [requires: -m]
+     pardeploy      <code> <cluster>	                  pardeploy code on the cluster [nocase] [requires: -m]
                                                                {my $runflag = "pardeploy";
                                                                 {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                                }
-     parrun       <code> <cluster>	                  parrun code on the cluster [nocase] [requires: -m]
+     parrun         <code> <cluster>	                  parrun code on the cluster [nocase] [requires: -m]
                                                                 {my $runflag = "parrun";
                                                                 {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                                 }
-     reduce       [-f[<orce>]] <filename> [<pid>...] 	  reduce results of parrun [nocase]
-     rrun         <code> <cluster>	                  array run code on the cluster [nocase] [requires: -m][undocumented]
+     reduce         [-f[<orce>]] <filename> [<pid>...] 	  reduce results of parrun [nocase]
+     rrun           <code> <cluster>	                  array run code on the cluster [nocase] [requires: -m][undocumented]
                                                                 {my $runflag = "rrun";
                                                                 {defer{&CJ::add_cmd($cmdline);run($cluster,$code,$runflag,$qsub_extra)}}
                                                                 }
-     runlog       [<pid> [[/] [<counter>]] ]	  	  shows the run log of a script  [nocase]
+     runlog        [<pid> [[/] [<counter>]] ]	  	  shows the run log of a script  [nocase]
                                                                 {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","runlog") }}
-     save         <pid> [<path>]	                  save a package in path [nocase]
+     save          <pid> [<path>]	                  save a package in path [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
-     show         [<pid> [[/] [<counter>] [[/] <file>]] ]	  show program/error of certain package [nocase]
+     show          [<pid> [[/] [<counter>] [[/] <file>]] ]	  show program/error of certain package [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,$show_tag) }}
-     state        [<pid> [[/] [<counter>]]]	          state of package [nocase]
+     state         [<pid> [[/] [<counter>]]]	          state of package [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::get_print_state($pid,$counter) }}
-     summary      <cluster>	                          gives a summary of the number of jobs on particlur cluster with their states [nocase]
+     summary       <cluster>	                          gives a summary of the number of jobs on particlur cluster with their states [nocase]
                                                              {defer{&CJ::add_cmd($cmdline); &CJ::CheckConnection($cluster);&CJ::get_summary($cluster)}}
      @<cmd_num:+i>	                                  re-executes a previous command avaiable in command history [nocase]
                                                                {defer{&CJ::reexecute_cmd($cmd_num,$verbose) }}
@@ -224,12 +225,34 @@ EOSPEC
 my $opts = Getopt::Declare->new($spec);
 
 
+if ($opts->{'config-update'}){
+    
+
+    &CJ::update_cluster_config($opts->{'config-update'}{'<cluster>'}, $opts->{'config-update'}{'<keyval>'});
+    
+    
+    exit 0;
+    
+}
+
+
+
+
+
+
+
 if($opts->{'connect'}){
     CJ::message("connecting to $opts->{'connect'}");
     &CJ::connect2cluster($opts->{'connect'}, $verbose);
 }
 
+if($opts->{'update'}){
+    &CJ::add_cmd($cmdline);
+    update_install();
+}
+
 sub update_install {
+    
 	my $star_line = '*' x length($install_dir);
     # make sure s/he really wants a deletion
 	CJ::message("This update results in cloning the newest version of ClusterJob in");

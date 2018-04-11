@@ -1735,6 +1735,109 @@ sub add_record{
 
 
 
+
+
+
+
+sub show_cluster_config{
+    
+    my ($cluster) = @_;
+    
+    if (!defined $cluster || $cluster eq ""){
+        my $cmd = "less $ssh_config_file";
+        my_system($cmd,1);
+    }else{
+        CJ::err("No such cluster found. add $cluster to ssh_config.") if !is_valid_machine($cluster);
+        my $ssh_config_hashref =  &CJ::read_ssh_config();
+        my $fieldsize = 20;
+        while ( my ($key, $value) = each %{ $ssh_config_hashref->{$cluster} } ){
+            printf "\n\033[32m%-${fieldsize}s\033[0m%s", $key, $value;
+        }
+        print "\n\n";
+    }
+    
+    return 1;
+}
+
+
+
+
+
+
+
+
+#sub update_cluster_record{
+#    my ($pid,$new_info) = @_;
+#    my $new_record = encode_json($new_info);
+#    #backup run history file with -i flag
+#    my $cmd="sed -i '.bak' 's|.*$pid.*|$new_record|'  $run_history_file";
+#    &CJ::my_system($cmd,0);
+#}
+
+
+
+sub update_cluster_config{
+    
+    my ($cluster, $keyval) = @_;
+    
+    
+    my $file_content = &CJ::readFile($ssh_config_file);
+    
+    # read the contents
+
+    my %machine_hash = $file_content =~ /\[($cluster)\](.*?)\[\g{-2}\]/isg;
+    my $size = keys %machine_hash;
+    &CJ::err("machine $cluster is not found in ssh_config") if ($size lt 1);
+    print $machine_hash{$cluster};
+    my @lines = split '\n', $machine_hash{$cluster};
+    
+    #print Dumper @lines;
+    
+    
+    #print Dumper $ssh_config;
+    if ( not @$keyval){
+        
+        foreach my $i (0..$#lines){
+            if ($lines[$i] !~ /^\s*$/){
+                my ($key,$value)  =  split(/\s/, $lines[$i], 2);
+                $key   =remove_white_space($key);
+                $value =remove_white_space($value);
+                #print $key . " => " . $value . "\n";
+                my $yesno  = "no";
+                my $new_value = undef;
+                while ( $yesno !~ m/y[\t\s]*|yes[\t\s]*/i ){
+                    ($new_value, $yesno)=getuserinput("Enter $key ('k' to keep $value):", 'k');
+                    $new_value = $value if ($new_value eq 'k')
+                }
+                
+                $lines[$i] = "$key\t$new_value" if( not $new_value eq $value);
+                    
+                }
+        }
+        #print Dumper @lines;
+        my $new_config = "[$cluster]";
+        foreach (@lines){
+        $new_config .= $_ . "\n";
+        }
+        $new_config .= "[$cluster]";
+        
+        $file_content =~ s/\[$cluster\](.*?)\[$cluster\]/$new_config/isg ;
+        print $file_content;
+        
+        #writeFile with this new contents. make sure you backup previous file.
+        
+        
+        exit 0;
+    }else{
+        # just update those keys that exists
+        exit 0;
+    }
+    
+    
+}
+
+
+
 sub read_ssh_config{
     
     my $ssh_config = {};
@@ -1750,11 +1853,6 @@ sub read_ssh_config{
     }
     return $ssh_config;
 }
-
-
-
-
-
 
 
 
@@ -1802,15 +1900,16 @@ sub parse_ssh_config{
     
     my $account  = $user . "@" . $host;
     
-    
+    $ssh_config->{'user'}         = $user;
+    $ssh_config->{'host'}         = $host;
     $ssh_config->{'account'}         = $account;
     $ssh_config->{'bqs'}             = $bqs;
     $ssh_config->{'remote_repo'}     = $remote_repo;
     $ssh_config->{'matlib'}          = $remote_matlab_lib;
     $ssh_config->{'mat'}             = $remote_matlab_module;
     $ssh_config->{'user'}            = $user;
-    $ssh_config->{'py'}              = $remote_python_module;
-    $ssh_config->{'pylib'}           = $remote_python_lib;
+    $ssh_config->{'python'}          = $remote_python_module;
+    $ssh_config->{'pythonlib'}       = $remote_python_lib;
     
     return $ssh_config;
 
@@ -2237,6 +2336,38 @@ sub yesno{
     my $yesno =  <STDIN>; chomp($yesno);
     exit 0 unless (lc($yesno) eq "y" or lc($yesno) eq "yes");
 }
+
+
+sub getuserinput{
+    my ($question,$default) = @_;
+    print $question;
+    my $user_input =  <STDIN>;
+    chomp($user_input);
+    $user_input = remove_white_space($user_input);
+    my $yesno;
+    if ( not $user_input eq $default){
+        print ' ' x 5 . "You have entered \'$user_input\'. Is this correct?";
+        $yesno =  <STDIN>; chomp($yesno);
+    }else{
+        $yesno = 'yes';
+    }
+    return ($user_input, $yesno);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2807,25 +2938,7 @@ sub connect2cluster{
 }
 
 
-sub show_cluster_config{
-    
-    my ($cluster) = @_;
 
-    if (!defined $cluster || $cluster eq ""){
-        my $cmd = "less $ssh_config_file";
-        my_system($cmd,1);
-    }else{
-        CJ::err("No such cluster found. add $cluster to ssh_config.") if !is_valid_machine($cluster);
-        my $ssh_config_hashref =  &CJ::read_ssh_config();
-        my $fieldsize = 20;
-        while ( my ($key, $value) = each %{ $ssh_config_hashref->{$cluster} } ){
-            printf "\n\033[32m%-${fieldsize}s\033[0m%s", $key, $value;
-        }
-        print "\n\n";
-    }
-    
-    return 1;
-}
 
 
 sub avail{
