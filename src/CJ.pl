@@ -149,10 +149,18 @@ my $spec = <<'EOSPEC';
      sync 	                                          force sync [nocase]
 		                				{defer{&CJ::sync_forced($sync_status)}}								
      who 	                                          prints out user and agent info [nocase]
-     update						  updates installation to the most recent commit on GitHub [nocase][repeatable]
-     config         [<cluster>]		          list cluster configuration
-                                                {defer{&CJ::add_cmd($cmdline); &CJ::show_cluster_config($cluster) }}
-     config-update  <cluster>  [<keyval>...]		  update cluster configuration
+     update						  updates installation to the most recent commit on GitHub [nocase]
+     config[-update]   [<cluster:/\S+/> [<keyval>...]]	  list|update cluster configuration
+                                                {defer{
+                                                    &CJ::add_cmd($cmdline);
+                                                    if ($_PUNCT_{"-update"}) {
+                                                        &CJ::update_cluster_config($cluster,@keyval);
+                                                    }else{
+                                                        &CJ::show_cluster_config($cluster);
+                                                    }
+                                                    }
+                                                }
+
      connect        <cluster:/\S+/>	                  connect to a cluster
      log            [<argin>]	                          log  -n|all|pid [nocase]
                                                                 {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin,$log_tag,$log_script) }}
@@ -223,20 +231,6 @@ my $spec = <<'EOSPEC';
 EOSPEC
 
 my $opts = Getopt::Declare->new($spec);
-
-
-if ($opts->{'config-update'}){
-    
-
-    &CJ::update_cluster_config($opts->{'config-update'}{'<cluster>'}, $opts->{'config-update'}{'<keyval>'});
-    
-    
-    exit 0;
-    
-}
-
-
-
 
 
 

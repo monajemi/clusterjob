@@ -1744,8 +1744,8 @@ sub show_cluster_config{
     my ($cluster) = @_;
     
     if (!defined $cluster || $cluster eq ""){
-        my $cmd = "less $ssh_config_file";
-        my_system($cmd,1);
+        my $cmd = "less $ssh_config_file 2>$CJlog_error";
+        system($cmd);
     }else{
         CJ::err("No such cluster found. add $cluster to ssh_config.") if !is_valid_machine($cluster);
         my $ssh_config_hashref =  &CJ::read_ssh_config();
@@ -1778,7 +1778,7 @@ sub show_cluster_config{
 
 sub update_cluster_config{
     
-    my ($cluster, $keyval) = @_;
+    my ($cluster, @keyval) = @_;
     
     
     my $file_content = &CJ::readFile($ssh_config_file);
@@ -1788,14 +1788,14 @@ sub update_cluster_config{
     my %machine_hash = $file_content =~ /\[($cluster)\](.*?)\[\g{-2}\]/isg;
     my $size = keys %machine_hash;
     &CJ::err("machine $cluster is not found in ssh_config") if ($size lt 1);
-    print $machine_hash{$cluster};
+    #print $machine_hash{$cluster};
     my @lines = split '\n', $machine_hash{$cluster};
     
     #print Dumper @lines;
     
     
     #print Dumper $ssh_config;
-    if ( not @$keyval){
+    if ( not @keyval){
         
         foreach my $i (0..$#lines){
             if ($lines[$i] !~ /^\s*$/){
@@ -1806,8 +1806,8 @@ sub update_cluster_config{
                 my $yesno  = "no";
                 my $new_value = undef;
                 while ( $yesno !~ m/y[\t\s]*|yes[\t\s]*/i ){
-                    ($new_value, $yesno)=getuserinput("Enter $key ('k' to keep $value):", 'k');
-                    $new_value = $value if ($new_value eq 'k')
+                    ($new_value, $yesno)=getuserinput("Enter $key (Enter to keep $value):", '');
+                    $new_value = $value if ($new_value eq '')
                 }
                 
                 $lines[$i] = "$key\t$new_value" if( not $new_value eq $value);
@@ -1822,14 +1822,14 @@ sub update_cluster_config{
         $new_config .= "[$cluster]";
         
         $file_content =~ s/\[$cluster\](.*?)\[$cluster\]/$new_config/isg ;
-        print $file_content;
-        
-        #writeFile with this new contents. make sure you backup previous file.
-        
-        
-        exit 0;
+        &CJ::writeFile($ssh_config_file, $file_content);
+        &CJ::message("updated ssh_config file.")
     }else{
         # just update those keys that exists
+        
+        
+        
+        
         exit 0;
     }
     
@@ -2406,6 +2406,12 @@ sub writeFile
     # it should generate a bak up later!
     my ($path, $contents, $flag) = @_;
     
+    if( -e "$path" ){
+        #bak up
+        my $bak= "$path" . ".bak";
+        my $cmd="cp $path $bak";
+        system($cmd);
+    }
     
     my $fh;
     open ( $fh , '>', "$path" ) or die "can't create file $path" if not defined($flag);
