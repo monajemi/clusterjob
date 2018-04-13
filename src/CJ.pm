@@ -541,15 +541,15 @@ my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
     }
     
 my $runinfo    = join(',', @runinfo);
-my $this_rerun = "$date -> $runinfo";
 
 
 my $type = "rerun";
 my $change = {new_job_id => $job_id,
               date       => $date, 
-			  old_job_id => $runinfo
+			  old_job_id => $runinfo,
+              submit_defaults => $submit_defaults,
+              alloc           => $qsub_extra,
 		     };
-
 			  
 my $newinfo = &CJ::add_change_to_run_history($pid, $change, $type);
 
@@ -2608,21 +2608,12 @@ if(lc($type) eq "clean"){
     #say Dumper($info);
  	
 }elsif(lc($type) eq "rerun"){
+    $info->{rerun} = {} if (! $info->{'rerun'});
+    $info->{'job_id'} = $change->{new_job_id};    #firt time calling rerun
+    #$info->{rerun}->{"$change->{date}->{epoch}"} = $change->{old_job_id};
+    $info->{rerun}->{"$change->{date}->{epoch}"} = $change;
     
-       if($info->{'rerun'}){
-           $info->{'job_id'} = $change->{new_job_id};
-           $info->{rerun}->{"$change->{date}->{epoch}"} = $change->{old_job_id};
-		   
-		   #say Dumper($info);
-       }else{
-           #firt time calling rerun
-           $info->{'job_id'} = $change->{new_job_id};
-		   $info->{rerun} = {};
-		   $info->{rerun}->{"$change->{date}->{epoch}"} = $change->{old_job_id};
-           #say Dumper($info);
-       }
 #
-#        
 }else{
        &CJ::err("Change of type '$type' is  not recognized");
 }

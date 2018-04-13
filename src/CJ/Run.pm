@@ -160,7 +160,7 @@ sub SERIAL_DEPLOY_RUN{
 #########################################################
 
 my $self = shift;
-    
+        
 # create directories etc.
 my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
 
@@ -244,7 +244,7 @@ if($self->{runflag} eq "run"){
     # read run info
     my $local_qsub_info_file = "$info_dir/"."qsub.info";
     my ($job_ids,$errors) = &CJ::read_qsub($local_qsub_info_file);
-        
+    
     $self->_checkSubmitSuccess($job_ids,$ssh,$local_sep_Dir,$remote_sep_Dir,$errors);
     
     $job_id = $job_ids->[0]; # there is only one in this case
@@ -284,6 +284,8 @@ my $runinfo={
     runflag       => $self->{runflag},
     program       => $self->{program},
     message       => $self->{message},
+    submit_defaults => $self->{'submit_defaults'},
+    alloc         => $self->{'qsub_extra'},
 };	
 
 # add_record locally
@@ -467,6 +469,8 @@ my $runinfo={
     runflag       => $self->{runflag},
     program       => $self->{program},
     message       => $self->{message},
+    submit_defaults => $self->{'submit_defaults'},
+    alloc         => $self->{'qsub_extra'},
 };
 
 
@@ -483,7 +487,7 @@ sub _checkSubmitSuccess{
     
     # in case we dont get job ID
     if( !defined($job_ids->[0]) || $job_ids->[0] =~ m/^\s*$/ ){
-        print "\_$job_ids->[0]\_\n";
+        #print "\_$job_ids->[0]\_\n";
         
         #delete remote directories
         my $local_clean     = "$local_sep_Dir\*";
@@ -701,6 +705,8 @@ save_path     => "${saveDir}/${pid}",
 runflag       => $self->{runflag},
 program       => $self->{program},
 message       => $self->{message},
+submit_defaults => $self->{'submit_defaults'},
+alloc         => $self->{'qsub_extra'},
 };
 
 
