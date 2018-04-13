@@ -95,12 +95,12 @@ Pythonlib	pytorch:cuda80:scipy:matplotlib:torchvision:-c soumith
 
 
 [gce]
-Host	5.203.181.20
-User	hatefmonajemi
+Host	5.203.181.25
+user	hatefmonajemi
 Bqs		SLURM
 Repo		/home/hatefmonajemi/CJRepo_Remote
 MAT     	""
-MATlib		""
+matlib	CJinstlled/cvx
 Python		python3.4
 Pythonlib	pytorch:torchvision:cuda80:pandas:matplotlib:-c soumith
 [gce]
@@ -128,3 +128,13 @@ Pythonlib	pytorch:torchvision:cuda80:pandas:-c soumith
 [ec2]
 
 
+[gce-hatef]
+host	35.18.20.12
+User	moosh
+Bqs	SLURM
+Repo	~/CJRepo
+MAT	matlab/r2016b
+MATlib	CJinstalled/cvx:CJinstalled/mosek/7/toolbox/r2013a
+Python	python3.4
+Pythonlib	pytorch:torchvision:cuda80:pandas:matplotlib:-c soumith
+[gce-hatef]

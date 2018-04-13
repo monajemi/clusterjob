@@ -1747,7 +1747,7 @@ sub show_cluster_config{
         my $cmd = "less $ssh_config_file 2>$CJlog_error";
         system($cmd);
     }else{
-        CJ::err("No such cluster found. add $cluster to ssh_config.") if !is_valid_machine($cluster);
+        CJ::err("No such cluster found. add $cluster to ssh_config (you may use 'CJ config-update $cluster') .") if !is_valid_machine($cluster);
         my $ssh_config_hashref =  &CJ::read_ssh_config();
         my $fieldsize = 20;
         while ( my ($key, $value) = each %{ $ssh_config_hashref->{$cluster} } ){
@@ -1765,15 +1765,22 @@ sub show_cluster_config{
 
 
 
-
-#sub update_cluster_record{
-#    my ($pid,$new_info) = @_;
-#    my $new_record = encode_json($new_info);
-#    #backup run history file with -i flag
-#    my $cmd="sed -i '.bak' 's|.*$pid.*|$new_record|'  $run_history_file";
-#    &CJ::my_system($cmd,0);
-#}
-
+sub cluster_config_template{
+    # for sorting purposes
+    my @config_keys=('Host','User','Bqs','Repo','MAT','MATlib','Python','Pythonlib');
+    my $cluster_config = {
+        'Host' => {example=>'35.185.238.124', default=>undef},
+        'User' => {example=>$CJID, default=>undef},
+        'Bqs'  => {example=>undef, default=>'SLURM'},
+        'Repo' => {example=>'/home/ubuntu/CJRepo_Remote',default=>undef},
+        'MAT'  => {example=>undef,default=>'matlab/r2016b'},
+        'MATlib' => {example=>undef,default=>'CJinstalled/cvx:CJinstalled/mosek/7/toolbox/r2013a'},
+        'Python' => {example=>undef,default=>'python3.4'},,
+        'Pythonlib'  => {example=>undef,default=>'pytorch:torchvision:cuda80:pandas:matplotlib:-c soumith'}
+    };
+    
+    return ($cluster_config,\@config_keys);
+}
 
 
 sub update_cluster_config{
@@ -1787,7 +1794,41 @@ sub update_cluster_config{
 
     my %machine_hash = $file_content =~ /\[($cluster)\](.*?)\[\g{-2}\]/isg;
     my $size = keys %machine_hash;
-    &CJ::err("machine $cluster is not found in ssh_config") if ($size lt 1);
+    
+    if ($size lt 1){
+        my $yesno = &CJ::yesno("machine $cluster is not found in ssh_config. Do you want to add it");
+        if ($yesno){
+            
+            my ($cluster_config,$config_keys) = &CJ::cluster_config_template();
+            my $new_config = "\n[$cluster]\n";
+            foreach my $key (@{$config_keys}){
+                    my $yesno  = "no";
+                    my $new_value = undef;
+                    while ( $yesno !~ m/y[\t\s]*|yes[\t\s]*/i ){
+                        my $prompt  = defined($cluster_config->{$key}{default}) ? "enter '$key' (press Enter key for default value '$cluster_config->{$key}{default}'):":"Enter $key (e.g., $cluster_config->{$key}{example}):";
+                        my $default_entry = defined($cluster_config->{$key}) ? '':undef;
+                        ($new_value, $yesno)=getuserinput($prompt, $default_entry);
+                        
+                        if ($new_value eq $default_entry){
+                            if (defined($cluster_config->{$key}{default}) ){
+                              $new_value = $cluster_config->{$key}{default}
+                            }else{
+                              $yesno="no";
+                            }
+                        }
+                    }
+                    $new_config .= "$key\t$new_value" . "\n";
+            }
+            $new_config .= "[$cluster]\n";
+            
+            $file_content .= $new_config ;
+            &CJ::writeFile($ssh_config_file, $file_content);
+            &CJ::message("added $cluster to ssh_config.");
+            &CJ::show_cluster_config($cluster);
+            return 1;
+        }
+    }
+    
     #print $machine_hash{$cluster};
     my @lines = split '\n', $machine_hash{$cluster};
     
@@ -1795,44 +1836,74 @@ sub update_cluster_config{
     
     
     #print Dumper $ssh_config;
+    
+    my $num_changes = 0;
+    
     if ( not @keyval){
         
         foreach my $i (0..$#lines){
             if ($lines[$i] !~ /^\s*$/){
-                my ($key,$value)  =  split(/\s/, $lines[$i], 2);
-                $key   =remove_white_space($key);
-                $value =remove_white_space($value);
-                #print $key . " => " . $value . "\n";
-                my $yesno  = "no";
-                my $new_value = undef;
-                while ( $yesno !~ m/y[\t\s]*|yes[\t\s]*/i ){
-                    ($new_value, $yesno)=getuserinput("Enter $key (Enter to keep $value):", '');
-                    $new_value = $value if ($new_value eq '')
-                }
-                
-                $lines[$i] = "$key\t$new_value" if( not $new_value eq $value);
-                    
-                }
+                    my ($old_key,$old_value)  =  split(/\s/, $lines[$i], 2);
+                    $old_key   =remove_white_space($old_key);
+                    $old_value =remove_white_space($old_value);
+                    my $yesno  = "no";
+                    my $new_value = undef;
+                    while ( $yesno !~ m/y[\t\s]*|yes[\t\s]*/i ){
+                        ($new_value, $yesno)=getuserinput("press Enter $old_key (Enter to keep $old_value):", '');
+                    }
+                    if (not $new_value eq ''){
+                        $lines[$i] = "$old_key\t$new_value";
+                        $num_changes += 1;
+                    }
+            }
         }
-        #print Dumper @lines;
-        my $new_config = "[$cluster]";
-        foreach (@lines){
-        $new_config .= $_ . "\n";
-        }
-        $new_config .= "[$cluster]";
         
-        $file_content =~ s/\[$cluster\](.*?)\[$cluster\]/$new_config/isg ;
-        &CJ::writeFile($ssh_config_file, $file_content);
-        &CJ::message("updated ssh_config file.")
-    }else{
+     }else{
         # just update those keys that exists
         
         
+        #print Dumper @keyval;
+        my $new_keyval = {};
+        foreach (@keyval){
+            my ($new_key, $new_val)  = split( /=|:/ , $_);
+            $new_keyval->{$new_key} = $new_val;
+        }
         
         
-        exit 0;
+        my %lc_new_keyval = map { lc $_ => { name => $_, value => $new_keyval->{$_} }
+                                } keys %$new_keyval;
+        
+        foreach my $i (0..$#lines){
+                if ($lines[$i] !~ /^\s*$/){
+                    my ($old_key,$old_value)  =  split(/\s/, $lines[$i], 2);
+                    $old_key   =remove_white_space($old_key);
+                    $old_value =remove_white_space($old_value);
+                    #print $key . " => " . $value . "\n";
+                    my $lc_old_key = lc $old_key;
+                    
+                    if ( exists $lc_new_keyval{$lc_old_key} ){
+                    $lines[$i] = "$lc_new_keyval{$lc_old_key}{name}\t$lc_new_keyval{$lc_old_key}{value}" ;
+                    $num_changes += 1;
+                    }
+                }
+        }
+     
     }
     
+    
+    if ($num_changes > 0 ){
+        my $new_config = "[$cluster]";
+        foreach (@lines){
+            $new_config .= $_ . "\n";
+        }
+        $new_config .= "[$cluster]";
+        $file_content =~ s/\[$cluster\](.*?)\[$cluster\]/$new_config/isg ;
+        &CJ::writeFile($ssh_config_file, $file_content);
+        &CJ::message("updated ssh_config file with $num_changes changes.");
+        &CJ::show_cluster_config($cluster);
+    }else{
+        &CJ::message("no change applied to ssh_config.");
+    }
     
 }
 
@@ -2345,8 +2416,8 @@ sub getuserinput{
     chomp($user_input);
     $user_input = remove_white_space($user_input);
     my $yesno;
-    if ( not $user_input eq $default){
-        print ' ' x 5 . "You have entered \'$user_input\'. Is this correct?";
+    if ( !defined($default) || not $user_input eq $default){
+        print ' ' x 5 . "You have entered \'$user_input\'. Is this correct? (Y/N)";
         $yesno =  <STDIN>; chomp($yesno);
     }else{
         $yesno = 'yes';
