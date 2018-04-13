@@ -846,7 +846,7 @@ sub show_log{
         print "script: $info->{program}\n";
         #print "remote_path: $info->{remote_path}\n";
         print "initial_flag: $info->{runflag}\n";
-           print "reruned: ", 0+keys(%{$info->{rerun}}) . " times \n" if($info->{rerun}) ;
+           print "reruned: ", 0+keys(%{$info->{rerun}}) . " times \n" if($info->{rerun} && ref $info->{rerun} eq ref {}) ;
         print "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
         print "\n";
         print ' ' x 10; print "$info->{message}\n";
