@@ -222,6 +222,21 @@ sub check_hash {
 }
 
 
+# firebase does not allow following special characters as the key for JSON.
+sub encodeAsFirebaseKey
+    {
+        my ($string)  = @_;
+        $string =~ s|\%|\%25|g;
+        $string =~ s|\.|\%2E|g;
+        $string =~ s|\#|\%23|g;
+        $string =~ s|\$|\%24|g;
+        $string =~ s|\/|\%2F|g;
+        $string =~ s|\[|\%5B|g;
+        $string =~ s|\]|\%5D|g;
+        return $string;
+    };
+
+
 sub write2firebase
 {
 	my ($pid, $runinfo, $timestamp, $inform) = @_;
@@ -251,7 +266,7 @@ sub write2firebase
 	    $result = $firebase->patch("users/${CJID}/agents/$AgentID", {"push_timestamp"=> $timestamp} ); 
 		
 	}else{
-		
+        print Dumper $runinfo;
 		# This is either new or hasn't been pushed before
 		my $last = $firebase->get("users/${CJID}/last_instance");
 		my $remote_last_epoch = defined($last) ? $last->{"epoch"} : 0;

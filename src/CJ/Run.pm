@@ -59,11 +59,28 @@ my $short_pid = &CJ::short_pid($pid);  # we use an 8 character abbrviation
 
 
 #  Check to see if the file and dep folder exists
+    
+my %dep_files;
 &CJ::err("$self->{path}/$self->{program} not found") if(! -e "$self->{path}/$self->{program}" );
 if(defined($self->{dep_folder})){
-&CJ::err("Dependency folder $self->{path}/$self->{dep_folder} not found") if(! -d "$self->{path}/$self->{dep_folder}" );
-}
+    #&CJ::err("Dependency folder $self->{path}/$self->{dep_folder} not found") if(! -d "$self->{path}/$self->{dep_folder}" );
 
+        # Get a list files in the bin directory
+        opendir(my $dh, "$self->{path}/$self->{dep_folder}") || CJ::err("Dependency folder $self->{path}/$self->{dep_folder} not found. $!");
+        while (readdir $dh) {
+            # filenames include dot, and other forbidden characters on FB
+            $dep_files{ CJ::encodeAsFirebaseKey($_) } = -s $_ if (not $_ =~ /^\..*$|^\.\.$/);
+        }
+        closedir $dh;
+
+}
+    
+    my $files = {};
+    my $size = -s "$self->{path}/$self->{program}";
+    $files->{'def_file'} = { CJ::encodeAsFirebaseKey($self->{program})=>$size };
+    $files->{'dep_files'} = \%dep_files;
+    $files->{'out_files'} = "null";
+    
 #=======================================
 #    BUILD DOCSTRING
 #    WE NAME THE REMOTE FOLDERS
@@ -108,8 +125,6 @@ my $cmd = "cp $self->{path}/$self->{program} $local_sep_Dir/";
 $cmd   = "cp -r $self->{dep_folder}/* $local_sep_Dir/" unless not defined($self->{dep_folder});
 &CJ::my_system($cmd,$self->{verbose});
 
-    
-
 #=====================
 #  REMOTE DIRECTORIES
 #=====================
@@ -140,7 +155,7 @@ TEXT
 &CJ::err("unknown BQS");
 }
 
-return ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText);
+return ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText,$files);
 }
 
 
@@ -162,9 +177,8 @@ sub SERIAL_DEPLOY_RUN{
 my $self = shift;
         
 # create directories etc.
-my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
+my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText,$files)  = run_common($self);
 
-    
 # for python only; check conda exists on the cluster and setup env
 $self->setup_conda_venv($pid,$ssh) if($program_type eq 'python');
     
@@ -193,8 +207,6 @@ $master_script = &CJ::Scripts::make_master_script($master_script,$self->{runflag
 my $local_master_path="$local_sep_Dir/master.sh";
 &CJ::writeFile($local_master_path, $master_script);
 
-    
-    
     
 
 #==============================================
@@ -235,11 +247,9 @@ $cmd = "rsync -avz $ssh->{account}:$qsubfilepath  $info_dir";
 &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "deploy");
 
 
-
-
-
-
 my $job_id="";
+    
+
 if($self->{runflag} eq "run"){
     # read run info
     my $local_qsub_info_file = "$info_dir/"."qsub.info";
@@ -286,8 +296,9 @@ my $runinfo={
     message       => $self->{message},
     submit_defaults => $self->{'submit_defaults'},
     alloc         => $self->{'qsub_extra'},
-};	
-
+    files         => $files,
+};
+    
 # add_record locally
 &CJ::add_record($runinfo);
 # write runinfo to FireBaee as well
@@ -306,7 +317,7 @@ sub PAR_DEPLOY_RUN{
 my $self = shift;
 
 # create directories etc.
-my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
+my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText,$files)  = run_common($self);
 
     
     
@@ -471,6 +482,8 @@ my $runinfo={
     message       => $self->{message},
     submit_defaults => $self->{'submit_defaults'},
     alloc         => $self->{'qsub_extra'},
+    files         => $files,
+
 };
 
 
@@ -532,7 +545,7 @@ sub SLURM_ARRAY_DEPLOY_RUN{
 my $self = shift;
 
 # create directories etc.
-my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
+my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText,$files)  = run_common($self);
 
     
 
@@ -707,6 +720,8 @@ program       => $self->{program},
 message       => $self->{message},
 submit_defaults => $self->{'submit_defaults'},
 alloc         => $self->{'qsub_extra'},
+files         => $files,
+
 };
 
 
