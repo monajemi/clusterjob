@@ -1994,8 +1994,8 @@ sub parse_ssh_config{
     $ssh_config->{'matlib'}          = $remote_matlab_lib;
     $ssh_config->{'mat'}             = $remote_matlab_module;
     $ssh_config->{'user'}            = $user;
-    $ssh_config->{'python'}          = $remote_python_module;
-    $ssh_config->{'pythonlib'}       = $remote_python_lib;
+    $ssh_config->{'py'}              = $remote_python_module;
+    $ssh_config->{'pylib'}           = $remote_python_lib;
     
     return $ssh_config;
 
