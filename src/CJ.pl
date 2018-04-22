@@ -149,7 +149,11 @@ my $spec = <<'EOSPEC';
      sync 	                                          force sync [nocase]
 		                				{defer{&CJ::sync_forced($sync_status)}}								
      who 	                                          prints out user and agent info [nocase]
-     update						  updates installation to the most recent commit on GitHub [nocase]
+     update    [<branch>]						  updates installation to the most recent commit on GitHub [nocase]
+                                                    {defer{
+                                                        &CJ::add_cmd($cmdline);
+                                                        update_install($branch);
+                                                    }}
      config[-update]   [<cluster:/\S+/> [<keyval>...]]	  list|update cluster configuration
                                                 {defer{
                                                     &CJ::add_cmd($cmdline);
@@ -240,12 +244,10 @@ if($opts->{'connect'}){
     &CJ::connect2cluster($opts->{'connect'}, $verbose);
 }
 
-if($opts->{'update'}){
-    &CJ::add_cmd($cmdline);
-    update_install();
-}
-
 sub update_install {
+    
+    my ($branch) = @_;
+    $branch="master" if ( ! defined($branch) || $branch eq "" );
     
 	my $star_line = '*' x length($install_dir);
     # make sure s/he really wants a deletion
@@ -255,13 +257,13 @@ sub update_install {
 	CJ::message("$star_line",1);
 	CJ::message("The newest version may not be compatible with your old data structure",1);
 	CJ::message("It is recommended that you backup your old installation before this action.",1);
-    CJ::yesno("Are you sure you want to update your installation? Y/N",1);
+    CJ::yesno("Are you sure you want to update your installation to the latest commit on branch $branch ? Y/N",1);
     
     CJ::message("Updating CJ installation...");
 	my $date = CJ::date();
 	my $datetag = $date->{year}-$date->{month}-$date->{day};
 	# update installation
-	my $cmd = "cd /tmp && curl -sL  https://github.com/monajemi/clusterjob/tarball/master | tar -zx ";
+	my $cmd = "cd /tmp && curl -sL  https://github.com/monajemi/clusterjob/tarball/$branch | tar -zx ";
 	   $cmd .= "&& mv monajemi-clusterjob-* clusterjob-$datetag";
 	   $cmd .= "&& cp -r /tmp/clusterjob-$datetag/src $install_dir/";
 	   $cmd .= "&& cp -r /tmp/clusterjob-$datetag/example $install_dir/";
