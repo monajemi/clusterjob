@@ -149,7 +149,7 @@ my $spec = <<'EOSPEC';
      sync 	                                          force sync [nocase]
 		                				{defer{&CJ::sync_forced($sync_status)}}								
      who 	                                          prints out user and agent info [nocase]
-     update    [<branch>]						  updates installation to the most recent commit on GitHub [nocase]
+     update    [<branch>]				  updates installation to the most recent commit of specfied branch (default: master) on GitHub [nocase]
                                                     {defer{
                                                         &CJ::add_cmd($cmdline);
                                                         update_install($branch);

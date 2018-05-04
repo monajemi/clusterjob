@@ -466,8 +466,6 @@ sub get_results{
     &CJ::build_cj_confirmation($info->{pid}, $confirm_path);
 
     &CJ::message("Please see your last results in $get_tmp_dir/$info->{pid}");
-    
-    
     exit 0;
 }
 

@@ -254,28 +254,29 @@ sub write2firebase
 	my $epoch = $runinfo->{date}->{epoch};
 	my $pid_head = substr($pid,0,8);  #short_pid
 	
-	
+    
+    my $data={  "timestamp"  => $timestamp,
+                "short_pid"  => $pid_head ,
+                "info"       => $runinfo
+    };
+
 	if($exists){
 		# This is a change
 		# here timestamp may be different than epoch; 
 		# for example when we clean $timestamp is going 
 		# to be the time of cleaning
-		my $result   = $firebase->patch("users/${CJID}/pid_list/${pid}",{"timestamp" => $timestamp, "short_pid" => $pid_head , "info" => $runinfo});
-
+		my $result   = $firebase->patch("users/${CJID}/pid_list/${pid}",$data);
 		# Update the push timestamp 
-	    $result = $firebase->patch("users/${CJID}/agents/$AgentID", {"push_timestamp"=> $timestamp} ); 
-		
+	    $result = $firebase->patch("users/${CJID}/agents/$AgentID", {"push_timestamp"=> $timestamp} );
 	}else{
         print Dumper $runinfo;
 		# This is either new or hasn't been pushed before
 		my $last = $firebase->get("users/${CJID}/last_instance");
 		my $remote_last_epoch = defined($last) ? $last->{"epoch"} : 0;
 		$firebase->patch("users/${CJID}/last_instance", {"pid" => $pid, "epoch"=> $epoch} ) if ( $epoch >  $remote_last_epoch ); 
-		# Add last instance for this agentm and update push ts. 
-	    my $result = $firebase->patch("users/${CJID}/agents/$AgentID", {"last_instance" => {"pid" => $pid, "epoch"=> $epoch}, "push_timestamp"=> $epoch} ); 		
-		$result   = $firebase->patch("users/${CJID}/pid_list/${pid}",{"timestamp" => $timestamp, "short_pid" => $pid_head , "info" => $runinfo});
-		
-		
+		# Add last instance for this agent and update push ts.
+	    my $result = $firebase->patch("users/${CJID}/agents/$AgentID", {"last_instance" => {"pid" => $pid, "epoch"=> $epoch}, "push_timestamp"=> $epoch} );
+		$result   = $firebase->patch("users/${CJID}/pid_list/${pid}", $data);
 	}
 	
 	# Inform All other agents of this change (SyncReq) 
