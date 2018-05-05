@@ -147,7 +147,10 @@ my $spec = <<'EOSPEC';
      avail         <tag> 		                  list available resources <tag> = cluster|app
 								  { defer{ &CJ::avail($tag) } }
      sync 	                                          force sync [nocase]
-		                				{defer{&CJ::sync_forced($sync_status)}}								
+		                				{defer{&CJ::sync_forced($sync_status)}}	
+     viz                   	                          opens interactive vizualization tool
+								{defer{&CJ::add_cmd($cmdline);
+								       &Viz::open()}}				
      who 	                                          prints out user and agent info [nocase]
      update    [<branch>]				  updates installation to the most recent commit of specfied branch (default: master) on GitHub [nocase]
                                                     {defer{
