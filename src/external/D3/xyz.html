@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="X-UA-Compatible" content="chrome=1" />
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+<meta http-equiv="Access-Control-Allow-Origin" content="*"/>
+<link type="text/css" rel="stylesheet" href="scatter-matrix/demo.css">
+<link type="text/css" rel="stylesheet" href="scatter-matrix/scatter-matrix.css">
+
+<title>ClusterJob Visualization Tool</title>
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script src="scatter-matrix/scatter-matrix.js"></script>
+
+</head>
+
+<body>
+    <header>
+        <h1>ClusterJob Visualization Tool</h1>
+    </header>
+</body>
+</html>
+
+
+
+
+
+
+<script>
+ 
+d3.select("html")
+.style("height","100%")
+
+d3.select("body")
+.style("height","100%")
+.style("font", "12px sans-serif")
+// select file
+.append("input")
+.attr("type", "file")
+.attr("accept", ".csv")
+.style("margin", "5px")
+.on("change",
+    function() {
+    var file = d3.event.target.files[0];
+    if (file) {
+    var reader = new FileReader();
+    reader.onloadend = function(evt) {
+    var dataUrl = evt.target.result;
+        previewCSVurl(dataUrl);
+    };
+    reader.readAsDataURL(file);
+    }
+    }
+    )
+    
+    d3.select("body")
+    .append("div")
+    .attr("id", "preview")
+    .style("margin", "5px")
+
+
+
+var rowToHtml = function( row ) {
+        var result = "";
+        for (key in row) {
+            result += key + ": " + row[key] + "<br/>"
+        }
+        return result;
+}
+
+var names2html = function( row ){
+    var result = "";
+    var count = 0;
+    for (key in row){
+        count += 1
+        result += count + ": " + key + "<br/>"
+    }
+    return result;
+}
+
+
+var previewCSVurl = function( csvUrl ) {
+    var sm = new ScatterMatrix(csvUrl, undefined, undefined, "#area1");
+    sm.render();
+    // d3.csv( csvUrl, function( rows ) {
+    //        d3.select("div#preview").html(
+    //                                      "<b>Names:</b><br/>" + names2html(rows[0] )
+    //                                      );
+    //        })
+}
+
+// Initialize with csv file from server
+//previewCSVurl()
+</script>
+
+
+
+
+<!--<script>-->
+<!--// Check for the various File API support.-->
+<!--if (window.File && window.FileReader && window.FileList && window.Blob) {-->
+<!--// Great success! All the File APIs are supported.-->
+<!--} else {-->
+<!--alert('The File APIs are not fully supported in this browser.');-->
+<!--}-->
+<!--</script>-->
+<!---->
+<!--<input type="file" id="files" name="files[]" multiple value="/Users/hatef/github_projects/CJ/clusterjob/src/external/D3"  />-->
+<!--<output id="list"></output>-->
+<!---->
+<!--<script>-->
+<!--    function handleFileSelect(evt) {-->
+<!--        var files = evt.target.files; // FileList object-->
+<!--        -->
+<!--        // files is a FileList of File objects. List some properties.-->
+<!--        var output = [];-->
+<!--        for (var i = 0, f; f = files[i]; i++) {-->
+<!--            output.push('<li><strong>', escape(f.name), '</strong> (', f.type || 'n/a', ') - ',-->
+<!--                        f.size, ' bytes, last modified: ',-->
+<!--                        f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a',-->
+<!--                        '</li>');-->
+<!--        }-->
+<!--        document.getElementById('list').innerHTML = '<ul>' + output.join('') + '</ul>';-->
+<!--    }-->
+<!---->
+<!--document.getElementById('files').addEventListener('change', handleFileSelect, false);-->
+<!--</script>-->
+
+
+
+
+
+
+
+
+
+
+
