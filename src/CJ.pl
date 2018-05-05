@@ -18,6 +18,7 @@ use CJ::Matlab;  # Contains Matlab related subs
 use CJ::Get;     # Contains Get related subs
 use CJ::Scripts; # Contains shell scripts
 use CJ::Run;     # Contains run object and methods
+use CJ::Viz;     # Contains visualization methods
 use Getopt::Declare;
 use Data::Dumper;
 use Term::ReadLine;
@@ -25,7 +26,7 @@ use JSON::PP;
 #use Term::ANSIColor qw(:constants); # for changing terminal text colors
 #use Term::ReadKey;
 
-use vars qw( $submit_defaults $qSubmitDefault $sync_status $message $dep_folder $verbose $log_script $text_header_lines $show_tag $log_tag $force_tag $qsub_extra $cmdline);  # options
+use vars qw($viz_type $viz_file_type $viz_doc_type $submit_defaults $qSubmitDefault $sync_status $message $dep_folder $verbose $log_script $text_header_lines $show_tag $log_tag $force_tag $qsub_extra $cmdline);  # options
 
 
 $::VERSION = &CJ::version_info();
@@ -63,6 +64,12 @@ $log_tag           = "all";
 $log_script        = undef;
 $sync_status 	   = 0;
 $qSubmitDefault    = 1;
+# viz params
+$viz_type      = '2d';
+$viz_doc_type      = 'html';
+$viz_file_type     = 'csv';
+
+
 
 #=========================================
 #        CJ SUMBMIT DEFAULTS
@@ -120,6 +127,12 @@ my $spec = <<'EOSPEC';
                                                                {$log_tag="showclean";}
      --err[or]	                                          error tag for show [nocase] [requires: show]
                                                               {$show_tag="error"}
+     --file-type [=]  <type>	                          specifies file type for viz (csv|...) [requires: viz]
+                                                            {$viz_file_type=$type;}
+     --viz-type  [=]  <type>	                          specifies visualization type for viz (2d|xyz) [requires: viz]
+                                                            {$viz_type=$type;}
+     --doc-type  [=]  <type>	                          specifies doc type for viz (html|...) [requires: viz]
+                                                            {$viz_doc_type=$type;}
      --no-submit-default	                          turns off default submit parameters [nocase]
                                                               {$qSubmitDefault=0}
      --json      	                                  json tag for show [nocase]  [requires: show]
@@ -146,17 +159,6 @@ my $spec = <<'EOSPEC';
   	                                                          {$submit_defaults->{'runtime'}=$r_time}
      avail         <tag> 		                  list available resources <tag> = cluster|app
 								  { defer{ &CJ::avail($tag) } }
-     sync 	                                          force sync [nocase]
-		                				{defer{&CJ::sync_forced($sync_status)}}	
-     viz                   	                          opens interactive vizualization tool
-								{defer{&CJ::add_cmd($cmdline);
-								       &Viz::open()}}				
-     who 	                                          prints out user and agent info [nocase]
-     update    [<branch>]				  updates installation to the most recent commit of specfied branch (default: master) on GitHub [nocase]
-                                                    {defer{
-                                                        &CJ::add_cmd($cmdline);
-                                                        update_install($branch);
-                                                    }}
      config[-update]   [<cluster:/\S+/> [<keyval>...]]	  list|update cluster configuration
                                                 {defer{
                                                     &CJ::add_cmd($cmdline);
@@ -167,7 +169,6 @@ my $spec = <<'EOSPEC';
                                                     }
                                                     }
                                                 }
-
      connect        <cluster:/\S+/>	                  connect to a cluster
      log            [<argin>]	                          log  -n|all|pid [nocase]
                                                                 {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin,$log_tag,$log_script) }}
@@ -228,6 +229,15 @@ my $spec = <<'EOSPEC';
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::get_print_state($pid,$counter) }}
      summary       <cluster>	                          gives a summary of the number of jobs on particlur cluster with their states [nocase]
                                                              {defer{&CJ::add_cmd($cmdline); &CJ::CheckConnection($cluster);&CJ::get_summary($cluster)}}
+     sync 	                                          force sync [nocase]
+                                                            {defer{&CJ::sync_forced($sync_status)}}
+     update        [<branch>]				  updates installation to specfied branch (default: master) on GitHub [nocase]
+                                                                {defer{
+                                                                    &CJ::add_cmd($cmdline);
+                                                                    update_install($branch);
+                                                                }}
+     viz                  	                          opens interactive vizualization tool
+     who 	                                          prints out user and agent info [nocase]
      @<cmd_num:+i>	                                  re-executes a previous command avaiable in command history [nocase]
                                                                {defer{&CJ::reexecute_cmd($cmd_num,$verbose) }}
      @$	                                                  re-executes the last command avaiable in command history [nocase]
@@ -246,6 +256,23 @@ if($opts->{'connect'}){
     CJ::message("connecting to $opts->{'connect'}");
     &CJ::connect2cluster($opts->{'connect'}, $verbose);
 }
+
+
+
+
+
+
+if($opts->{'viz'}){
+    &CJ::add_cmd($cmdline);
+    my $viz = CJ::Viz->new($viz_file_type,$viz_type,$viz_doc_type);
+    $viz->start()
+}
+
+
+
+
+
+
 
 sub update_install {
     
