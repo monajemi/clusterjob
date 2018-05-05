@@ -1,0 +1,163 @@
+<!--<!DOCTYPE html>-->
+<!--<meta charset="utf-8">-->
+<!--<style>-->
+<!--.chart div {-->
+<!--  font: 10px sans-serif;-->
+<!--  background-color: steelblue;-->
+<!--  text-align: right;-->
+<!--  padding: 3px;-->
+<!--  margin: 1px;-->
+<!--  color: white;-->
+<!--}-->
+<!--</style>-->
+<!---->
+<!---->
+<!--<header>-->
+<!--    <h1>ClusterJob</h1>-->
+<!--</header>-->
+<!---->
+<!---->
+<!--<div class="chart"></div>-->
+<!--<script src="https://d3js.org/d3.v5.min.js"></script>-->
+<!--<script>-->
+<!--var data = [4, 8, 15, 16, 23, 42];-->
+<!---->
+<!--var x = d3.scaleLinear()-->
+<!--    .domain([0, d3.max(data)])-->
+<!--    .range([0, 420]);-->
+<!---->
+<!--d3.select(".chart")-->
+<!--  .selectAll("div")-->
+<!--    .data(data)-->
+<!--  .enter().append("div")-->
+<!--    .style("width", function(d) { return x(d) + "px"; })-->
+<!--    .text(function(d) { return d; });-->
+<!--</script>-->
+<!---->
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="X-UA-Compatible" content="chrome=1" />
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+<meta http-equiv="Access-Control-Allow-Origin" content="*"/>
+<title>ClusterJob Visualization Tool</title>
+<script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+</head>
+
+<body>
+    <header>
+        <h1>ClusterJob Visualization Tool</h1>
+    </header>
+</body>
+</html>
+
+<script>
+    var rowToHtml = function( row ) {
+        var result = "";
+        for (key in row) {
+            result += key + ": " + row[key] + "<br/>"
+        }
+        return result;
+    }
+
+var names2html = function( row ){
+    var result = "";
+    var count = 0;
+    for (key in row){
+        count += 1
+        result += count + ": " + key + "<br/>"
+    }
+    return result;
+}
+
+var previewCSVurl = function( csvUrl ) {
+    d3.csv( csvUrl, function( rows ) {
+           d3.select("div#preview").html(
+                                         "<b>Names:</b><br/>" + names2html(rows[0] )
+                                         );
+           })
+}
+
+d3.select("html")
+.style("height","100%")
+
+d3.select("body")
+.style("height","100%")
+.style("font", "12px sans-serif")
+// select file
+.append("input")
+.attr("type", "file")
+.attr("accept", ".csv")
+.style("margin", "5px")
+.on("change",
+    function() {
+    var file = d3.event.target.files[0];
+    if (file) {
+    var reader = new FileReader();
+    reader.onloadend = function(evt) {
+    var dataUrl = evt.target.result;
+    previewCSVurl(dataUrl);
+    };
+    reader.readAsDataURL(file);
+    }
+    }
+    )
+    
+    d3.select("body")
+    .append("div")
+    .attr("id", "preview")
+    .style("margin", "5px")
+    
+// Initialize with csv file from server
+//previewCSVurl()
+</script>
+
+
+
+
+<!--<script>-->
+<!--// Check for the various File API support.-->
+<!--if (window.File && window.FileReader && window.FileList && window.Blob) {-->
+<!--// Great success! All the File APIs are supported.-->
+<!--} else {-->
+<!--alert('The File APIs are not fully supported in this browser.');-->
+<!--}-->
+<!--</script>-->
+<!---->
+<!--<input type="file" id="files" name="files[]" multiple value="/Users/hatef/github_projects/CJ/clusterjob/src/external/D3"  />-->
+<!--<output id="list"></output>-->
+<!---->
+<!--<script>-->
+<!--    function handleFileSelect(evt) {-->
+<!--        var files = evt.target.files; // FileList object-->
+<!--        -->
+<!--        // files is a FileList of File objects. List some properties.-->
+<!--        var output = [];-->
+<!--        for (var i = 0, f; f = files[i]; i++) {-->
+<!--            output.push('<li><strong>', escape(f.name), '</strong> (', f.type || 'n/a', ') - ',-->
+<!--                        f.size, ' bytes, last modified: ',-->
+<!--                        f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a',-->
+<!--                        '</li>');-->
+<!--        }-->
+<!--        document.getElementById('list').innerHTML = '<ul>' + output.join('') + '</ul>';-->
+<!--    }-->
+<!---->
+<!--document.getElementById('files').addEventListener('change', handleFileSelect, false);-->
+<!--</script>-->
+
+
+
+
+
+
+
+
+
+
+
