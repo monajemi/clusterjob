@@ -79,7 +79,8 @@ var names2html = function( row ){
 
 
 var previewCSVurl = function( csvUrl ) {
-    var sm = new ScatterMatrix(csvUrl, undefined, undefined, "#area1");
+    //document.write(csvUrl);
+    var sm = new ScatterMatrix(csvUrl, undefined, undefined, "#preview");
     sm.render();
     // d3.csv( csvUrl, function( rows ) {
     //        d3.select("div#preview").html(

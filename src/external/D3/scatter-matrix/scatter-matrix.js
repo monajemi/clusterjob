@@ -1,6 +1,9 @@
-// Heavily influenced by Mike Bostock's Scatter Matrix example
+// Heavily inspired by Mike Bostock's Scatter Matrix example
 // http://mbostock.github.io/d3/talk/20111116/iris-splom.html
 //
+// Contributor: Vardan Papyan
+// Date: May 5 2018
+
 
 ScatterMatrix = function(url, data, dom_id, el) {
   this.__url = url;
@@ -28,11 +31,10 @@ ScatterMatrix.prototype.onData = function(cb) {
     numeric_variables.forEach(function(d) {
       out[d] = +row[d];
     });
-
     return  out;
   }
 
-  d3.csv(self.__url, type, function(data) {
+    d3.csv(self.__url, type, function(data) {
     self.__data = data;
     cb();
   });
@@ -47,6 +49,7 @@ ScatterMatrix.prototype._str_to_numeric_key = function(k) {
 
 ScatterMatrix.prototype.render = function () {
   var self = this;
+
 
   var container = d3.select(this.__dom_id).append('div')
                     .attr('class', 'scatter-matrix-container');
@@ -67,7 +70,6 @@ ScatterMatrix.prototype.render = function () {
     var varX, varY, varC;
 
     // Add controls on the left
-
     var size_control = control.append('div').attr('class', 'scatter-matrix-size-control');
     var variable_text = control.append('div').attr('class', 'scatter-matrix-text');
     var variable_control = control.append('div').attr('class', 'scatter-matrix-variable-control');
