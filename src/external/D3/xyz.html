@@ -4,8 +4,14 @@
 <meta http-equiv="X-UA-Compatible" content="chrome=1" />
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
 <meta http-equiv="Access-Control-Allow-Origin" content="*"/>
-<link type="text/css" rel="stylesheet" href="scatter-matrix/demo.css">
-<link type="text/css" rel="stylesheet" href="scatter-matrix/scatter-matrix.css">
+
+
+
+<link type="text/css" rel="stylesheet" href="stylesheets/demo.css">
+<link type="text/css" rel="stylesheet" href="stylesheets/scatter-matrix.css">
+<link type="text/css" rel="stylesheet" href="stylesheets/cj.css">
+
+
 
 <title>ClusterJob Visualization Tool</title>
 <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
@@ -13,10 +19,52 @@
 
 </head>
 
+
 <body>
-    <header>
-        <h1>ClusterJob Visualization Tool</h1>
+    
+    <header class="viz-header" role="banner">
+        
+<!--        <div class="word-logo">-->
+<!--        <svg aria-hidden="true" version="1.0" xmlns="http://www.w3.org/2000/svg"-->
+<!--            width="32" height="32" viewBox="0 0 32 32"-->
+<!--            preserveAspectRatio="none">-->
+<!--            <g transform="translate(0.000000,32.000000) scale(.0100000,-0.0100000)"-->
+<!--                fill="#000000" stroke="none">-->
+<!--                <path d="M1405 3159 c-340 -35 -686 -200 -930 -444 -216 -215 -353 -454 -425-->
+<!--                    -739 -113 -445 -24 -928 238 -1296 98 -138 274 -310 406 -398 262 -175 515-->
+<!--                    -257 827 -269 296 -11 537 43 800 179 277 143 531 404 674 693 112 226 165-->
+<!--                    451 165 703 0 207 -33 388 -106 575 -136 353 -413 658 -754 831 -140 71 -208-->
+<!--                    96 -355 132 -169 40 -356 52 -540 33z m45 -989 l0 -130 -436 0 c-279 0 -442-->
+<!--                    -4 -455 -10 -47 -26 -49 -45 -49 -445 0 -399 3 -430 48 -454 14 -7 163 -11-->
+<!--                    456 -11 l436 0 0 -130 0 -131 -467 3 -468 3 -50 27 c-67 35 -118 90 -152 163-->
+<!--                    l-28 60 0 460 c0 457 0 460 23 517 37 92 120 174 202 199 14 4 231 8 483 8-->
+<!--                    l457 1 0 -130z m1308 -457 c-3 -587 -3 -588 -26 -645 -29 -72 -95 -146 -158-->
+<!--                    -178 l-49 -25 -477 -3 -478 -3 0 131 0 130 450 0 451 0 24 26 25 27 0 563 0-->
+<!--                    564 120 0 121 0 -3 -587z m-451 284 c4 -7 26 -17 47 -22 39 -10 49 -21 91-->
+<!--                    -102 4 -7 -3 -28 -15 -48 -17 -27 -28 -35 -50 -35 -16 0 -55 -10 -87 -21 -68-->
+<!--                    -25 -127 -82 -175 -165 -26 -46 -41 -61 -82 -80 -28 -13 -57 -24 -64 -24 -15-->
+<!--                    0 -8 -51 15 -115 26 -70 26 -88 3 -118 -28 -35 -124 -107 -144 -107 -41 0 -15-->
+<!--                    53 62 123 29 27 28 35 -14 119 l-36 71 -40 -39 c-22 -22 -53 -63 -70 -91 -34-->
+<!--                    -61 -71 -95 -133 -122 -28 -12 -49 -31 -60 -51 -21 -41 -39 -34 -43 19 -4 51-->
+<!--                    14 76 62 85 44 8 81 50 110 124 14 35 34 78 46 97 l22 35 -32 0 c-40 0 -73 17-->
+<!--                    -140 73 -53 44 -54 45 -65 24 -6 -12 -39 -44 -73 -71 l-62 -50 24 -25 c29 -30-->
+<!--                    48 -75 40 -95 -3 -8 8 -30 25 -49 34 -38 39 -62 15 -71 -24 -9 -92 31 -109 64-->
+<!--                    -8 16 -43 59 -76 95 -52 55 -60 69 -55 90 5 18 1 34 -14 52 -25 32 -25 41 2-->
+<!--                    70 l22 23 -25 17 c-34 24 -95 85 -101 103 -9 26 -54 -26 -102 -116 -102 -192-->
+<!--                    -152 -240 -279 -269 -40 -9 -93 -23 -119 -31 -53 -17 -88 -7 -88 25 0 34 33-->
+<!--                    51 123 60 138 14 192 55 272 210 83 159 246 286 391 305 65 8 177 -8 322 -45-->
+<!--                    236 -62 358 -58 502 14 46 23 92 50 102 60 21 20 44 22 55 4z"></path>-->
+<!--            </g>-->
+<!--        </svg>-->
+<!---->
+<!--        </div>-->
+
+            <h1>ClusterJob Visualization Tool</h1>
     </header>
+
+
+
+
 </body>
 </html>
 
@@ -30,7 +78,7 @@
 d3.select("html")
 .style("height","100%")
 
-d3.select("body")
+d3.selectAll("body")
 .style("height","100%")
 .style("font", "12px sans-serif")
 // select file
