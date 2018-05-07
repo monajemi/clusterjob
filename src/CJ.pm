@@ -1038,7 +1038,7 @@ sub show
     my ($pid, $num, $file, $show_tag) = @_;
     	
     my $info;
-    if( (!defined $pid) || ($pid eq "") ){
+    if( (!defined $pid) || ($pid eq "") || ($pid eq '$') ){
         #read last_instance.info;
         $info = &CJ::retrieve_package_info();
         $pid = $info->{'pid'};
