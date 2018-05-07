@@ -2014,7 +2014,7 @@ sub retrieve_package_info{
 		
     my $records = &CJ::read_record($pids);  # pids can be a scalar or a array ref
 
-		
+    
 	my $info_hash;   
 	
 	foreach my $pid ( @$pids ){
@@ -2657,7 +2657,7 @@ sub read_record{
 		$regex .= join "|", @pids;
 		$regex .= ")";
 		
-		#print $regex . "\n";
+        #print $regex . "\n";
 		
 	    my $remaining  = scalar @pids;		
 		my $record_hash;
@@ -2665,8 +2665,14 @@ sub read_record{
 		my $i=$#records;
 		while ($i ge 0 & $remaining gt 0 ) {
 			my $record  = $records[$i];
-		  	#print $record . "\n";
-		  	if ($record =~ m/$regex/){
+            
+            # make sure that we don't pick up PIDs in messages
+            my $record_json = decode_json $record;
+            
+            #print Dumper $record_json->{pid} . "\n";
+
+            
+		  	if ( $record_json->{pid} =~ m/$regex/){
 		  		my $matched_pid = $1;
 	  		    $record_hash->{$matched_pid} = $record;  # $1 is the captured PID
 	  		    # delete this PID from the array
