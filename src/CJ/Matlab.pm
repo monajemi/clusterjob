@@ -285,9 +285,6 @@ sub read_matlab_index_set
             my @range = ($low..$high);
             $range = join(',',@range);
                 
-                print Dumper @vals;
-                die;
-                
             }
             
         }elsif($rightarray[1] =~ /\s*(\D+)\s*/) {
