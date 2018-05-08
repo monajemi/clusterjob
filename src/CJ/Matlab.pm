@@ -273,17 +273,20 @@ sub read_matlab_index_set
             #extract the range
             my @this_array    = split(/\s*=\s*/,$this_line);
             
-            
             my $numbers;
             if($this_array[1] =~ /\[\s*([^:]+?)\s*\]/){
             ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
-            my $floating_pattern = "[-+]?[0-9]*[\.]?[0-9]+(?:[eE][-+]?[0-9]+)?";
-            my $fractional_pattern = "(?:${floating_pattern}\/)?${floating_pattern}";
+            my $float_pattern = "[-+]?[0-9]*[\.]?[0-9]+(?:[eE][-+]?[0-9]+)?";
+            my $power_pattern = "(?:${float_pattern}[\\^])?${float_pattern}";
+            my $fractional_pattern = "(?:${power_pattern}\/)?${power_pattern}";
             my @vals = $numbers =~ /[\;\,]?($fractional_pattern)[\;\,]?/g;
                 
             my $high = 1+$#vals;
             my @range = ($low..$high);
             $range = join(',',@range);
+                
+                print Dumper @vals;
+                die;
                 
             }
             

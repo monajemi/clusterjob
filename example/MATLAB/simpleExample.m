@@ -3,7 +3,10 @@
 
 file = 'results.txt';
 
-for i = 1:2
+
+n_list = [2^5]
+
+for i = 1:length(n_list)
    for j = 1:4
 	% write to a text file for testing reduce 	        
 	fid = fopen(file,'at');   
