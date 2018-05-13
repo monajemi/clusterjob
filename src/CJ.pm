@@ -226,6 +226,9 @@ sub write2firebase
 {
 	my ($pid, $runinfo, $timestamp, $inform) = @_;
 	
+    
+    $timestamp = 0+$timestamp;  # treat time stamp as number for JSON. Has to be explicit. Otherwise you get qouted stuff in Firebase
+    
 	return if not defined($CJKEY);	
 	
 	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);

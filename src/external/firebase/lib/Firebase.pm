@@ -85,6 +85,7 @@ sub put {
 
 sub patch {
     my ($self, $path, $params) = @_;
+    
     my $uri = $self->create_uri($path);
     my $request = POST($uri->as_string, Content_Type => 'form-data', Content => to_json($params));
     $request->method('PATCH'); # because HTTP::Request::Common treats PUT as GET rather than POST
