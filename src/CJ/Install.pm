@@ -31,6 +31,36 @@ sub new {
 
 
 
+
+
+sub rstats{
+
+    my $self=shift;
+    my ($force_tag) = @_;
+    
+    
+my $rversion = 'R-3.5.0.tar.gz'
+my $distro  ='https://cloud.r-project.org/src/base/R-3/'
+my $installpath = "\$HOME/$self->{path}/R/";
+    
+    
+    
+    
+    
+    
+    
+    
+}
+
+
+
+
+
+
+
+
+
+
 sub composer{
     my $self = shift;
     my($force_tag) = @_;

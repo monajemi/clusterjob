@@ -233,18 +233,6 @@ CJ::writeFile("$self->{path}/$rp_program", $rp_program_script);
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 sub findIdxTagRange
 {
 	my $self = shift;
