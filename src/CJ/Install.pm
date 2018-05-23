@@ -39,9 +39,79 @@ sub rstats{
     my ($force_tag) = @_;
     
     
-my $rversion = 'R-3.5.0.tar.gz'
-my $distro  ='https://cloud.r-project.org/src/base/R-3/'
+my $R = 'R-3.5.0'
+my $distro  ='https://cloud.r-project.org/src/base/R-3'
 my $installpath = "\$HOME/$self->{path}/R/";
+    
+
+# -------------------
+my $install_bash_script  =<<'BASH';
+#!/bin/bash -l
+
+
+if [ -n "$(which R)" ]; then
+echo "R is already installed in $(which R)";
+exit 0;
+
+else
+    START=`date +%s`
+    
+    echo "GETTING R from <DISTRO>";
+    if [ -f <R>.tar.gz ]; then rm -f <R>.tar.gz; fi;
+    wget "<DISTRO>/<R>.tar.gz"
+
+    echo "INSTALLING R";
+    if [ -d <INSTALLPATH> ]; then
+        printf "ERROR: directory <INSTALLPATH> exists. Aborting install. \
+        \nYou may use 'cj install -f ...' to remove this directory for a fresh install\n";
+        exit 1;
+    fi
+
+    
+    
+    
+bash <MINICONDA>.sh -b -p <INSTALLPATH>;
+
+rm <MINICONDA>.sh
+echo 'export PATH="<INSTALLPATH>/bin:$PATH" ' >> $HOME/.bashrc
+echo 'export PATH="<INSTALLPATH>/bin:$PATH" ' >> $HOME/.bash_profile
+
+
+if [ -f "$HOME/.bashrc" ]; then source $HOME/.bashrc; fi
+if [ -f "$HOME/.bash_profile" ] ; then source $HOME/.bash_profile; fi
+
+conda update --yes conda
+
+if [ $? -eq 0 ]; then
+END=`date +%s`;
+RUNTIME=$((END-START));
+echo "INSTALL SUCCESSFUL ($RUNTIME seconds)"
+exit 0;
+else
+    echo "****INSTALL FAILED***** $? "
+    exit 1
+    fi
+    
+    fi
+    
+BASH
+    
+    $install_bash_script =~ s|<DISTRO>|$distro|g;
+    $install_bash_script =~ s|<MINICONDA>|$miniconda|g;
+    $install_bash_script =~ s|<INSTALLPATH>|$installpath|g;
+# -----------------
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     
