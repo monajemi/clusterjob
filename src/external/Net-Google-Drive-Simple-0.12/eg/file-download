@@ -1,0 +1,25 @@
+#!/usr/local/bin/perl -w
+use strict;
+use Net::Google::Drive::Simple;
+use Log::Log4perl qw(:easy);
+use Sysadm::Install qw( ask );
+use File::Basename;
+use Getopt::Std;
+use Pod::Usage;
+use Data::Dumper;
+use Log::Log4perl qw(:easy);
+Log::Log4perl->easy_init($DEBUG);
+
+my $gd = Net::Google::Drive::Simple->new();
+
+my $files = $gd->files( { maxResults => 20 }, { page => 0 } );
+
+for my $file ( @$files ) {
+    my $name = $file->originalFilename();
+    my $q = "$name ([y]/n)";
+    my $yes = ask $q, "y";
+    next if $yes ne "y";
+    print "Downloading $name\n";
+    my $c = $gd->download( $file, $name );
+    print "Stored as $name\n";
+}

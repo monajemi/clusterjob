@@ -5,28 +5,28 @@ use strict;
 use warnings;
 use CJ::CJVars;
 use CJ::Sync;
+use CJ::Install;
 use Term::ReadLine;
 use Time::Local;
 use Time::Piece;
 use JSON::PP;
 use Data::Dumper;
 use Data::UUID;
+use Getopt::Declare;
 use feature 'say';
 
 
 sub version_info{
-my $version_script="\n\n          This is ClusterJob (CJ) version V0.0.3";
-$version_script .=  "\n          Copyright (c) 2015 Hatef Monajemi (monajemi\@stanford.edu)";
-$version_script .="\n          CJ may be copied only under the terms and conditions of";
-$version_script .=  "\n          the GNU General Public License, which may be found in the CJ";
-$version_script .=  "\n          source code. For more info please visit";
-$version_script .=  "\n          https://github.com/monajemi/clusterjob";
-$version_script .=  "\n          https://clusterjob.org";
+my $version_script="\n\n          This is ClusterJob (CJ) version V0.0.4";
+$version_script  .=  "\n          Copyright (c) 2015 Hatef Monajemi (monajemi\@stanford.edu)";
+$version_script  .=  "\n          CJ may be copied only under the terms and conditions of";
+$version_script  .=  "\n          the BSD 3-clause License, which may be found in the CJ";
+$version_script  .=  "\n          source code. For more info please visit";
+$version_script  .=  "\n          https://github.com/monajemi/clusterjob";
+$version_script  .=  "\n          https://clusterjob.org";
 
     return $version_script ;
 }
-
-
 
 
 
@@ -58,10 +58,17 @@ sub init{
     #my $cmd="sed -i '' 's|.*<<AgentID>>.*|$agent_line|'  $CJVars_file";
     #system($cmd);
 
+    mkdir "$CJlog_dir"; # this if for logging
+    
 	mkdir "$info_dir";
 	&CJ::writeFile($AgentIDPATH, $AgentID);  # Record the AgentID in a file. 
 	&CJ::create_info_files();
 	
+    
+    # record the md5 file of ssh_config
+    &CJ::create_ssh_config_md5();
+    
+    
 	if(defined($CJKEY)){
 		# Add this agent to the the list of agents
 		eval{
@@ -71,7 +78,7 @@ sub init{
 			if($@->message eq '401 Unauthorized'){
 			CJ::warning("Your CJKEY is invalid. Please provide a valid one and then issue 'cj sync' ");
 			}else{
-			CJ::warning("Unable to connect to CJ database");	
+			CJ::warning("Unable to connect to CJ database $@");	
 			}
 		}
 		&CJ::AutoSync() unless ($@);
@@ -81,22 +88,113 @@ sub init{
 }
 
 
-sub getProgramType{
-	my ($program) = @_;
-	
-	my ($program_name,$ext) = &CJ::remove_extension($program);
 
-	my $programType;
-	if(lc($ext) eq "m"){
-		$programType = "matlab";
-	}elsif(lc($ext) eq "r"){
-		$programType = "R";
-	}else{
-		CJ::err("Program type .$ext is not recognized");
-	}
+sub parse_qsub_extra{
+        my ($qsub_extra) = @_;
+
+    return undef if ($qsub_extra eq "");
+    
+    my $specification = q{
+    --partition [=] <partitions>	Partition
+    -p  [=] <partitions>		[ditto]
+    --qos [=] <qos>			Quality of Service
+    };
+    
+    my $args = Getopt::Declare->new($specification,$qsub_extra);   # parse a string
+    #print Dumper($args);
+return $args;
+}
+
+
+sub CheckConnection{
+    my ($cluster) = @_;
+    my $ssh      = &CJ::host($cluster);
+    my $date     = &CJ::date();
+    
+    my $check = $date->{year}.$date->{month}.$date->{min}.$date->{sec};
+    my $sshres = `ssh $ssh->{account}  'mkdir CJsshtest_$check; rm -rf CJsshtest_$check; exit;'  2>$CJlog_error`;
+    &CJ::err("Cannot connect to $ssh->{account}: $sshres") if($sshres);
+    
+    return 1;
+}
+
+
+
+
+
+sub max_slurm_arraySize{
+
+    my($ssh) = @_;
+    
+    my $max_array_size = ` ssh $ssh->{account} 'scontrol show config | grep MaxArraySize' | awk \'{print \$3}\'  `;
+    chomp($max_array_size);
+    $max_array_size = $max_array_size - 1; # last number not allowed
+    $max_array_size = int(1) unless &CJ::isnumeric($max_array_size);  # default max size allowed!
+
+    return $max_array_size;
+    
+}
+
+
+sub max_jobs_allowed{
+	my ($ssh, $qsub_extra) = @_;
+
+    
+    
+    my $account  = $ssh->{account};
+    my $bqs      = $ssh->{bqs};
+    my $user     = $ssh->{user};
+
+    my $qos;
+
+if($bqs eq "SLURM"){
+    
+    # We need to parse it and get partitions out
+    # partitions are given with flag '-p, --partition=<partition_names>'
+    
+    my $alloc = &CJ::parse_qsub_extra($qsub_extra);
+    # print defined($alloc->{'-p'}) ? $alloc->{'-p'}->{'<partitions>'} . "\n" : "nothing\n";
+    # print defined($alloc->{'--qos'}) ? $alloc->{'--qos'}->{'<qos>'} . "\n" : "nothing\n";
+    
+    if( defined($alloc->{'--qos'}->{'<qos>'})  ){
+        $qos = $alloc->{'--qos'}->{'<qos>'};
+    }elsif(  defined( $alloc->{'-p'}->{'<partitions>'})  ){
+        $qos = $alloc->{'-p'}->{'<partitions>'};
+    }elsif(  defined($alloc->{'--partition'}->{'<partitions>'})  ){
+        $qos = $alloc->{'--partition'}->{'<partitions>'};
+    }else{
+        #$qos = `ssh $account 'sacctmgr -n list assoc where user=$user format=defaultqos'`; chomp($qos);
+        $qos = `ssh $account 'sacctmgr -n list assoc where user=$user format=qos'`; chomp($qos);
+        $qos = &CJ::remove_white_space($qos);
+        &CJ::message("no SLURM partition specified. CJ is using default partition: $qos");
+    }
+    
+    $qos = (split(/,/, $qos))[0];    # if multiple get the first one
+    $qos = &CJ::remove_white_space($qos);
+}
+
+	my $max_u_jobs;
+    my $live_jobs;
+    if($bqs eq "SGE"){
+		$max_u_jobs = `ssh $account 'qconf -sconf | grep max_u_jobs' | awk \'{print \$2}\' `; chomp($max_u_jobs);
+        $live_jobs = (`ssh ${account} 'qstat | grep "\\b$user\\b"  | wc -l'  2>$CJlog_error`); chomp($live_jobs);
+
+    }elsif($bqs eq "SLURM"){
+        
+		$max_u_jobs = `ssh $account 'sacctmgr show qos -n format=Name,MaxSubmitJobs | grep "\\b$qos\\b"' | awk \'{print \$2}\' `; chomp($max_u_jobs);
+        #currently live jobs
+        $live_jobs = (`ssh ${account} 'qstat | grep "\\b$qos\\b" | grep "\\b$user\\b"  | wc -l'  2>$CJlog_error`); chomp($live_jobs);
+
+    }else{
+        &CJ::err("Unknown batch queueing system");
+    }
 	
-	return $programType;
-	
+    $live_jobs  = int(0) unless &CJ::isnumeric($live_jobs);
+    $max_u_jobs = int(3000) unless &CJ::isnumeric($max_u_jobs);  # default max allowed!
+
+    my $jobs_allowed = int($max_u_jobs-$live_jobs);
+    
+	return $jobs_allowed;
 }
 
 
@@ -107,18 +205,21 @@ sub check_hash {
    return unless @$keys;
 
    foreach my $key ( @$keys ) {
-       return unless eval { exists $hash->{$key} };
-       $hash = $hash->{$key};
-       }
+     return unless eval { exists $hash->{$key} };
+     $hash = $hash->{$key};
+    }
 
    return 1;
-   }
+}
 
 
 sub write2firebase
 {
 	my ($pid, $runinfo, $timestamp, $inform) = @_;
 	
+    
+    $timestamp = 0+$timestamp;  # treat time stamp as number for JSON. Has to be explicit. Otherwise you get qouted stuff in Firebase
+    
 	return if not defined($CJKEY);	
 	
 	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
@@ -168,7 +269,7 @@ sub add_agent_to_remote{
 	# This is the first time agent is added.
 	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);	
 	# make sure agent doesnt exist already
-	return if defined($firebase->get("users/${CJID}/agents/$AgentID"));
+	return if eval {my $fb_get = $firebase->get("users/${CJID}/agents/$AgentID")};
 	my $agentHash = {"SyncReq" => "null", "last_instance" => "null", "push_timestamp" =>0  ,"pull_timestamp" => 0}; 
     my $result = $firebase->patch("users/${CJID}/agents/$AgentID",  $agentHash); 	
 }
@@ -206,8 +307,6 @@ sub informOtherAgents{
 
 
 }
-
-
 
 
 
@@ -272,33 +371,9 @@ sub getLastSync
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 sub rerun
 {
-    my ($pid,$counter,$mem,$runtime,$qsub_extra,$verbose) = @_;
+    my ($pid,$counter,$submit_defaults,$qSubmitDefault,$qsub_extra,$verbose) = @_;
    
    
     my $info;
@@ -351,17 +426,17 @@ sub rerun
     my $master_script;
     if ($#job_ids eq 0) { # if there is only one job
         #run
-        $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra);
+        $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$info,$submit_defaults,$qSubmitDefault,$remote_path,$qsub_extra);
     }else{
         #parrun
         if(@$counter){
             foreach my $count (@$counter){
-                $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$count);
+                $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$info,$submit_defaults,$qSubmitDefault,$remote_path,$qsub_extra,$count);
             }
         }else{
             # Package is parrun, run the whole again!
             foreach my $i (0..$#job_ids){
-               $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$bqs,$mem,$runtime,$remote_path,$qsub_extra,$i);
+               $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$info,$submit_defaults,$qSubmitDefault,$remote_path,$qsub_extra,$i);
             }
         }
     }
@@ -386,7 +461,7 @@ my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
     
     
     &CJ::message("Submitting job(s)");
-    $cmd = "ssh $account 'source ~/.bashrc;cd $remote_path; bash -l rerun_master.sh > $remote_path/rerun_qsub.info; sleep 2'";
+    $cmd = "ssh $account 'source ~/.bashrc && cd $remote_path && bash -l rerun_master.sh > $remote_path/rerun_qsub.info && sleep 2'";
     &CJ::my_system($cmd,$verbose);
     
     
@@ -399,25 +474,26 @@ my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
     
     
     my $rerun_qsub_info_file = "$install_dir/.info/"."rerun_qsub.info";
-    my $rerun_job_ids = &CJ::read_qsub($rerun_qsub_info_file); # array ref
+    my ($rerun_job_ids,$errors) = &CJ::read_qsub($rerun_qsub_info_file); # array ref
     #my $rerun_job_id = join(',', @{$rerun_job_ids});
-
+    foreach my $error (@{$errors}) {
+        CJ::warning($error);
+    }
    
 
 #=======================================
 # write changes to the run_history file
 #=======================================
   # - replace the old job_id's by the new one
-    
-    if($#job_ids eq 0){
-           $job_id =~ s/$job_ids[0]/$rerun_job_ids->[0]/g;
+   if($#job_ids eq 0){
+           $job_id =~ s/\b$job_ids[0]\b/$rerun_job_ids->[0]/g;
         &CJ::message("job-id: $rerun_job_ids->[0]");
 
     }else{
         &CJ::message("job-id: $rerun_job_ids->[0]-$rerun_job_ids->[-1]");
         foreach my $i (0..$#{$counter}){
             my $this = $counter->[$i] - 1;
-           $job_id =~ s/$job_ids[$this]/$rerun_job_ids->[$i]/g;
+            $job_id =~ s/\b$job_ids[$this]\b/$rerun_job_ids->[$i]/g;
         }
     }
 
@@ -433,21 +509,20 @@ my $cmd = "rsync -arvz  $local_master_path ${account}:$remote_path/";
     }
     
 my $runinfo    = join(',', @runinfo);
-my $this_rerun = "$date -> $runinfo";
 
 
 my $type = "rerun";
 my $change = {new_job_id => $job_id,
               date       => $date, 
-			  old_job_id => $runinfo
+			  old_job_id => $runinfo,
+              submit_defaults => $submit_defaults,
+              alloc           => $qsub_extra,
 		     };
-
 			  
 my $newinfo = &CJ::add_change_to_run_history($pid, $change, $type);
 
 
 &CJ::add_to_history($newinfo,$date,$type);
-
 
 # write runinfo to FB as well
 my $timestamp  = $date->{epoch};    
@@ -667,7 +742,7 @@ sub show_log{
         $log_argin = "";
     }elsif( $log_argin =~ m/^\-?all$/ ){
 		my $pid_timestamp = &CJ::read_pid_timestamp();
-		$num_show = keys $pid_timestamp;
+		$num_show = keys %$pid_timestamp;
     }elsif( $log_argin =~ m/^\-?\d*$/ ){
         $log_argin =~ s/\D//g;     #remove any non-digit
         $num_show = $log_argin;
@@ -739,17 +814,13 @@ sub show_log{
         print "script: $info->{program}\n";
         #print "remote_path: $info->{remote_path}\n";
         print "initial_flag: $info->{runflag}\n";
-        print "reruned: ", (keys $info->{rerun}) . " times \n" if($info->{rerun}) ;
+           print "reruned: ", 0+keys(%{$info->{rerun}}) . " times \n" if($info->{rerun} && ref $info->{rerun} eq ref {}) ;
         print "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
         print "\n";
         print ' ' x 10; print "$info->{message}\n";
         print "\n";
         
 		}
-    
-  
-    
-    
     
     exit 0;
 
@@ -803,6 +874,7 @@ sub clean
     my $remote_path;
     my $job_id;
     my $save_path;
+	my $bqs ;
     
     my $info;
     if((!defined $pid)  || ($pid eq "") ){
@@ -824,7 +896,7 @@ sub clean
     }
     
     
-    
+    $bqs         =   $info->{'bqs'};
     $account     =   $info->{'account'};
     $local_path  =   $info->{'local_path'};
     $remote_path =   $info->{'remote_path'};
@@ -844,22 +916,51 @@ sub clean
     
     
     # make sure s/he really want a deletion
-    CJ::message("Are you sure you would like to clean $short_pid? Y/N");
-    my $yesno =  <STDIN>; chomp($yesno);
-    
-    if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
-    
+    CJ::yesno("Are you sure you would like to clean $short_pid");
     CJ::message("Cleaning $short_pid");
     my $local_clean     = "$local_path\*";
     my $remote_clean    = "$remote_path\*";
     my $save_clean      = "$save_path\*";
     
-    if (defined($job_id) && $job_id ne "") {
+	
+	
+	my $avail_ids;
+	if($bqs eq "SGE"){
+		
+		my $expr = "qstat -xml | tr \'\n\' \' \' | sed \'s#<job_list[^>]*>#\\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t";
+  		 $avail_ids = `ssh ${account} $expr | grep CJ_$short_pid | awk \'{print \$1}\' | tr '\n' ' ' ` ;
+  	   	 #print $avail_ids  . "\n";
+			
+	}elsif($bqs eq "SLURM"){
+		$avail_ids = `ssh ${account} ' sacct -n --format=jobid,jobname%15 | grep -v "^\\s*[0-9\_]*\\."  | grep CJ_$short_pid ' | awk \'{print \$1}\' | tr '\n' ' '  `;
+	}else{
+		 &CJ::err("Unknown batch queueing system");
+	}
+	
+    $avail_ids = $job_id if $info->{runflag} eq "rrun";
+    
+    if (defined($avail_ids) && $avail_ids ne "") {
         CJ::message("Deleting jobs associated with package $short_pid");
-        my @job_ids = split(',',$job_id);
-        $job_id = join(' ',@job_ids);
-        my $cmd = "rm -rf $local_clean; rm -rf $save_clean; ssh ${account} 'qdel $job_id; rm -rf $remote_clean' " ;
+		
+        #my @job_ids = split(',',$job_id);
+        #$job_id = join(' ',@job_ids);
+
+		# make sure that all are deleted. Sometimes we dont catch a jobID locally because of a failure
+		# So this really cleans up the mess
+		
+        #print $job_id . "\n";
+        
+        my $cmd;
+        if($bqs eq "SGE"){
+        $cmd = "rm -rf $local_clean; rm -rf $save_clean; ssh ${account} 'qdel $avail_ids; rm -rf $remote_clean' " ;
+        }elsif($bqs eq "SLURM"){
+        $cmd = "rm -rf $local_clean; rm -rf $save_clean; ssh ${account} 'scancel $avail_ids; rm -rf $remote_clean' " ;
+        }else{
+            &CJ::err("Unknown batch queueing system");
+        }
+        
         &CJ::my_system($cmd,$verbose);
+			
     }else {
         my $cmd = "rm -rf $local_clean;rm -rf $save_clean; ssh ${account} 'rm -rf $remote_clean' " ;
         &CJ::my_system($cmd,$verbose);
@@ -889,9 +990,8 @@ my $timestamp = $date->{epoch};
 my $inform = 1;
 &CJ::write2firebase($info->{'pid'},$newinfo, $timestamp, $inform);
 	    
-}
     
-    exit 0;
+exit 0;
 
 }
 
@@ -904,11 +1004,9 @@ my $inform = 1;
 sub show
 {
     my ($pid, $num, $file, $show_tag) = @_;
-    
-	
-	
+    	
     my $info;
-    if( (!defined $pid) || ($pid eq "") ){
+    if( (!defined $pid) || ($pid eq "") || ($pid eq '$') ){
         #read last_instance.info;
         $info = &CJ::retrieve_package_info();
         $pid = $info->{'pid'};
@@ -959,7 +1057,13 @@ sub show
          }else{
            $script = (`ssh ${account} 'cat $remote_path/logs/*stderr'`) ;chomp($script);
          }
-        
+    
+    }elsif($show_tag eq "runlog" ){
+        if($num){
+            $script = (`ssh ${account} 'less $remote_path/$num/logs/CJrun*.log'`) ;chomp($script);
+        }else{
+            $script = (`ssh ${account} 'less $remote_path/logs/CJrun*.log'`) ;chomp($script);
+        }
     }elsif($show_tag eq "ls" ){
         if($num){
             $script = (`ssh ${account} 'ls -C1 $remote_path/$num/'`) ;chomp($script);
@@ -980,10 +1084,27 @@ sub show
 			
             $script = (`ssh ${account} 'less -C1 $remote_path/$file'`) ;chomp($script);
         }
+    }elsif($show_tag eq "json" ){
+        
+        
+        if(!defined($file)){
+            $file=$num;
+            $num = "";
+        }
+        
+        if($num){
+            $script = (`ssh ${account} 'python -m json.tool $remote_path/$num/$file'`) ;chomp($script);
+        }else{
+            $script = (`ssh ${account} 'python -m json.tool $remote_path/$file'`) ;chomp($script);
+        }
     }
-        
+
+    
+    
+
+    
     print "$script \n";
-        
+    
     exit 0;
     
 }
@@ -1035,7 +1156,7 @@ sub show_info
     print "script: $info->{program}\n";
     print "remote_path: $info->{remote_path}\n";
     print "initial_flag: $info->{runflag}\n";
-    print "reruned: ",1+$#{$info->{rerun}} . " times \n" if($info->{rerun}) ;
+    print "reruned: ", 0+keys(%{ $info->{rerun} }) . " times \n" if($info->{rerun}) ;
     print "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
     print "\n";
     print ' ' x 10; print "$info->{message}\n";
@@ -1063,20 +1184,21 @@ sub show_info
 sub get_summary
 {
 	my ($machine) = @_;
-	
-	
 
-	
-	
 	my $ssh      = &CJ::host($machine);
 	my $account  = $ssh->{'account'};
 	my $bqs  = $ssh->{'bqs'};
-	
 	my $user 	 = $ssh->{'user'};
 	
+    
+    
 	#my $remoteinfo  = &CJ::remote();
 	
-	
+    my $qstat = "qstat";
+    $qstat = 'squeue --format="%.18i %.9P %.8j %.20u %.2t %.10M %.6D %R"' if($bqs eq "SLURM");
+    
+    
+	my $live_jobs = (`ssh ${account} '$qstat | grep $user  | wc -l' 2>$CJlog_error` ); chomp($live_jobs);
 
 	#my 	 $REC_STATES = "";
 	my 	 $REC_PIDS_STATES = "";
@@ -1087,18 +1209,26 @@ sub get_summary
 
  	  # This now works for SGE 
   	  my $expr = "qstat -xml | tr \'\n\' \' \' | sed \'s#<job_list[^>]*>#\\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t";
+<<<<<<< HEAD
  	  $REC_PIDS_STATES = (`ssh ${account} $expr | awk \'{print \$3,\$5}\' `) ;chomp($REC_PIDS_STATES);
+=======
+ 	  $REC_PIDS_STATES = (`ssh ${account} $expr | awk \'{print \$3,\$5}\'  2>$CJlog_error `) ;chomp($REC_PIDS_STATES);
+>>>>>>> master
  	  #print $REC_PIDS_STATES . "\n";
  	  #print $expr . "\n";
 	  
  	  #my $expr = "qstat -xml | tr \'\\n\' \' \' | sed \'s#<job_list[^>]*>#\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t";
        #$REC_PIDS_STATES = `ssh ${account} $expr | awk \'{print \$3,\$5}\'` ;chomp($REC_PIDS_STATES);
+<<<<<<< HEAD
   		
 	
+=======
+>>>>>>> master
 	
+		
     }elsif($bqs eq "SLURM"){
-       # $REC_STATES = (`ssh ${account} 'sacct --format=state | grep -v "^[0-9]*\\."'`) ;chomp($REC_STATES);
-        $REC_PIDS_STATES = (`ssh ${account} 'sacct -n --format=jobname%15,state | grep -v "^[0-9]*\\."'`);chomp($REC_PIDS_STATES);
+       # $REC_STATES = (`ssh ${account} 'sacct --format=state | grep -v "^\\s*[0-9\_]*\\." '`) ;chomp($REC_STATES);
+        $REC_PIDS_STATES = (`ssh ${account} 'sacct -n --format=jobname%15,state | grep -v "^\\s*[0-9\_]*\\." '     2>$CJlog_error`);chomp($REC_PIDS_STATES);
 		
     }else{
         &CJ::err("Unknown batch queueing system");
@@ -1114,7 +1244,7 @@ sub get_summary
 		my ($longpid,$state) = split(' ',$rec_pids_states[$i]);
 		#print $longpid . "\n";
 		if ( $longpid =~ m/^CJ\_.*/){
-		push @rec_pids, substr($longpid,3,8); # remove the first 3 (CJ_), and read the firt 8 from the rest
+		push @rec_pids, substr($longpid,3,8); # remove the first 3 (CJ_), and read the first 8 from the rest
 		push @rec_states, $state;
 	}
 	}
@@ -1150,6 +1280,7 @@ sub get_summary
 		my @this_states = values  %$this_states;
 		my @this_unique_states = do { my %seen; grep { !$seen{$_}++ } @this_states};
 		
+        
 		push @unique_states, @this_unique_states;
 		
 		#print $this_unique_states[0] . "\n"; 
@@ -1170,12 +1301,12 @@ sub get_summary
 
 
 	@unique_states = do { my %seen; grep { !$seen{$_}++ } @unique_states};
-	
+
 
     #print '-' x 35;print "\n";
     print "\n";
     print "\033[32m$user\@$machine \033[0m\n\n";
-    print ' ' x 5; print "Total Jobs : ", 1+$#rec_states . "\n";
+    print ' ' x 5; print "Live Jobs : ", $live_jobs . "\n";
     print ' ' x 5;print '-' x 17;print "\n";
 
 	foreach my $i (0..$#unique_states){
@@ -1197,14 +1328,33 @@ sub get_summary
 
 
 
+sub numeric_month(){
+    my ($mon) = @_;
+    
+    # Given 3 character month, give the number.
+    my $month_map = {"Jan" => 1,
+        "Feb" => 2,
+        "Mar" => 3,
+        "Apr" => 4,
+        "May" => 5,
+        "Jun" => 6,
+        "Jul" => 7,
+        "Aug" => 8,
+        "Sep" => 9,
+        "Oct" => 10,
+        "Nov" => 11,
+        "Dec" => 12
+        };
+        
+        return $month_map->{$mon};
+}
+
 
 
 sub get_state
 {
     my ($pid,$num) = @_;
     
-	#print "$pid\n";
-	
     my $info;
     if( (!defined $pid) || ($pid eq "") ){
         #read last_instance.info;
@@ -1228,21 +1378,34 @@ sub get_state
         
     }
    
-	
-    my $short_pid = substr($info->{pid},0,8);
+    &CJ::CheckConnection($info->{'machine'});
     
+    my $short_pid = substr($info->{pid},0,8);
     my $account = $info->{'account'};
     my $job_id  = $info->{'job_id'};
     my $bqs     = $info->{'bqs'};
     my $runflag = $info->{'runflag'};
     
+    
+    
+    # This is a workaround for a bug in SLURM
+    # one must provide start time of the job
+    
+    my $yy = $info->{'date'}{year};
+    my $dd = $info->{'date'}{day};
+    my $mm = &CJ::check_hash( $info->{'date'}, ['numericmonth'] )  ? $info->{'date'}{numericmonth}:&CJ::numeric_month($info->{'date'}{month});
+    
+    my $starttime = sprintf ("%04d-%02d-%02d",$yy,$mm,$dd);
+    
+
     my $states={};
 	
-if ( $runflag =~ m/^par*/ ){
+if ( $runflag =~ m/^parrun$/ ){
     # par case
     my @job_ids = split(',',$job_id);
     my $jobs = join('|', @job_ids);
   
+        
     
     my $REC_STATES;
     my $REC_IDS;
@@ -1250,31 +1413,61 @@ if ( $runflag =~ m/^par*/ ){
         $REC_STATES = (`ssh ${account} 'qstat -u \\* | grep -E "$jobs" ' | awk \'{print \$5}\'`) ;chomp($REC_STATES);
         $REC_IDS = (`ssh ${account} 'qstat -u \\* | grep -E "$jobs" ' | awk \'{print \$1}\'`) ;chomp($REC_IDS);
         
-    }elsif($bqs eq "SLURM"){
-        $REC_STATES = (`ssh ${account} 'sacct -n --jobs=$job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$6}\'`) ;chomp($REC_STATES);
-        $REC_IDS =  (`ssh ${account} 'sacct -n --jobs=$job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$1}\'`) ;chomp($REC_IDS);
+        my @rec_states = split('\n',$REC_STATES);
+        my @rec_ids = split('\n',$REC_IDS);
         
-        #$states = (`ssh ${account} 'sacct -n --format=state --jobs=$job_id'`) ;chomp($state);
+        foreach my $i (0..$#rec_ids){
+            my $key = $rec_ids[$i];
+            my $val = $rec_states[$i];
+            $states->{$key} = $val;
+        }
+
+        
+    }elsif($bqs eq "SLURM"){
+       
+        my $REC_IS_STATE= (`ssh ${account} 'sacct  -S $starttime -n --jobs=$job_id   --format=jobid%20,state%10 | grep -v "^\\s*[0-9\_]*\\." ' | awk \'{print \$1,\$2}\'`) ;
+        
+        chomp($REC_IS_STATE);
+        
+        my @REC_IS_STATE = split /^/, $REC_IS_STATE;
+        
+        
+        foreach my $i (0..$#REC_IS_STATE){
+            chomp($REC_IS_STATE[$i]);
+            my ($key, $val) = split(/\s/,$REC_IS_STATE[$i],2);
+            $states->{$key} = $val if ($key);
+        }
+
         
     }else{
         &CJ::err("Unknown batch queueing system");
     }
     
-    my @rec_states = split('\n',$REC_STATES);
-    my @rec_ids = split('\n',$REC_IDS);
+    
+}elsif ($runflag =~ m/^rrun$/){
 
-    foreach my $i (0..$#rec_ids){
-        my $key = $rec_ids[$i];
-        my $val = $rec_states[$i];
-        $states->{$key} = $val;		
+    
+    # SLURM ONLY
+    my $REC_IS_STATE= (`ssh ${account} 'sacct  -S $starttime -n --jobs=$job_id   --format=jobid%20,state%10 | grep -v "^\\s*[0-9\_]*\\." ' | awk \'{print \$1,\$2}\'`) ;
+    chomp($REC_IS_STATE);
+    
+    my @REC_IS_STATE = split /^/, $REC_IS_STATE;
+    
+    
+    foreach my $i (0..$#REC_IS_STATE){
+        chomp($REC_IS_STATE[$i]);
+        my ($key, $val) = split(/\s/,$REC_IS_STATE[$i],2);
+        $states->{$key} = $val;
     }
-	
+
+
 }else{
 	    my $state;
 	    if($bqs eq "SGE"){
 	        $state = (`ssh ${account} 'qstat | grep $job_id' | awk \'{print \$5}\'`) ;chomp($state);
 	    }elsif($bqs eq "SLURM"){
-	        $state = (`ssh ${account} 'sacct | grep $job_id | grep -v "^[0-9]*\\." ' | awk \'{print \$6}\'`) ;chomp($state);
+        
+                $state = (`ssh ${account} 'sacct  -S $starttime -n --jobs=$job_id | grep -v "^\\s*[0-9\_]*\\."  ' | awk \'{print \$6}\'`) ;chomp($state);
 	    }else{
 	        &CJ::err("Unknown batch queueing system");
 	    }
@@ -1284,7 +1477,7 @@ if ( $runflag =~ m/^par*/ ){
 	    }
         my $key = $job_id;
         my $val = $state;
-        $states->{$key} = $val;	
+        $states->{$key} = $val if ($key);
 }
 
     return $states;
@@ -1348,14 +1541,10 @@ sub get_print_state
     my $runflag = $info->{'runflag'};
 	
 	
-	
-	
-	
-	
 	my $states = &CJ::get_state($pid,$num);
 	my $size = scalar keys %$states;
  
-if($size eq 1){
+if($runflag =~ m/^run$/){
 
 	my ($job_id) = keys %$states; 	
 	my $state  = $states->{$job_id};chomp($state);
@@ -1366,6 +1555,46 @@ if($size eq 1){
     print "state: $state\n";
 
 	
+}elsif($runflag =~ m/^rrun$/){
+    my @job_ids = keys %$states;
+    
+    
+    my @allocated;
+    my @not_allocated;
+    my $array_id;
+    foreach my $i (0..$#job_ids)
+    {
+        ($array_id, my $task) = split('_',$job_ids[$i],2);chomp($task);
+        $task =~ m/^\d+$/ ? push @allocated , $task : push @not_allocated , $task;
+
+    }
+    
+    
+    my @sorted_counter = sort { $a <=> $b } @allocated if(@allocated);
+    
+     print "\n";
+     print "\033[32mpid $info->{'pid'}\033[0m\n";
+     print "remote_account: $account\n";
+
+    foreach my $i (0..$#sorted_counter)
+    {
+            my $key = "$array_id\_$sorted_counter[$i]";
+            my $state = $states->{$key}; chomp($state);
+            $state =~ s/[^A-Za-z]//g;
+            printf "%-20s%-10s\n", $key, $state;
+    }
+    
+    foreach my $i (0..$#not_allocated)
+    {
+        my $key = "$array_id\_$not_allocated[$i]";
+        my $state = $states->{$key}; chomp($state);
+        $state =~ s/[^A-Za-z]//g;
+        printf "%-20s%-10s\n", $key, $state;
+    }
+    
+    
+    print '-' x 35;print "\n";
+
 }else{
     my @job_ids = split(',',$job_id);
 	
@@ -1384,19 +1613,19 @@ if($size eq 1){
             }
             #$state = s/^\s+|\s+$/;
             $state =~ s/[^A-Za-z]//g;
-            print "$counter     " . "$job_ids[$i]      "  . "$state" . "\n";
+            printf "%-10i%-20s%-10s\n",$counter , $job_ids[$i],$state;
         }
     }elsif(&CJ::isnumeric($num) && $num <= $#job_ids+1){
         print '-' x 50;print "\n";
         print "\033[32mpid $info->{'pid'}\033[0m\n";
         print "remote_account: $account\n";
-        my $tmp = $num -1;
+        my $tmp = $num-1;
         my $val = $states->{$job_ids[$tmp]};
         if (! $val){
         $val = "unknwon";
         }
-        print "$num     " . "$job_ids[$tmp]      "  . "$val" . "\n";
-        
+        printf "%-10i%-20s%-10s\n",$num , $job_ids[$tmp] ,$val;
+
         
     }else{
         my $lim =1+$#job_ids;
@@ -1474,7 +1703,6 @@ sub grep_var_line
 sub add_record{
 	my ($info) = @_;
     
-	# Find the last number
 	&CJ::add_to_history($info, $info->{date}, $info->{runflag});
 	&CJ::add_to_run_history($info);
 	&CJ::add_to_pid_timestamp( { $info->{pid} => $info->{date}{epoch} }  );
@@ -1483,42 +1711,260 @@ sub add_record{
 }
 
 
-sub host{
-    my ($machine_name) = @_;
+
+
+
+
+
+sub show_cluster_config{
+    
+    my ($cluster) = @_;
+    
+    if (!defined $cluster || $cluster eq ""){
+        my $cmd = "less $ssh_config_file 2>$CJlog_error";
+        system($cmd);
+    }else{
+        CJ::err("No such cluster found. add $cluster to ssh_config (you may use 'CJ config-update $cluster') .") if !is_valid_machine($cluster);
+        my $ssh_config_hashref =  &CJ::read_ssh_config();
+        my $fieldsize = 20;
+        while ( my ($key, $value) = each %{ $ssh_config_hashref->{$cluster} } ){
+            printf "\n\033[32m%-${fieldsize}s\033[0m%s", $key, $value;
+        }
+        print "\n\n";
+    }
+    
+    return 1;
+}
+
+
+
+
+
+
+
+sub cluster_config_template{
+    # for sorting purposes
+    my @config_keys=('Host','User','Bqs','Repo','MAT','MATlib','Python','Pythonlib');
+    my $cluster_config = {
+        'Host' => {example=>'35.185.238.124', default=>undef},
+        'User' => {example=>$CJID, default=>undef},
+        'Bqs'  => {example=>undef, default=>'SLURM'},
+        'Repo' => {example=>'/home/ubuntu/CJRepo_Remote',default=>undef},
+        'MAT'  => {example=>undef,default=>'matlab/r2016b'},
+        'MATlib' => {example=>undef,default=>'CJinstalled/cvx:CJinstalled/mosek/7/toolbox/r2013a'},
+        'Python' => {example=>undef,default=>'python3.4'},,
+        'Pythonlib'  => {example=>undef,default=>'pytorch:torchvision:cuda80:pandas:matplotlib:-c soumith'}
+    };
+    
+    return ($cluster_config,\@config_keys);
+}
+
+
+sub update_cluster_config{
+    
+    my ($cluster, @keyval) = @_;
+    
+    
+    my $file_content = &CJ::readFile($ssh_config_file);
+    
+    # read the contents
+
+    my %machine_hash = $file_content =~ /\[($cluster)\](.*?)\[\g{-2}\]/isg;
+    my $size = keys %machine_hash;
+    
+    if ($size lt 1){
+        my $yesno = &CJ::yesno("machine $cluster is not found in ssh_config. Do you want to add it");
+        if ($yesno){
+            
+            my ($cluster_config,$config_keys) = &CJ::cluster_config_template();
+            my $new_config = "\n[$cluster]\n";
+            foreach my $key (@{$config_keys}){
+                    my $yesno  = "no";
+                    my $new_value = undef;
+                    while ( $yesno !~ m/y[\t\s]*|yes[\t\s]*/i ){
+                        my $prompt  = defined($cluster_config->{$key}{default}) ? "enter '$key' (press Enter key for default value '$cluster_config->{$key}{default}'):":"Enter $key (e.g., $cluster_config->{$key}{example}):";
+                        my $default_entry = defined($cluster_config->{$key}) ? '':undef;
+                        ($new_value, $yesno)=getuserinput($prompt, $default_entry);
+                        
+                        if ($new_value eq $default_entry){
+                            if (defined($cluster_config->{$key}{default}) ){
+                              $new_value = $cluster_config->{$key}{default}
+                            }else{
+                              $yesno="no";
+                            }
+                        }
+                    }
+                    $new_config .= "$key\t$new_value" . "\n";
+            }
+            $new_config .= "[$cluster]\n";
+            
+            $file_content .= $new_config ;
+            &CJ::writeFile($ssh_config_file, $file_content);
+            &CJ::message("added $cluster to ssh_config.");
+            &CJ::show_cluster_config($cluster);
+            return 1;
+        }
+    }
+    
+    #print $machine_hash{$cluster};
+    my @lines = split '\n', $machine_hash{$cluster};
+    
+    #print Dumper @lines;
+    
+    
+    #print Dumper $ssh_config;
+    
+    my $num_changes = 0;
+    
+    if ( not @keyval){
+        
+        foreach my $i (0..$#lines){
+            if ($lines[$i] !~ /^\s*$/){
+                    my ($old_key,$old_value)  =  split(/\s/, $lines[$i], 2);
+                    $old_key   =remove_white_space($old_key);
+                    $old_value =remove_white_space($old_value);
+                    my $yesno  = "no";
+                    my $new_value = undef;
+                    while ( $yesno !~ m/y[\t\s]*|yes[\t\s]*/i ){
+                        ($new_value, $yesno)=getuserinput("press Enter $old_key (Enter to keep $old_value):", '');
+                    }
+                    if (not $new_value eq ''){
+                        $lines[$i] = "$old_key\t$new_value";
+                        $num_changes += 1;
+                    }
+            }
+        }
+        
+     }else{
+        # just update those keys that exists
+        
+        
+        #print Dumper @keyval;
+        my $new_keyval = {};
+        foreach (@keyval){
+            my ($new_key, $new_val)  = split( /=|:/ , $_);
+            $new_keyval->{$new_key} = $new_val;
+        }
+        
+        
+        my %lc_new_keyval = map { lc $_ => { name => $_, value => $new_keyval->{$_} }
+                                } keys %$new_keyval;
+        
+        foreach my $i (0..$#lines){
+                if ($lines[$i] !~ /^\s*$/){
+                    my ($old_key,$old_value)  =  split(/\s/, $lines[$i], 2);
+                    $old_key   =remove_white_space($old_key);
+                    $old_value =remove_white_space($old_value);
+                    #print $key . " => " . $value . "\n";
+                    my $lc_old_key = lc $old_key;
+                    
+                    if ( exists $lc_new_keyval{$lc_old_key} ){
+                    $lines[$i] = "$lc_new_keyval{$lc_old_key}{name}\t$lc_new_keyval{$lc_old_key}{value}" ;
+                    $num_changes += 1;
+                    }
+                }
+        }
+     
+    }
+    
+    
+    if ($num_changes > 0 ){
+        my $new_config = "[$cluster]";
+        foreach (@lines){
+            $new_config .= $_ . "\n";
+        }
+        $new_config .= "[$cluster]";
+        $file_content =~ s/\[$cluster\](.*?)\[$cluster\]/$new_config/isg ;
+        &CJ::writeFile($ssh_config_file, $file_content);
+        &CJ::message("updated ssh_config file with $num_changes changes.");
+        &CJ::show_cluster_config($cluster);
+    }else{
+        &CJ::message("no change applied to ssh_config.");
+    }
+    
+}
+
+
+
+sub read_ssh_config{
     
     my $ssh_config = {};
-
     
+    my $file_content = &CJ::readFile($ssh_config_file);
     
-    my $lines;
-    open(my $FILE, $ssh_config_file) or  die "could not open $ssh_config_file: $!";
-    local $/ = undef;
-    $lines = <$FILE>;
-    close ($FILE);
+    # read the contents
     
-    my $this_host ;
-    if($lines =~ /\[$machine_name\](.*?)\[$machine_name\]/isg)
-    {
-        $this_host = $1;
-    }else{
-        &CJ::err(".ssh_config:: Machine $machine_name not found. ");
+    my %machine_hash = $file_content =~ /\[([\w\-]+)\](.*?)\[\g{-2}\]/isg;
+    
+    foreach my $machine (keys %machine_hash){
+        $ssh_config->{$machine} = &CJ::parse_ssh_config($machine_hash{$machine});
     }
-    my ($user) = $this_host =~ /User[\t\s]*(.*)/;$user =~ s/^\s+|\s+$//g;
-    my ($host) = $this_host =~ /Host[\t\s]*(.*)/;$host =~ s/^\s+|\s+$//g;
-    my ($bqs)  = $this_host =~ /Bqs[\t\s]*(.*)/ ;$bqs =~ s/^\s+|\s+$//g;
-    my ($remote_repo)  = $this_host =~ /Repo[\t\s]*(.*)/ ;$remote_repo =~ s/^\s+|\s+$//g;
-    my ($remote_matlabpath)  = $this_host =~ /MATlib[\t\s]*(.*)/;$remote_repo =~ s/^\s+|\s+$//g;
+    return $ssh_config;
+}
+
+
+
+sub host{
+    my ($machine_name) = @_;
+    my $ssh_config_hashref =  &CJ::read_ssh_config();
+    &CJ::err(".ssh_config:: machine $machine_name not found. ") unless &CJ::check_hash($ssh_config_hashref, [$machine_name]) ;
+    return $ssh_config_hashref->{$machine_name};
+}
+
+
+
+
+
+sub parse_ssh_config{
+    my ($this_machine_string) = @_;
+
+    my $ssh_config = {};
+    
+    my ($user) = $this_machine_string =~ /User[\t\s]*(.*)/i;
+    $user =remove_white_space($user);
+    
+    my ($host) = $this_machine_string =~ /Host[\t\s]*(.*)/i;
+    $host =remove_white_space($host);
+    
+    my ($bqs)  = $this_machine_string =~ /Bqs[\t\s]*(.*)/i ;
+    $bqs  =remove_white_space($bqs);
+    
+    my ($remote_repo)  = $this_machine_string =~ /Repo[\t\s]*(.*)/i ;
+    $remote_repo   = remove_white_space($remote_repo);
+    
+    my ($remote_matlab_lib)  =$this_machine_string =~ /MATlib[\t\s]*(.*)/i;
+    $remote_matlab_lib =remove_white_space($remote_matlab_lib);
+    
+    my ($remote_matlab_module)  = $this_machine_string =~ /\bMAT\b[\t\s]*(.*)/i;
+    $remote_matlab_module =remove_white_space($remote_matlab_module);
+    
+    my ($remote_python_lib)  = $this_machine_string =~ /Pythonlib[\t\s]*(.*)/i;
+    $remote_python_lib =remove_white_space($remote_python_lib);
+    
+    my ($remote_python_module)  = $this_machine_string =~ /\bPython\b[\t\s]*(.*)/i;
+    $remote_python_module =remove_white_space($remote_python_module);
+    
+    
+    
     my $account  = $user . "@" . $host;
     
-    
+    $ssh_config->{'user'}         = $user;
+    $ssh_config->{'host'}         = $host;
     $ssh_config->{'account'}         = $account;
     $ssh_config->{'bqs'}             = $bqs;
     $ssh_config->{'remote_repo'}     = $remote_repo;
-    $ssh_config->{'matlib'}          = $remote_matlabpath;
+    $ssh_config->{'matlib'}          = $remote_matlab_lib;
+    $ssh_config->{'mat'}             = $remote_matlab_module;
     $ssh_config->{'user'}            = $user;
+    $ssh_config->{'py'}              = $remote_python_module;
+    $ssh_config->{'pylib'}           = $remote_python_lib;
     
     return $ssh_config;
+
 }
+
+
+
 
 
 
@@ -1545,7 +1991,7 @@ sub retrieve_package_info{
 		
     my $records = &CJ::read_record($pids);  # pids can be a scalar or a array ref
 
-		
+    
 	my $info_hash;   
 	
 	foreach my $pid ( @$pids ){
@@ -1671,9 +2117,12 @@ my ($gmt_offset_hour, $remainder_in_second) = (int($abs_offset/3600), $abs_offse
 my $offset = sprintf("%s%02d:%02d:%02d", $sign,$gmt_offset_hour,$gmt_offset_min,$remainder_in_second);
 my $datestr = sprintf ("%04d-%03s-%02d  %02d:%02d:%02d  \(GMT %s\)", $year, $month_abbr[$mon], $mday, $hour,$min, $sec, $offset);
 
+my $numeric_month = sprintf ("%02d", 1+$mon);
+    
 my $date = {
         year    	=> $t->year,
         month   	=> $month_abbr[$mon],
+        numericmonth => 1+$mon,
         day     	=> $mday,
         hour    	=> $hour,
         min     	=> $min,
@@ -1685,6 +2134,28 @@ my $date = {
     
     return $date;
 }
+
+
+
+#####################
+sub is_valid_machine{
+#####################
+    my ($machine) = @_;
+    my $ssh_config_all  = CJ::read_ssh_config();
+    return &CJ::check_hash($ssh_config_all, [$machine]) ? 1:0;
+}
+
+
+#####################
+sub is_valid_app{
+#####################
+    my ($app) = @_;
+    my $app_all  = decode_json CJ::readFile($app_list_file);
+    my $lc_app = lc $app;
+    return (&CJ::check_hash($app_all, [$lc_app]) and $app_all->{$lc_app}->{'version'} ne "") ? 1:0;
+}
+
+
 
 # Check the package name given is valid
 sub is_valid_pid
@@ -1714,6 +2185,7 @@ if($bqs eq "SGE"){
 $HEADER=<<SGE_HEADER;
 #!/bin/bash -l
 #\$ -cwd
+#\$ -R y
 #\$ -S /bin/bash
 SGE_HEADER
 }elsif($bqs eq "SLURM"){
@@ -1725,6 +2197,150 @@ die "unknown BQS"
 }
 return $HEADER;
 }
+
+
+
+
+
+##################
+sub shell_toe{
+###################
+    my ($bqs) = @_;
+my $shell_toe;
+if($bqs eq "SGE"){
+$shell_toe = <<'BASH_TOE';
+echo ending job $SHELLSCRIPT
+echo JOB_ID $JOB_ID
+echo END_DATE `date`
+echo "done"
+BASH_TOE
+    
+}elsif($bqs eq "SLURM"){
+
+$shell_toe = <<'BASH_TOE';
+echo ending job $SHELLSCRIPT
+echo JOB_ID $SLURM_JOBID
+echo END_DATE `date`
+echo "done"
+BASH_TOE
+    
+}else{
+    &CJ::err("unknown BQS $!");
+}
+
+return $shell_toe;
+
+    
+}
+
+######################################################
+# Bash header based on the Batch Queueing System (BQS)
+sub shell_head{
+######################################################
+my ($bqs) = @_;
+
+my $shell_head = bash_header($bqs);
+
+if($bqs eq "SGE"){
+$shell_head.=<<'HEAD'
+echo JOB_ID $JOB_ID
+echo WORKDIR $SGE_O_WORKDIR
+echo START_DATE `date`
+HEAD
+
+}elsif($bqs eq "SLURM"){
+$shell_head.=<<'HEAD'
+echo JOB_ID $SLURM_JOBID
+echo WORKDIR $SLURM_SUBMIT_DIR
+echo START_DATE `date`
+HEAD
+}else{
+&CJ::err("unknown BQS $!");
+}
+    return $shell_head;
+
+}
+
+
+#####################################
+sub shell_neck{
+#####################################
+my ($program,$pid,$remote_path) = @_;
+    
+my $shell_neck;
+$shell_neck = <<'MID';
+DIR=<remote_path>;
+PROGRAM="<PROGRAM>";
+PID="<PID>";
+cd $DIR;
+    #mkdir scripts
+    #mkdir logs
+SHELLSCRIPT=${DIR}/scripts/CJrun.${PID}.sh;
+LOGFILE=${DIR}/logs/CJrun.${PID}.log;
+MID
+   
+my ($program_name,$ext)=remove_extension($program);
+
+$shell_neck =~ s|<PID>|$pid|;
+$shell_neck =~ s|<remote_path>|$remote_path|;
+if (&CJ::program_type($program) eq 'python') {
+$shell_neck =~ s|<PROGRAM>|$program_name|;
+} else{
+$shell_neck =~ s|<PROGRAM>|$program| ;
+}
+    return $shell_neck;
+}
+
+
+
+
+#####################################
+sub par_shell_neck{
+#####################################
+my ($program,$pid,$counter,$remote_path) = @_;
+    
+my $shell_neck;
+$shell_neck = <<'MID';
+DIR=<remote_path>;
+PROGRAM="<PROGRAM>";
+PID="<PID>";
+COUNTER=<COUNTER>;
+cd $DIR;
+    #mkdir scripts
+    #mkdir logs
+SHELLSCRIPT=${DIR}/scripts/CJrun.${PID}.${COUNTER}.sh;
+LOGFILE=${DIR}/logs/CJrun.${PID}.${COUNTER}.log;
+MID
+    
+
+my ($program_name,$ext)=remove_extension($program);
+    
+$shell_neck =~ s|<PID>|$pid|;
+$shell_neck =~ s|<COUNTER>|$counter|;
+$shell_neck =~ s|<remote_path>|$remote_path|;
+if (&CJ::program_type($program) eq 'python') {
+    $shell_neck =~ s|<PROGRAM>|$program_name|;
+} else{
+    $shell_neck =~ s|<PROGRAM>|$program| ;
+}
+    
+    
+    return $shell_neck;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # Check Numeric
 sub isnumeric
@@ -1761,16 +2377,60 @@ sub message{
 }
 
 
+sub yesno{
+    my ($question,$noBegin) = @_;
+    my $prompt = $question . "?(Y/N)";
+    CJ::message($prompt,$noBegin);
+    my $yesno =  <STDIN>; chomp($yesno);
+    exit 0 unless (lc($yesno) eq "y" or lc($yesno) eq "yes");
+}
+
+
+sub getuserinput{
+    my ($question,$default) = @_;
+    print $question;
+    my $user_input =  <STDIN>;
+    chomp($user_input);
+    $user_input = remove_white_space($user_input);
+    my $yesno;
+    if ( !defined($default) || not $user_input eq $default){
+        print ' ' x 5 . "You have entered \'$user_input\'. Is this correct? (Y/N)";
+        $yesno =  <STDIN>; chomp($yesno);
+    }else{
+        $yesno = 'yes';
+    }
+    return ($user_input, $yesno);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 sub my_system
 {
    my($cmd,$verbose) = @_;
     if($verbose){
-        print("system: ",$cmd,"\n");
+        &CJ::message("system:$cmd",1);
         system("$cmd");
         
     }else{
-		system("touch $CJlog") unless (-f $CJlog);
-        system("$cmd >> $CJlog  2>&1") ;#Error messages get sent to same place as standard output.
+		system("touch $CJlog_out") unless (-f $CJlog_out);
+        system("touch $CJlog_error") unless (-f $CJlog_error);
+        &CJ::writeFile($CJlog_out,"system: $cmd\n", "-a");
+        system("$cmd >> $CJlog_out 2>$CJlog_error") ;
     }
 
 }
@@ -1791,18 +2451,32 @@ sub touch
 
 sub writeFile
 {
-    
     # it should generate a bak up later!
-    my ($path, $contents) = @_;
-    open(FILE,">$path") or die "can't create file $path";
-    print FILE $contents;
-    close FILE;
+    my ($path, $contents, $flag) = @_;
+    
+    if( -e "$path" ){
+        #bak up
+        my $bak= "$path" . ".bak";
+        my $cmd="cp $path $bak";
+        system($cmd);
+    }
+    
+    my $fh;
+    open ( $fh , '>', "$path" ) or die "can't create file $path" if not defined($flag);
+    
+    if(defined($flag) && $flag eq '-a'){
+        open( $fh ,'>>',"$path") or die "can't create file $path";
+    }
+    
+    print $fh $contents;
+    close $fh ;
 }
+
 
 sub readFile
 {
     my ($filepath)  = @_;
-
+    
     my $content;
     open(my $fh, '<', $filepath) or die "cannot open file $filepath";
     {
@@ -1824,9 +2498,17 @@ sub readFile
 
 
 
+#########################
+sub short_pid(){
+#########################
+    my ($pid) = @_;
+    return substr($pid,0,8);
+}
 
-sub add_to_history
-{
+
+##########################
+sub add_to_history{
+##########################
     my ($info, $date, $flag) = @_;
 	# create if it doesnt exist;
 	&CJ::create_history_file();
@@ -1903,21 +2585,12 @@ if(lc($type) eq "clean"){
     #say Dumper($info);
  	
 }elsif(lc($type) eq "rerun"){
+    $info->{rerun} = {} if (! $info->{'rerun'});
+    $info->{'job_id'} = $change->{new_job_id};    #firt time calling rerun
+    #$info->{rerun}->{"$change->{date}->{epoch}"} = $change->{old_job_id};
+    $info->{rerun}->{"$change->{date}->{epoch}"} = $change;
     
-       if($info->{'rerun'}){
-           $info->{'job_id'} = $change->{new_job_id};
-           $info->{rerun}->{"$change->{date}->{epoch}"} = $change->{old_job_id};
-		   
-		   #say Dumper($info);
-       }else{
-           #firt time calling rerun
-           $info->{'job_id'} = $change->{new_job_id};
-		   $info->{rerun} = {};
-		   $info->{rerun}->{"$change->{date}->{epoch}"} = $change->{old_job_id};
-           #say Dumper($info);
-       }
 #
-#        
 }else{
        &CJ::err("Change of type '$type' is  not recognized");
 }
@@ -1933,7 +2606,8 @@ if(lc($type) eq "clean"){
 sub update_record{
     my ($pid,$new_info) = @_;
     my $new_record = encode_json($new_info);
-    my $cmd="sed -i '' 's|.*$pid.*|$new_record|'  $run_history_file";
+    #backup run history file with -i flag
+    my $cmd="sed -i '.bak' 's|.*$pid.*|$new_record|'  $run_history_file";
     &CJ::my_system($cmd,0);
 }
 
@@ -1960,7 +2634,7 @@ sub read_record{
 		$regex .= join "|", @pids;
 		$regex .= ")";
 		
-		#print $regex . "\n";
+        #print $regex . "\n";
 		
 	    my $remaining  = scalar @pids;		
 		my $record_hash;
@@ -1968,8 +2642,14 @@ sub read_record{
 		my $i=$#records;
 		while ($i ge 0 & $remaining gt 0 ) {
 			my $record  = $records[$i];
-		  	#print $record . "\n";
-		  	if ($record =~ m/$regex/){
+            
+            # make sure that we don't pick up PIDs in messages
+            my $record_json = decode_json $record;
+            
+            #print Dumper $record_json->{pid} . "\n";
+
+            
+		  	if ( $record_json->{pid} =~ m/$regex/){
 		  		my $matched_pid = $1;
 	  		    $record_hash->{$matched_pid} = $record;  # $1 is the captured PID
 	  		    # delete this PID from the array
@@ -1990,7 +2670,16 @@ sub read_record{
 }
 
 
+sub submit_defaults {
 
+    my $submit_defaults={};
+    
+    $submit_defaults->{mem}               = "8G";       # default memeory
+    $submit_defaults->{runtime}           = "48:00:00"; # default memeory
+    $submit_defaults->{numberTasks}       = 1        ;  # default value for number of task
+    
+    return $submit_defaults;
+}
 
 sub read_qsub{
     my ($qsub_file) = @_;
@@ -1998,17 +2687,30 @@ sub read_qsub{
     open my $FILE, '<', $qsub_file or CJ::err("Job submission failed. Try --verbose for error explanation.");
 
 my @job_ids;
+my @errors;
 while(<$FILE>){
     my $job_id_info = $_;chomp($job_id_info);
-    my ($this_job_id) = $job_id_info =~/(\d+)/; # get the first string of integer, i.e., job_id
-    push @job_ids, $this_job_id;
+    push @errors, $job_id_info if ($job_id_info =~ m/.*[eE]rror.*/ );
+    my ($this_job_id) = $job_id_info =~/job\D*(\d+)/i; # get the first string of integer, i.e., job_id
+    push @job_ids, $this_job_id unless !defined($this_job_id);
+    
 }
 close $FILE;
 
-return \@job_ids;
+return (\@job_ids,\@errors);
 }
 
 
+
+
+
+
+sub remove_white_space
+{
+    my ($string) = @_;
+    $string =~ s/^\s+|\s+$//g unless not defined($string);
+    return $string;
+}
 sub remove_extension
 {
     my ($program) = @_;
@@ -2020,6 +2722,30 @@ sub remove_extension
     return ($program_name,$extension);
     
 }
+
+
+sub program_type
+{
+    my ($program) = @_;
+    
+    my ($program_name,$ext) = &CJ::remove_extension($program);
+    
+    my $type;
+    if(lc($ext) eq "m"){
+        $type = "matlab";
+    }elsif(lc($ext) eq "r"){
+        $type = "R";
+    }elsif(lc($ext) eq "py"){
+        $type = "python";
+    }else{
+        CJ::err("Code type .$ext is not recognized $!");
+    }
+    
+    return $type;
+}
+
+
+
 
 
 sub reexecute_cmd{
@@ -2124,7 +2850,6 @@ sub create_history_file{
 if( ! -f $history_file ){
 	 &CJ::touch($history_file);
 	 
-		
  	#my $header = sprintf("%-15s%-15s%-21s%-10s%-15s%-20s%-30s", "count", "date", "pid", "action", "machine", "job_id", "message");
  	my $header = sprintf("%-15s%-15s%-15s%-10s%-15s%-40s", "count", "date", "pid", "action", "machine","message");
 		
@@ -2158,6 +2883,219 @@ sub create_pid_timestamp_file{
 sub create_run_history_file{
 &CJ::touch($run_history_file) unless ( -f $run_history_file);
 }
+
+
+
+sub create_ssh_config_md5{
+    
+    &CJ::touch($ssh_config_md5) unless ( -f $ssh_config_md5);
+
+    # Keep track of file changes for next time
+    if( -f $ssh_config_file ){
+       ssh_config_md5('update')
+    }
+}
+
+
+
+
+sub ssh_config_md5{
+    my ($mode) = @_;
+    
+    if ( $mode eq 'update' ){
+        &CJ::message("updating CJ_python_venv",1);
+        my $cmd = `md5 $ssh_config_file > $ssh_config_md5`;
+        return 1;
+    }elsif($mode eq 'check'){
+        # check whether things are modified
+        my $cmd = `grep \"\$(md5 $ssh_config_file)\" $ssh_config_md5 || echo 1`;chomp($cmd);   # find or else exit 1.
+        return ($cmd eq "1") ? 1:0;
+    }
+    
+}
+
+
+
+
+sub install_software{
+
+    my ($app, $machine, $force_tag, $q_yesno) = @_;
+    #set the default to 1
+    $q_yesno = defined($q_yesno) ? $q_yesno : 1;
+
+    my $lc_app = lc($app);
+    # Sanity checks
+    &CJ::err('Incorrect specification \'install <app> <machine>\'.') if ($machine =~ /^\s*$/ || $app =~ /^\s*$/);
+    &CJ::err("Application <$app> is not available.") unless &CJ::is_valid_app($app);
+    &CJ::err("Machine <$machine> is not valid.") unless &CJ::is_valid_machine($machine);
+    &CJ::yesno("Are you sure you would like to install '$lc_app' on '$machine'") if ($q_yesno eq 1);
+    
+    
+    &CJ::message("Installing $app on $machine.");
+    
+    my $installObj = CJ::Install->new($app,$machine,undef);
+    $installObj->anaconda($force_tag) if $lc_app eq 'anaconda';
+    $installObj->miniconda($force_tag) if $lc_app eq 'miniconda';
+    $installObj->cvx($force_tag) if $lc_app eq 'cvx';
+    $installObj->composer($force_tag) if $lc_app eq 'composer';
+
+}
+
+
+
+
+
+
+sub CodeObj{
+    
+my ($path,$program,$dep_folder) = @_;
+
+    $dep_folder ||= '';         # default
+my $program_type  = &CJ::program_type($program);
+    
+my $code;
+if($program_type eq 'matlab'){
+    $code = CJ::Matlab->new($path,$program,$dep_folder);
+}elsif($program_type eq 'r'){
+    $code = CJ::R->new($path,$program,$dep_folder);
+}elsif($program_type eq 'python'){
+    $code = CJ::Python->new($path,$program,$dep_folder);
+}else{
+    CJ::err("ProgramType $program_type is not recognized.$!")
+}
+    return $code;
+}
+
+
+
+
+
+sub getExtension{
+    my ($filename) = @_;
+    #print "$filename\n";
+    
+    my ($ext) = $filename =~ /\.([^.]+)$/;
+    return $ext;
+}
+
+
+sub connect2cluster{
+    my ($machine, $verbose) = @_;
+    my $ssh = &CJ::host($machine);
+    my $cmd = "ssh $ssh->{account}";
+    &CJ::message("system:$cmd",1) if $verbose;
+    system("$cmd");
+    return 1;
+}
+
+
+
+
+
+sub avail{
+    my ($tag) = @_;
+    
+    if( $tag =~ /^machine[s]?$|^cluster[s]?$/i ){
+            my $ssh_config_hashref =  &CJ::read_ssh_config();
+            
+            # find max size of strings
+            my @length;
+            for (keys %{$ssh_config_hashref} ){
+                push @length, length($_);
+            }
+            my $fieldsize = &CJ::max(@length) + 4;
+        
+            #print
+            foreach my $machine ( keys %{$ssh_config_hashref}){
+            my $account = $ssh_config_hashref->{$machine}->{'account'};
+            printf "\n\033[32m%-${fieldsize}s\033[0m%s", $machine, $account;
+            }
+            print "\n\n";
+
+    }elsif($tag =~ /^app[s]?$/)  {
+            # read the .app_list 
+            my $app_all  = decode_json CJ::readFile($app_list_file);
+        
+            # find max size of app name
+            my @length_0;
+            my @length_1;
+        
+            for (keys %{$app_all} ){
+                push @length_0, length($_);
+                push @length_1, length($app_all->{$_}->{'version'});
+            }
+            my $fieldsize_0 = &CJ::max(@length_0) + 4;
+            my $fieldsize_1 = &CJ::max(@length_1) + 4;
+
+        
+            #print
+            for (keys %{$app_all} ){
+                my $version = $app_all->{$_}->{'version'};
+                my $space = $app_all->{$_}->{'space'};
+                my $time = $app_all->{$_}->{'install_time'};
+                printf "\n\033[32m%-${fieldsize_0}s\033[0m%-${fieldsize_1}s%-10s%s", $_, $version, $space, $time  unless $version eq "";
+             }
+        print "\n\n";
+        
+        
+    }else{
+        &CJ::err("unknown tag $tag");
+    }
+    
+    
+    
+    exit 0;
+}
+
+
+
+sub max {
+    my (@vars) = @_;
+    
+    my $max = shift @vars;
+    
+    for (@vars) {
+        $max = $_ if $_ > $max;
+    }
+    
+    return $max;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

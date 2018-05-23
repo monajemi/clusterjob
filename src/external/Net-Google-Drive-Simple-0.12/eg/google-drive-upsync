@@ -1,0 +1,158 @@
+#!/usr/local/bin/perl -w
+use strict;
+use lib 'lib';
+
+use Sysadm::Install qw(:all);
+use Net::Google::Drive::Simple;
+use Log::Log4perl qw(:easy);
+use File::Basename;
+use Getopt::Std;
+use Pod::Usage;
+
+getopts("hvn", \my %opts);
+pod2usage() if $opts{h};
+
+my( $local_dir, $gd_dir ) = @ARGV;
+
+if( ! defined $gd_dir ) {
+    pod2usage( "No Google Drive dir given" );
+}
+
+if( ! -d $local_dir ) {
+    pod2usage( "$local_dir not a directory" );
+}
+
+my $log_level = $INFO;
+$log_level = $DEBUG if $opts{ v };
+
+Log::Log4perl->easy_init( { 
+    level => $log_level, 
+    layout => "%d %F{1}:%L> %m%n"
+} );
+
+my %files_local = ();
+
+opendir DH, $local_dir;
+
+for my $file ( readdir DH ) {
+
+    my $path = "$local_dir/$file";
+
+    if( ! -f $path) {
+        next;
+    }
+
+    $files_local{ $file } = -s $path;
+}
+
+closedir DH;
+
+INFO "Found ", scalar keys %files_local, " local files";
+
+my $gd = Net::Google::Drive::Simple->new();
+
+INFO "Listing $gd_dir on Google Drive";
+
+my( $entries_gd, $parent ) = $gd->children( $gd_dir );
+
+if( !defined $entries_gd ) {
+    pod2usage( "$gd_dir can't be listed - does it exist?" );
+}
+
+INFO "Found ", scalar @$entries_gd, " files on Google Drive";
+
+my %needs_update = ();
+
+for my $entry ( @$entries_gd ) {
+    if( $entry->kind() ne 'drive#file' ) {
+        DEBUG "Ignoring ", $entry->title();
+        next;
+    }
+
+    my $title = $entry->title();
+
+    my $labels = $entry->labels();
+
+    if( $labels->{ trashed } ) {
+        INFO "Ignoring trashed file $title", 
+        next;
+    }
+
+    if( exists $files_local{ $title } ) {
+        if( $entry->fileSize() == $files_local{ $title } ) {
+            DEBUG "$title synched OK";
+            delete $files_local{ $title };
+            next;
+        }
+        ERROR "$title: different file size (local:$files_local{ $title } ",
+          "gdrive: ", $entry->fileSize();
+        $needs_update{ $title } = $entry;
+    } else {
+        INFO "Remote only: $title";
+    }
+}
+
+for my $file ( sort keys %files_local ) {
+
+   my $file_id;
+
+   if( exists $needs_update{ $file } ) {
+       INFO "Needs update: $file";
+       $file_id = $needs_update{ $file }->id();
+   } else {
+       INFO "Local only: $file";
+   }
+
+   next if $opts{ n };
+
+   INFO "Uploading file $file";
+   $gd->file_upload( "$local_dir/$file", $parent, $file_id );
+}
+
+__END__
+
+=head1 NAME
+
+    google-drive-upsync - Sync a local dir with a Google Drive dir
+
+=head1 SYNOPSIS
+
+    google-drive-upsync local-dir /gdrive-dir
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<-v>
+
+Be verbose.
+
+=item B<-n>
+
+Dryrun, don't upload any files, just report what needs to be done.
+
+=back
+
+=head1 DESCRIPTION
+
+C<google-drive-upsync> uploads the files in a local directory to a
+directory on Google Drive. If a file on Google Drive already exists
+with a different byte count, it will overwrite the remote file with
+the local counterpart.
+
+Files in the Google Drive dir that have no counterpart in the local dir
+are left alone.
+
+=head1 EXAMPLES
+
+  $ google-drive-upsync ~/books /books
+
+=head1 LEGALESE
+
+Copyright 2012 by Mike Schilli, all rights reserved.
+This program is free software, you can redistribute it and/or
+modify it under the same terms as Perl itself.
+
+=head1 AUTHOR
+
+2012, Mike Schilli <cpan@perlmeister.com>

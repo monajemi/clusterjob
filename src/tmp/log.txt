@@ -1,0 +1,59 @@
+
+[32mpid 3237a94673f4d0e480f83be1747f05301ad6e015[0m
+date: 2015-Nov-02  03:11:37  (GMT -08:00:00)
+remote: monajemi@sherlock.stanford.edu
+script: myMatlabJob.m
+initial_flag: run
+reruned: 2 times 
+
+          
+
+[32mpid f6175c6fe78091ebbd574c06562a19c34d48d71d[0m
+date: 2015-Nov-02  03:23:34  (GMT -08:00:00)
+remote: monajemi@sherlock.stanford.edu
+script: example_reduce.m
+initial_flag: parrun
+reruned: 1 times 
+
+          
+
+[32mpid d4f4e3f9cda03298a7757ff13942a56e7ad7c6d4[0m
+date: 2015-Nov-02  03:34:42  (GMT -08:00:00)
+remote: monajemi@sherlock.stanford.edu
+script: example_reduce.m
+initial_flag: parrun
+
+          
+
+[32mpid f8566928c72be452e8936e77322ec6c53ae5795e[0m
+date: 2015-Nov-02  19:27:18  (GMT -08:00:00)
+remote: monajemi@solomon.stanford.edu
+script: myMatlabJob.m
+initial_flag: run
+
+          
+
+[32mpid 849ea31c2b315feedbcd4f995a67fd86d4c9bf59[0m
+date: 2015-Nov-03  15:11:12  (GMT -08:00:00)
+remote: monajemi@sherlock.stanford.edu
+script: myMatlabJob.m
+initial_flag: run
+cleaned: 2015-Nov-03  15:11:47  (GMT -08:00:00)
+
+          
+
+[32mpid fb576000df9373f66b9fc229bbfedf3a22b5256e[0m
+date: 2015-Nov-03  15:44:50  (GMT -08:00:00)
+remote: monajemi@sherlock.stanford.edu
+script: example_reduce.m
+initial_flag: parrun
+
+          
+
+[32mpid 43cafaae4d7e4b7e76bada9584167adca3e78eb8[0m
+date: 2015-Nov-03  15:45:28  (GMT -08:00:00)
+remote: monajemi@sherlock.stanford.edu
+script: example_reduce.m
+initial_flag: parrun
+
+          

@@ -1,0 +1,56 @@
+{
+   "abstract" : "Simple modification of Google Drive data",
+   "author" : [
+      "Mike Schilli <cpan@perlmeister.com>"
+   ],
+   "dynamic_config" : 1,
+   "generated_by" : "ExtUtils::MakeMaker version 7.04, CPAN::Meta::Converter version 2.142690",
+   "license" : [
+      "unknown"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "Net-Google-Drive-Simple",
+   "no_index" : {
+      "directory" : [
+         "t",
+         "inc"
+      ]
+   },
+   "prereqs" : {
+      "build" : {
+         "requires" : {
+            "ExtUtils::MakeMaker" : "0"
+         }
+      },
+      "configure" : {
+         "requires" : {
+            "ExtUtils::MakeMaker" : "0"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "File::MMagic" : "1.29",
+            "JSON" : "2.53",
+            "LWP::Protocol::https" : "6.04",
+            "LWP::UserAgent" : "6.02",
+            "Log::Log4perl" : "1",
+            "Mojolicious" : "4.13",
+            "OAuth::Cmdline" : "0.04",
+            "Pod::Usage" : "1.36",
+            "Sysadm::Install" : "0.43",
+            "Test::MockObject" : "1.09",
+            "YAML" : "0.71"
+         }
+      }
+   },
+   "release_status" : "stable",
+   "resources" : {
+      "repository" : {
+         "url" : "http://github.com/mschilli/net-google-drive-simple.git"
+      }
+   },
+   "version" : "0.12"
+}

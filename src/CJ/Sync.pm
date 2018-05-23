@@ -64,7 +64,7 @@ sub request{
 # $fb_get->{$agent}->{SyncReq}; and if the value is not
 # null,  it should update the corresponding PIDs (keys of the hashref);
 # once all updates are done the agent changes the value of todo to null
-# to indicateall updates are done. 
+# to indicate all updates are done.
 
 my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
 # Get todo list
@@ -196,6 +196,7 @@ sub push_timestamp{
 # than the remote counterpart, it sends to the server the local info that hasnt been pushed.
 my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
 my $fb_get = $firebase->get("users/${CJID}/agents/$agent");
+    
 return unless defined($fb_get);
 my $remote_push_timestamp = $fb_get->{push_timestamp};
 return unless defined($remote_push_timestamp);
@@ -219,7 +220,8 @@ CJ::warning("CJ is in awe! Push TimeStamp:: remote is bigger than local") if ($r
 			my @filtered_pids = grep { $pid_timestamp->{$_} > $remote_push_timestamp } keys %$pid_timestamp;
 			my $info_hash = &CJ::retrieve_package_info(\@filtered_pids);
 			
-			my $size = keys $info_hash;
+            return if not defined($info_hash);
+            my $size = 0+keys( %{ $info_hash } );
 			my $counter = 0;
 			while ( my ($pid,$info) = each (%$info_hash)){
 				my $timestamp = $info->{date}{epoch};

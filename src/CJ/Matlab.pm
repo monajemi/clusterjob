@@ -14,11 +14,12 @@ use feature 'say';
 # class constructor
 sub new {
  	my $class= shift;
- 	my ($path,$program) = @_;
+ 	my ($path,$program,$dep_folder) = @_;
 	
 	my $self= bless {
 		path => $path, 
-		program => $program
+		program => $program,
+        dep_folder => $dep_folder
 	}, $class;
 		
 	return $self;
@@ -44,8 +45,9 @@ sub parse {
 	close $fh;
     
 	# this includes fors on one line
-	my @lines = split('\n|;\s*(?=for)', $script_lines);
+	my @lines = split('\n|[;,]\s*(?=for)', $script_lines);
 
+    
 	my @forlines_idx_set;
 	foreach my $i (0..$#lines){
 	my $line = $lines[$i];
@@ -54,8 +56,8 @@ sub parse {
 	    }
 	}
 	# ==============================================================
-	# complain if the size of for loops is more than three or
-	# if they are not consecutive. We do not allow it in clusterjob.
+	# complain if for loops are not 
+	# consecutive. We do not allow it in clusterjob.
 	# ==============================================================
 	&CJ::err(" 'parrun' does not allow less than 1 parallel loops inside the MAIN script.") if($#forlines_idx_set+1 < 1);
 
@@ -269,7 +271,7 @@ sub findIdxTagRange
         push @idx_tags, $idx_tag;   # This will keep order.
 	    
 		if(defined($range)){
-	       $ranges->{$idx_tag} = $range;
+	        $ranges->{$idx_tag} = $range;
 	    }else{
 	        push @tags_to_matlab_interpret, $idx_tag;
 	        push @forlines_to_matlab_interpret, $this_forline;
@@ -288,6 +290,7 @@ sub findIdxTagRange
 	    	#print"$_:$range_run_interpret->{$_} \n";
 	    }
 	}
+    
     
 	return (\@idx_tags,$ranges);
 }
@@ -341,21 +344,19 @@ sub read_matlab_index_set
             #extract the range
             my @this_array    = split(/\s*=\s*/,$this_line);
             
-            
             my $numbers;
             if($this_array[1] =~ /\[\s*([^:]+?)\s*\]/){
             ($numbers) = $this_array[1] =~ /\[\s*(.+?)\s*\]/;
-            my $floating_pattern = "[-+]?[0-9]*[\.]?[0-9]+(?:[eE][-+]?[0-9]+)?";
-            my $fractional_pattern = "(?:${floating_pattern}\/)?${floating_pattern}";
+            my $float_pattern = "[-+]?[0-9]*[\.]?[0-9]+(?:[eE][-+]?[0-9]+)?";
+            my $power_pattern = "(?:${float_pattern}[\\^])?${float_pattern}";
+            my $fractional_pattern = "(?:${power_pattern}\/)?${power_pattern}";
             my @vals = $numbers =~ /[\;\,]?($fractional_pattern)[\;\,]?/g;
-             
+                
             my $high = 1+$#vals;
             my @range = ($low..$high);
             $range = join(',',@range);
                 
             }
-            
-           
             
         }elsif($rightarray[1] =~ /\s*(\D+)\s*/) {
             #print "$rightarray[1]"."\n";
@@ -409,16 +410,63 @@ sub read_matlab_index_set
 sub run_matlab_index_interpreter{
 	my $self = shift;
     my ($TOP,$tag_list,$for_lines,$verbose) = @_;
+
+	&CJ::message("Invoking MATLAB to find range of indices. Please be patient...");
+
     
     # Check that the local machine has MATLAB (we currently build package locally!)
+	# Open matlab  and eval
+
+my $test_name= "/tmp/CJ_matlab_test";
+my $test_file = "\'$test_name\'";
+
+my $matlab_check_script = <<MATLAB_CHECK;
+test_fid = fopen($test_file,'w+');
+fprintf(test_fid,\'%s\', 'test_passed');
+fclose(test_fid);
+MATLAB_CHECK
+
+my $check_path = "/tmp";
+my $check_name= "CJ_matlab_check_script.m";
+
+&CJ::writeFile("$check_path/$check_name",$matlab_check_script);
+
+
+my $junk = "/tmp/CJ_matlab.output"; 
+
     
-    my $check_matlab_installed = `source ~/.bashrc ; source ~/.profile; command -v matlab`;
-    if($check_matlab_installed eq ""){
-    &CJ::err("I require matlab but it's not installed: The following check command returned null. \n     `source ~/.bashrc ; source ~/.profile; command -v matlab`");
-    }else{
-    &CJ::message("Test passed, Matlab is installed on your machine.");
-    }
     
+my $matlab_check_bash = <<CHECK_BASH;
+#!/bin/bash -l
+  matlab -nodisplay -nodesktop -nosplash  < '$check_path/$check_name'  &>$junk;
+CHECK_BASH
+   
+   
+   
+&CJ::message("Checking command 'matlab' is available...",1);
+
+CJ::my_system("source ~/.bash_profile; source ~/.bashrc; printf '%s' $matlab_check_bash",$verbose);  # this will generate a file test_file
+
+eval{
+    my $check = &CJ::readFile($test_name);     # this causes error if there is no file which indicates matlab were not found.
+	#print $check . "\n";
+};
+if($@){
+	#print $@ . "\n";
+&CJ::err("CJ requires 'matlab' but it cannot access it. Consider adding alias 'matlab' in your ~/.bashrc or ~/.bash_profile");	
+}else{
+&CJ::message("matlab available.",1);	
+};   
+   
+	
+	#
+    # my $check_matlab_installed = `source ~/.bashrc ; source ~/.profile; source ~/.bash_profile; command -v matlab`;
+    # if($check_matlab_installed eq ""){
+    # &CJ::err("I require matlab but it's not installed: The following check command returned null. \n     `source ~/.bashrc ; source ~/.profile; command -v matlab`");
+    # }else{
+    # &CJ::message("Test passed, Matlab is installed on your machine.");
+    # }
+    # 
 
 # build a script from top to output the range of index
     
@@ -433,7 +481,7 @@ foreach my $i (0..$#{$for_lines}){
     
         # print  "$tag: $forline\n";
     
-        my $tag_file = "\'/tmp/$tag\.tmp\'";
+   	 my $tag_file = "\'/tmp/$tag\.tmp\'";
 $matlab_interpreter_script .=<<MATLAB
 $tag\_fid = fopen($tag_file,'w+');
 $forline
@@ -442,32 +490,36 @@ end
 fclose($tag\_fid);
 MATLAB
 }
-    #print  "$matlab_interpreter_script\n";
-    
-    my $name = "CJ_matlab_interpreter_script.m";
-    my $path = "/tmp";
-    &CJ::writeFile("$path/$name",$matlab_interpreter_script);
-    &CJ::message("$name is built in $path");
+#print  "$matlab_interpreter_script\n";
+
+my $name = "CJ_matlab_interpreter_script.m";
+&CJ::writeFile("$self->{path}/$name",$matlab_interpreter_script);
 
     
+#FIXME if this is not successful and doesnt give index.tmp, we need to issue error.
     
 my $matlab_interpreter_bash = <<BASH;
 #!/bin/bash -l
 # dump everything user-generated from top in /tmp
-cd /tmp/
-source ~/.profile
-source ~/.bashrc
-    matlab -nodisplay -nodesktop -nosplash  <'$path/$name' &>/tmp/matlab.output    # dump matlab output
+cd $self->{'path'}
+matlab -nodisplay -nodesktop -nosplash  <<HERE &>$junk;
+addpath('$self->{path}/$self->{dep_folder}');
+run('$self->{path}/$name')
+HERE
 BASH
+
 
     #my $bash_name = "CJ_matlab_interpreter_bash.sh";
     #my $bash_path = "/tmp";
     #&CJ::writeFile("$bash_path/$bash_name",$matlab_interpreter_bash);
     #&CJ::message("$bash_name is built in $bash_path");
 
-&CJ::message("Invoking matlab to find range of indecies. Please be patient...");
-&CJ::my_system("echo $matlab_interpreter_bash", $verbose);
-&CJ::message("Closing Matlab session!");
+    
+    
+&CJ::message("finding range of indices...",1);
+CJ::my_system("source ~/.bash_profile; source ~/.bashrc; printf '%s' $matlab_interpreter_bash",$verbose);
+&CJ::message("Closing Matlab session!",1);
+    
     
 # Read the files, and put it into $numbers
 # open a hashref
@@ -477,19 +529,17 @@ foreach my $tag (@$tag_list){
     my $tmp_array = &CJ::readFile("$tag_file");
     my @tmp_array  = split /\n/,$tmp_array;
     $range->{$tag} = join(',', @tmp_array);
-    #print $range->{$tag} . "\n";
+    # print $range->{$tag} . "\n";
+	&CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp  
 }
+
+
+# remove the files you made in /tmp
+&CJ::my_system("rm -f $test_name $junk $check_path/$check_name $self->{path}/$name");
+
     return $range;
 	
 }
-
-
-
-
-
-
-
-
 
 
 
@@ -500,6 +550,7 @@ sub uncomment_matlab_line{
 	
     my ($line) = @_;
     $line =~ s/^(?:(?!\').)*\K\%(.*)//;
+    
     return $line;
 }
 
@@ -511,144 +562,182 @@ sub uncomment_matlab_line{
 
 
 
-sub make_MAT_collect_script
-{
-	my $self = shift;
-	
-my ($res_filename, $completed_filename, $bqs) = @_;
+########################
+sub CJrun_body_script{
+########################
+    my $self = shift;
+    my ($ssh) = @_;
     
-my $collect_filename = "collect_list.txt";
+&CJ::err("Matlab module not defined in ssh_config file.") if not defined $ssh->{'mat'};
     
-my $matlab_collect_script=<<MATLAB;
-\% READ completed_list.txt and FIND The counters that need
-\% to be read
-completed_list = load('$completed_filename');
+my $script =<<'BASH';
+    
+module load <MATLAB_MODULE>
+unset _JAVA_OPTIONS
+matlab -nosplash -nodisplay <<HERE
+<MATPATH>
+my $script =<<'BASH';
+    
+module load <MATLAB_MODULE>
+unset _JAVA_OPTIONS
+matlab -nosplash -nodisplay <<HERE
+<MATPATH>
 
-if(~isempty(completed_list))
-
-
-\%determine the structre of the output
-if(exist('$res_filename', 'file'))
-    \% CJ has been called before
-    res = load('$res_filename');
-    start = 1;
-else
-    \% Fisrt time CJ is being called
-    res = load([num2str(completed_list(1)),'/$res_filename']);
-    start = 2;
+% make sure each run has different random number stream
+myversion = version;
+mydate = date;
+RandStream.setGlobalStream(RandStream('mt19937ar','seed', sum(100*clock)));
+globalStream = RandStream.getGlobalStream;
+CJsavedState = globalStream.State;
+fname = sprintf('CJrandState.mat');
+save(fname,'myversion','mydate', 'CJsavedState');
+cd $DIR
+run('${PROGRAM}');
+quit;
+HERE
     
-    
-    \% delete the line from remaining_filename and add it to collected.
-    \%fid = fopen('$completed_filename', 'r') ;               \% Open source file.
-    \%fgetl(fid) ;                                            \% Read/discard line.
-    \%buffer = fread(fid, Inf) ;                              \% Read rest of the file.
-    \%fclose(fid);
-    \%delete('$completed_filename');                         \% delete the file
-    \%fid = fopen('$completed_filename', 'w')  ;             \% Open destination file.
-    \%fwrite(fid, buffer) ;                                  \% Save to file.
-    \%fclose(fid) ;
-    
-    if(~exist('$collect_filename','file'));
-    fid = fopen('$collect_filename', 'a+');
-    fprintf ( fid, '%d\\n', completed_list(1) );
-    fclose(fid);
-    end
-    
-    percent_done = 1/length(completed_list) * 100;
-    fprintf('\\n SubPackage %d Collected (%3.2f%%)', completed_list(1), percent_done );
+BASH
 
     
-end
+my $pathText.=<<MATLAB;
+% add user defined path
+addpath $ssh->{matlib} -begin
 
-flds = fields(res);
+% generate recursive path
+addpath(genpath('.'));
 
+try
+cvx_setup;
+cvx_quiet(true)
+% Find and add Sedumi Path for machines that have CVX installed
+cvx_path = which('cvx_setup.m');
+oldpath = textscan( cvx_path, '%s', 'Delimiter', '/');
+newpath = horzcat(oldpath{:});
+sedumi_path = [sprintf('%s/', newpath{1:end-1}) 'sedumi'];
+addpath(sedumi_path)
 
-for idx = start:length(completed_list)
-    count  = completed_list(idx);
-    newres = load([num2str(count),'/$res_filename']);
-    
-    for i = 1:length(flds)  \% for all variables
-        res.(flds{i}) =  CJ_reduce( res.(flds{i}) ,  newres.(flds{i}) );
-    end
-
-\% save after each packgae
-save('$res_filename','-struct', 'res');
-percent_done = idx/length(completed_list) * 100;
-    
-\% delete the line from remaining_filename and add it to collected.
-\%fid = fopen('$completed_filename', 'r') ;              \% Open source file.
-\%fgetl(fid) ;                                      \% Read/discard line.
-\%buffer = fread(fid, Inf) ;                        \% Read rest of the file.
-\%fclose(fid);
-\%delete('$completed_filename');                         \% delete the file
-\%fid = fopen('$completed_filename', 'w')  ;             \% Open destination file.
-\%fwrite(fid, buffer) ;                             \% Save to file.
-\%fclose(fid) ;
-
-if(~exist('$collect_filename','file'));
-    error('   CJerr::File $collect_filename is missing. CJ stands in AWE!');
-end
-
-fid = fopen('$collect_filename', 'a+');
-fprintf ( fid, '%d\\n', count );
-fclose(fid);
-    
-fprintf('\\n SubPackage %d Collected (%3.2f%%)', count, percent_done );
-end
-
-   
-
+catch
+warning('CVX not enabled. Please set CVX path in .ssh_config if you need CVX for your jobs');
 end
 
 MATLAB
 
+$script =~ s|<MATPATH>|$pathText|;
+$script =~ s|<MATLAB_MODULE>|$ssh->{mat}|;
 
 
-
-my $HEADER= &CJ::bash_header($bqs);
-
-my $script;
-if($bqs eq "SGE"){
-$script=<<BASH;
-$HEADER
-echo starting collection
-echo FILE_NAME $res_filename
-
-
-module load MATLAB-R2014a;
-matlab -nosplash -nodisplay <<HERE
-
-$matlab_collect_script
-
-quit;
-HERE
-
-echo ending colection;
-echo "done"
-BASH
-}elsif($bqs eq "SLURM"){
-$script= <<BASH;
-$HEADER
-echo starting collection
-echo FILE_NAME $res_filename
-
-module load matlab;
-matlab -nosplash -nodisplay <<HERE
-
-$matlab_collect_script
-
-quit;
-HERE
-
-echo ending colection;
-echo "done"
-BASH
-
+    return $script;
+    
 }
+
+##########################
+sub CJrun_par_body_script{
+##########################
+    my $self = shift;
+    my ($ssh) = @_;
+    
+&CJ::err("Matlab module not defined in ssh_config file.") if not defined $ssh->{'mat'};
+
+my $script =<<'BASH';
+
+module load <MATLAB_MODULE>
+unset _JAVA_OPTIONS
+matlab -nosplash -nodisplay <<HERE
+<MATPATH>
+
+
+% add path for parrun
+oldpath = textscan('$DIR', '%s', 'Delimiter', '/');
+newpath = horzcat(oldpath{:});
+bin_path = sprintf('%s/', newpath{1:end-1});
+addpath(genpath(bin_path));
+
+
+% make sure each run has different random number stream
+myversion = version;
+mydate = date;
+% To get different Randstate for different jobs
+rng(${COUNTER})
+seed = sum(100*clock) + randi(10^6);
+RandStream.setGlobalStream(RandStream('mt19937ar','seed', seed));
+globalStream = RandStream.getGlobalStream;
+CJsavedState = globalStream.State;
+fname = sprintf('CJrandState.mat');
+save(fname,'myversion', 'mydate', 'CJsavedState');
+cd $DIR
+run('${PROGRAM}');
+quit;
+HERE
+
+BASH
+    
+    
+    
+my $pathText.=<<MATLAB;
+
+% add user defined path
+addpath $ssh->{matlib} -begin
+
+% generate recursive path
+addpath(genpath('.'));
+
+try
+cvx_setup;
+cvx_quiet(true)
+% Find and add Sedumi Path for machines that have CVX installed
+cvx_path = which('cvx_setup.m');
+oldpath = textscan( cvx_path, '%s', 'Delimiter', '/');
+newpath = horzcat(oldpath{:});
+sedumi_path = [sprintf('%s/', newpath{1:end-1}) 'sedumi'];
+addpath(sedumi_path)
+
+catch
+warning('CVX not enabled. Please set CVX path in .ssh_config if you need CVX for your jobs');
+end
+
+MATLAB
+   
+    
+$script =~ s|<MATPATH>|$pathText|;
+$script =~ s|<MATLAB_MODULE>|$ssh->{mat}|;
 
     
     return $script;
 }
+
+
+
+
+
+
+#############################
+sub buildParallelizedScript{
+#############################
+my $self = shift;
+my ($TOP,$FOR,$BOT,@tag_idx) = @_;
+
+my @str;
+while(@tag_idx){
+   my $tag = shift @tag_idx;
+   my $idx = shift @tag_idx;
+   push @str , "$tag~=$idx";
+}
+
+my $str = join('||',@str);
+
+
+my $INSERT = "if ($str); continue;end";
+my $new_script = "$TOP \n $FOR \n $INSERT \n $BOT";
+undef $INSERT;
+return $new_script;
+}
+
+
+
+
+
+
+
 
 
 

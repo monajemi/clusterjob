@@ -129,7 +129,7 @@ Pythonlib	pytorch:torchvision:cuda80:pandas:-c soumith
 
 
 [gce-hatef]
-host	35.18.20.12
+Host	35.185.238.124
 User	moosh
 Bqs	SLURM
 Repo	~/CJRepo

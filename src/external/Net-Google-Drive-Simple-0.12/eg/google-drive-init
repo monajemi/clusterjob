@@ -1,0 +1,25 @@
+#!/usr/local/bin/perl -w
+###########################################
+# google-drive-init
+# Mike Schilli, 2014 (m@perlmeister.com)
+###########################################
+use strict;
+use lib 'lib';
+
+use OAuth::Cmdline::GoogleDrive;
+use OAuth::Cmdline::Mojo;
+
+my $oauth = OAuth::Cmdline::GoogleDrive->new(
+    client_id     => "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    client_secret => "YYYYYYYYYYYYYYYYYYYYYYYY",
+    login_uri     => "https://accounts.google.com/o/oauth2/auth",
+    token_uri     => "https://accounts.google.com/o/oauth2/token",
+    scope         => "https://www.googleapis.com/auth/drive",
+    access_type   => "offline",
+);
+
+my $app = OAuth::Cmdline::Mojo->new(
+    oauth => $oauth,
+);
+
+$app->start( 'daemon', '-l', $oauth->local_uri );

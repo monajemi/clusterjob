@@ -1,0 +1,65 @@
+#!/usr/local/bin/perl -w
+use strict;
+use FindBin qw( $Bin );
+use lib "$Bin/../lib";
+
+use Net::Google::Drive::Simple;
+use Log::Log4perl qw(:easy);
+use Pod::Usage;
+
+my( $file, $dir ) = @ARGV;
+
+if( ! $file ) {
+    pod2usage( "No file given for upload." );
+}
+
+if( ! -f $file ) {
+    pod2usage( "No such file: $file" );
+}
+
+if( ! defined $dir ) {
+    pod2usage( "No Google Drive destination directory given." );
+}
+
+Log::Log4perl->easy_init( $DEBUG );
+
+my $gd = Net::Google::Drive::Simple->new();
+
+my( $children, $parent ) = 
+    $gd->children( $dir, { maxResults => 1 } );
+
+if( !$parent ) {
+    LOGDIE "Can't find remote directory $dir. Does it exist?";
+}
+
+$gd->file_upload( $file, $parent ) or
+    LOGDIE "Upload failed: $!";
+
+__END__
+
+=head1 NAME
+
+    file-upload - Upload a file into a Google Drive directory
+
+=head1 SYNOPSIS
+
+    file-upload local-file google-drive-dir
+
+=head1 DESCRIPTION
+
+C<file-upload> uploads a given files to Google Drive, and puts
+it into the destination directory specified.
+
+=head1 EXAMPLES
+
+  $ google-drive-upsync my.txt /stuff/txtfiles
+
+=head1 LEGALESE
+
+Copyright 2014 by Mike Schilli, all rights reserved.
+This program is free software, you can redistribute it and/or
+modify it under the same terms as Perl itself.
+
+=head1 AUTHOR
+
+2014, Mike Schilli <cpan@perlmeister.com>

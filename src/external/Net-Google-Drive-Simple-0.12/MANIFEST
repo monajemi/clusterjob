@@ -1,0 +1,16 @@
+Changes
+eg/file-download
+eg/file-upload
+eg/google-drive-init
+eg/google-drive-upsync
+lib/Net/Google/Drive/Simple.pm
+Makefile.PL
+MANIFEST			This list of files
+MANIFEST.SKIP
+MYMETA.json
+MYMETA.yml
+README
+t/001Basic.t
+t/data/testfile
+META.yml                                 Module YAML meta-data (added by MakeMaker)
+META.json                                Module JSON meta-data (added by MakeMaker)

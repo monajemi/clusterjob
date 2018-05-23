@@ -1,4 +1,4 @@
-package Firebase;
+package FirebaseGS;
 
 use Moo;
 use Firebase::Auth;
@@ -47,6 +47,106 @@ has agent => (
     default     => sub { HTTP::Thin->new() },
 );
 
+
+
+
+
+sub create_uri {
+    my ($self, $path, $metadata) = @_;
+    
+    my $token;
+    $token = $self->authobj->create_token if $self->has_authobj || $self->has_auth;
+    $token = $self->auth_token  if $self->has_token;
+    my $add =  "/$path" if defined($path);
+    
+    
+    my $url = defined($path) ? 'https://firebasestorage.googleapis.com/v0/b/'.$self->firebase.'.appspot.com/o'. $path :
+                                'https://firebasestorage.googleapis.com/v0/b/'.$self->firebase.'.appspot.com/o';
+    $url .= '?uploadType=resumable';
+    $url .= '&auth='. $token;
+    my $uri = URI->new($url);
+    
+    return $uri;
+}
+
+
+
+
+
+
+sub upload {
+    my ($self, $from_path, $to_path, $metadata) = @_;
+    
+    #print $path . "\n";
+    
+    my $uri = $self->create_uri($to_path);
+    print $uri . "\n";
+    
+    my $length = -s $from_path;
+    my $request = POST($uri->as_string, Content_Type => 'application/json; charset=UTF-8',
+                        Content_Length => $length, Content => [ $from_path , $metadata ] );
+    #$request->method('POST'); # because HTTP::Request::Common treats PUT as GET rather than POST
+    
+    
+    print Dumper($request) . "\n";
+    
+    return $self->process_request( $request );
+}
+
+
+
+
+    
+    
+sub process_request {
+    my $self = shift;
+    $self->process_response($self->agent->request( @_ ));
+}
+    
+sub process_response {
+    my ($self, $response) = @_;
+        
+    $self->debug($response->header('X-Firebase-Auth-Debug'));
+        
+        if ($response->is_success) {
+            if ($response->decoded_content eq 'null') {
+                return undef;
+            }
+            else {
+                my $result = eval { from_json($response->decoded_content) };
+                if ($@) {
+                    warn $response->decoded_content;
+                    ouch 500, 'Server returned unparsable content.';#, { error => $@, content => $response->decoded_content };
+                }
+                return $result;
+            }
+        }
+        else {
+            print Dumper($response);
+            ouch 500, $response->status_line, $response->decoded_content;
+        }
+}
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+
+
+
+
+
+
 sub get {
     my ($self, $path, $param_hash) = @_;
     my $uri = $self->create_uri($path);
@@ -85,7 +185,6 @@ sub put {
 
 sub patch {
     my ($self, $path, $params) = @_;
-    
     my $uri = $self->create_uri($path);
     my $request = POST($uri->as_string, Content_Type => 'form-data', Content => to_json($params));
     $request->method('PATCH'); # because HTTP::Request::Common treats PUT as GET rather than POST
@@ -99,48 +198,7 @@ sub post {
     return $self->process_request( $request );
 }
 
-sub create_uri {
-    my ($self, $path,$param) = @_;
-	
-	my $token;
-	$token = $self->authobj->create_token if $self->has_authobj || $self->has_auth;
-	$token = $self->auth_token  if $self->has_token;
-		
-    my $url = 'https://'.$self->firebase.'.firebaseio.com/'.$path.'.json';
-    $url .= '?auth='. $token;
-	my $uri = URI->new($url);
-	 
-    return $uri;
-}
 
-sub process_request {
-    my $self = shift;
-    $self->process_response($self->agent->request( @_ ));
-}
-
-sub process_response {
-    my ($self, $response) = @_;
-    
-	$self->debug($response->header('X-Firebase-Auth-Debug'));
-	
-	if ($response->is_success) {
-        if ($response->decoded_content eq 'null') {
-            return undef;
-        }
-        else {
-            my $result = eval { from_json($response->decoded_content) }; 
-            if ($@) {
- 				warn $response->decoded_content;
-                ouch 500, 'Server returned unparsable content.';#, { error => $@, content => $response->decoded_content };
-            }
-            return $result;
-        }
-    }
-    else {
-		print Dumper($response);
-        ouch 500, $response->status_line, $response->decoded_content;
-    }
-}
 
 =head1 NAME
 

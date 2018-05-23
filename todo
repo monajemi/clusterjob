@@ -1,0 +1,17 @@
+Issues:
+
+1) Add_change_to_run_history currently reads only from local
+	it shouldnt be like this. Read_record should be adaptive!
+	
+	like try 
+	
+	    ./test run
+		cj clean
+	
+	CJ cannot clean. Also if it cleans then go to 2 
+	
+2) When a change happens and remote changes, the local machine
+   which generated that package should update the record upon 
+   next use of CJ! 
+   This means just a comparison of Epochs between local machine 
+   and remote	

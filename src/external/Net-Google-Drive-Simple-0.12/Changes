@@ -1,0 +1,71 @@
+######################################################################
+Revision history for Perl extension Net::Google::Drive::Simple
+
+0.12 (2015/01/26)
+    (ms) [rt.cpan.org #100789] http_loop() now returns a HTTP::Response 
+         object even in the error case, to allow for the is_error() 
+         method to work in the calling code.
+    (ms) [rt.cpan.org [#101655] fixed docs, removed unused config_file 
+         parameter in constructor.
+
+0.11 (2014/10/08)
+    (ms) Ilmari Ikonen implemented file_delete(). Added docs and tests.
+    (ms) Failed calls no longer die, but return undef, where $gd->error()
+         holds an error message.
+    (ms) Added access_type=offline ([rt.cpan.org #99372]) since Google
+         apparently won't sent a refresh token in some cases if it's not
+         set.
+
+0.10 (2014/09/27)
+    (ms) Fixed file_upload(), which uses the token_expire() method
+         in OAuth::Cmdline 0.03.
+
+0.09 (2014/09/25)
+    (ms) Fixed link to set up client ID and secret, as suggested by 
+         Tom Shield ([rt.cpan.org #94316]).
+    (ms) All list functions (files(), children(), etc.) now filter out
+         trashed items.
+    (ms) Delegated oauth logic to OAuth::Cmdline
+
+0.08 (2013/07/27)
+    (ms) Max Maischein added
+         * Allow passing of the Google JSON file on the command line, 
+           and using the data found in the JSON file as credentials
+         * Output an error message if the user did not patch the file, and 
+           also did not pass the JSON file on the command line
+         * Try to find the JSON file in the users home directory
+         * a new search() method to perform non-folder-based general 
+           searches for files
+    (ms) Maettu documented exporting Google Docs
+         (https://github.com/mschilli/net-google-drive-simple/pull/7)
+
+0.07 (2013/07/27)
+    (ms) fixed broken test suite
+
+0.06 (2013/07/25)
+    (ms) Added download() method to download files from the google drive
+    (ms) Fixed files() to return full objects, not just file names
+    (ms) Applied patch by Yxes, pulling in a https lib and replacing 
+         deprecated render_text Mojo method by render(text => x):
+         https://github.com/mschilli/net-google-drive-simple/pull/4
+
+0.05 (2013/03/18)
+    (ms) Requiring Sysadm::Install 0.43 for Win32 compatibility.
+
+0.04 (2013/02/03)
+    (ms) Removed dependency on pdf files, now supports all types of files
+         via File::MMagic.
+    (ms) Better debug logs
+    (ms) Added better instructions on how to obtain Google Drive client
+         IDs and secrets.
+
+0.03 (2013/01/03)
+    (ms) Now refreshing token right before a file_upload, regardless of expire
+         time. Working around unexplicable problems when the token expires
+         while an upload is in progress.
+
+0.02 (2012/12/30)
+    (ms) children() now works correctly in both scalar and array context
+
+0.01 (2012/12/28)
+    (ms) Where it all began.
