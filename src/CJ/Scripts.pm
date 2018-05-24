@@ -12,29 +12,7 @@ use CJ::R;
 use CJ::Python;
 use feature 'state';
 use feature 'say';
-#====================================
-#       BUILD A BASH WRAPPER
-#====================================
 
-
-sub build_reproducible_script{
-	my ($programType, $program, $path, $runflag) = @_;
-	if ($programType eq "matlab"){
-		my $matlab = CJ::Matlab->new($path,$program);
-		$matlab->build_reproducible_script($runflag); 
-	}elsif($programType eq "R"){
-		#TODO: implement this:
-		my $Rcode = CJ::R->new($path,$program);
-		#CJ::R::build_reproducible_script($program, $local_sep_Dir, $runflag) if ($programType eq "r");
-		#CJ::err('not implemented yet');
-		$RCode->build_reproducible_script($runflag);	
-		
-		exit 1;
-	}else{
-		CJ::err("Program type .$programType not recognized." );
-	}
-	
-}
 
 sub build_rrun_bashMain_script{
 my ($extra) = @_;

@@ -3,6 +3,8 @@
 "miniconda":{"version":"Miniconda3-latest-Linux-x86_64", "space":"392M", "install_time":" 1-5  min"},
 "cvx":{"version":"cvx-rd", "space":"108M", "install_time":"20-60 sec"},
 "matlab":{"version":"", "space":"", "install_time":""},
-"composer":{"version":"latest", "space":"", "install_time":""}
-
+"composer":{"version":"latest", "space":"", "install_time":""},
+"r":{"version":"3.5.0", "space":"", "install_time":"15-20 min"},
+"java":{"version":"jdk-8u171-linux-x64", "space":"671M", "install_time":"   1  min"}
 }
+

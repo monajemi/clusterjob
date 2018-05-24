@@ -33,17 +33,301 @@ sub new {
 
 
 
-sub rstats{
 
+
+sub __apply_install{
+    
+    my $self=shift;
+    my ($force_tag, $installpath, $install_bash_script) = @_;
+    
+    my $ssh = CJ::host($self->{'machine'});
+    
+    # if forced clear the previous installation if any
+    if($force_tag == 1){
+        &CJ::message("(forced) removing prior installation of $self->{app} in $installpath");
+        my $cmd = "ssh $ssh->{account} 'rm -rf $installpath' ";
+        &CJ::my_system($cmd,0);
+    }
+    
+    
+    
+    
+    my $filename = "CJ_install_". $self->{app} . ".sh";
+    my $filepath = "/tmp/$filename";
+    &CJ::writeFile($filepath, $install_bash_script);
+    my $cmd = "scp $filepath $ssh->{account}:.";
+    &CJ::my_system($cmd,1);
+    
+    &CJ::message("----- START BASH ON $self->{'machine'}-----",1);
+    $cmd = "ssh $ssh->{account} 'cd \$HOME && bash -l $filename' ";
+    system($cmd);
+    
+    $cmd = "ssh $ssh->{account} 'if [ -d \$HOME/$self->{path} ] ; then mv \$HOME/$filename \$HOME/$self->{path}/; fi' ";
+    system($cmd);
+    
+    &CJ::message("----- END BASH ON $self->{'machine'}-----",1);
+    
+}
+
+
+
+
+
+
+
+
+#########
+sub java{
+    #####
+    
+    my $self=shift;
+    my ($force_tag) = @_;
+    
+    my $java    = 'jdk-8u171-linux-x64';
+    my $distro  ='http://download.oracle.com/otn-pub/java/jdk/8u171-b11/512cd62ec5174c3487ac17c61aaa89e8';
+    my $installpath = "\$HOME/$self->{path}/java";
+    #-------------------------------------------------------
+    
+    
+
+    
+my $install_bash_script  =<<'BASH';
+
+START=`date +%s`
+
+echo "GETTING <JAVA> from <DISTRO>";
+if [ -f <JAVA>.tar.gz ]; then rm -f <JAVA>.tar.gz; fi;
+wget --no-cookies --no-check-certificate --header "Cookie: oraclelicense=accept-securebackup-cookie" "<DISTRO>/<JAVA>.tar.gz"
+
+
+echo "INSTALLING <JAVA>";
+if [ -d <INSTALLPATH> ]; then
+printf "ERROR: directory <INSTALLPATH> exists. Aborting install. \
+\nYou may use 'cj install -f ...' to remove this directory for a fresh install\n";
+exit 1;
+fi
+
+# Go to java home dir, and unzip the source file
+if [ ! -d  "<INSTALLPATH>"  ] ; then
+mkdir -p <INSTALLPATH> ;
+fi
+
+
+cp <JAVA>.tar.gz <INSTALLPATH>/.
+cd <INSTALLPATH>
+tar xzvf <JAVA>.tar.gz
+
+JAVA_HOME=<INSTALLPATH>/<JAVA>
+    
+    
+export PATH=$JAVA_HOME:$PATH
+echo 'export PATH="$JAVA_HOME:$PATH" ' >> $HOME/.bashrc
+echo 'export PATH="$JAVA_HOME:$PATH" ' >> $HOME/.bash_profile
+
+
+if [ -f "$HOME/.bashrc" ]; then source $HOME/.bashrc; fi
+if [ -f "$HOME/.bash_profile" ] ; then source $HOME/.bash_profile; fi
+
+
+BASH
+
+
+
+
+$install_bash_script =~ s|<DISTRO>|$distro|g;
+$install_bash_script =~ s|<JAVA>|$java|g;
+$install_bash_script =~ s|<INSTALLPATH>|$installpath|g;
+
+
+$self->__apply_install($force_tag,$installpath, $install_bash_script);
+
+    return $installpath;
+}
+
+
+
+
+
+
+
+###########
+sub __curl{
+    #######
+    my $self=shift;
+    my ($force_tag) = @_;
+    
+    my $curl    = 'curl-7.47.1';
+    my $distro  ='https://curl.haxx.se/download';
+    my $installpath = "\$HOME/$self->{path}/curl";
+    #-------------------------------------------------------
+    
+    
+    
+    
+    
+my $install_bash_script  =<<'BASH';
+    
+    START=`date +%s`
+    
+    echo "GETTING curl from <DISTRO>";
+    if [ -f <CURL>.tar.gz ]; then rm -f <CURL>.tar.gz; fi;
+    wget --no-check-certificate "<DISTRO>/<CURL>.tar.gz"
+
+    
+    echo "INSTALLING <CURL>";
+    if [ -d <INSTALLPATH> ]; then
+    printf "ERROR: directory <INSTALLPATH> exists. Aborting install. \
+    \nYou may use 'cj install -f ...' to remove this directory for a fresh install\n";
+    exit 1;
+    fi
+    
+    # Go to curl home dir, and unzip the source file
+    if [ ! -d  "<INSTALLPATH>"  ] ; then
+        mkdir -p <INSTALLPATH> ;
+    fi
+
+    
+    cp <CURL>.tar.gz <INSTALLPATH>/.
+    cd <INSTALLPATH>
+    tar xzvf <CURL>.tar.gz
+    rm -f <CURL>.tar.gz
+    cd <CURL>
+    ./configure --prefix=<INSTALLPATH>
+    make -j3
+    make install
+    
+    
+    echo 'export PATH="<INSTALLPATH>/bin:$PATH" ' >> $HOME/.bashrc
+    echo 'export PATH="<INSTALLPATH>/bin:$PATH" ' >> $HOME/.bash_profile
+    
+    
+    if [ -f "$HOME/.bashrc" ]; then source $HOME/.bashrc; fi
+    if [ -f "$HOME/.bash_profile" ] ; then source $HOME/.bash_profile; fi
+    
+    
+BASH
+
+    
+    
+    
+    $install_bash_script =~ s|<DISTRO>|$distro|g;
+    $install_bash_script =~ s|<CURL>|$curl|g;
+    $install_bash_script =~ s|<INSTALLPATH>|$installpath|g;
+    
+    
+    $self->__apply_install($force_tag,$installpath, $install_bash_script);
+    
+    
+    
+    
+    
+    
+    return $installpath;
+}
+
+
+
+
+
+
+###########
+sub __xz{
+    #######
+    my $self=shift;
+    my ($force_tag) = @_;
+    
+    my $xz    = 'xz-5.2.2';
+    my $distro  ='http://tukaani.org/xz';
+    my $installpath = "\$HOME/$self->{path}/xz";
+    #-------------------------------------------------------
+    
+
+my $install_bash_script  =<<'BASH';
+
+START=`date +%s`
+
+echo "GETTING <XZ> from <DISTRO>";
+if [ -f <XZ>.tar.gz ]; then rm -f <XZ>.tar.gz; fi;
+wget --no-check-certificate "<DISTRO>/<XZ>.tar.gz"
+
+
+echo "INSTALLING <XZ>";
+if [ -d <INSTALLPATH> ]; then
+printf "ERROR: directory <INSTALLPATH> exists. Aborting install. \
+\nYou may use 'cj install -f ...' to remove this directory for a fresh install\n";
+exit 1;
+fi
+
+# Go to curl home dir, and unzip the source file
+if [ ! -d  "<INSTALLPATH>"  ] ; then
+    mkdir -p <INSTALLPATH> ;
+fi
+
+
+cp <XZ>.tar.gz <INSTALLPATH>/.
+cd <INSTALLPATH>
+tar xzvf <XZ>.tar.gz
+rm <XZ>.tar.gz
+cd <XZ>
+./configure --prefix=<INSTALLPATH>
+make -j3
+make install
+
+
+echo 'export PATH="<INSTALLPATH>/bin:$PATH" ' >> $HOME/.bashrc
+echo 'export PATH="<INSTALLPATH>/bin:$PATH" ' >> $HOME/.bash_profile
+
+
+if [ -f "$HOME/.bashrc" ]; then source $HOME/.bashrc; fi
+if [ -f "$HOME/.bash_profile" ] ; then source $HOME/.bash_profile; fi
+
+
+BASH
+    
+    
+    
+    
+    $install_bash_script =~ s|<DISTRO>|$distro|g;
+    $install_bash_script =~ s|<XZ>|$xz|g;
+    $install_bash_script =~ s|<INSTALLPATH>|$installpath|g;
+    
+    
+    $self->__apply_install($force_tag,$installpath, $install_bash_script);
+    
+    return $installpath;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###########
+sub rstats{
+    #######
+    
     my $self=shift;
     my ($force_tag) = @_;
     
     
-my $R = 'R-3.5.0'
-my $distro  ='https://cloud.r-project.org/src/base/R-3'
-my $installpath = "\$HOME/$self->{path}/R/";
+my $R = 'R-3.5.0';
+my $distro  ='https://cloud.r-project.org/src/base/R-3';
+my $installpath = "\$HOME/$self->{path}/R";
     
-
 # -------------------
 my $install_bash_script  =<<'BASH';
 #!/bin/bash -l
@@ -66,27 +350,40 @@ else
         \nYou may use 'cj install -f ...' to remove this directory for a fresh install\n";
         exit 1;
     fi
-
+    
+    # Go to R home dir, and unzip the source file
+    if [ ! -d  "<INSTALLPATH>"  ] ; then
+        mkdir -p <INSTALLPATH> ;
+    fi
+    
+    cp <R>.tar.gz <INSTALLPATH>/.
+    cd <INSTALLPATH>
+    tar -xzvf <R>.tar.gz
+    rm -f <R>.tar.gz
+    
+    # configiure and make
+    cd <R>
     
     
+    ./configure --with-readline=no --with-x=no LDFLAGS="<LDFLAGS>" CPPFLAGS="<CPPFLAGS>"
     
-bash <MINICONDA>.sh -b -p <INSTALLPATH>;
+    make
+    
+   echo 'export PATH="<INSTALLPATH>/<R>/bin:$PATH" ' >> $HOME/.bashrc
+   echo 'export PATH="<INSTALLPATH>/<R>/bin:$PATH" ' >> $HOME/.bash_profile
 
-rm <MINICONDA>.sh
-echo 'export PATH="<INSTALLPATH>/bin:$PATH" ' >> $HOME/.bashrc
-echo 'export PATH="<INSTALLPATH>/bin:$PATH" ' >> $HOME/.bash_profile
 
+    if [ -f "$HOME/.bashrc" ]; then source $HOME/.bashrc; fi
+    if [ -f "$HOME/.bash_profile" ] ; then source $HOME/.bash_profile; fi
 
-if [ -f "$HOME/.bashrc" ]; then source $HOME/.bashrc; fi
-if [ -f "$HOME/.bash_profile" ] ; then source $HOME/.bash_profile; fi
+    # test that R is installed
+    R -e  'print("OK")'
 
-conda update --yes conda
-
-if [ $? -eq 0 ]; then
-END=`date +%s`;
-RUNTIME=$((END-START));
-echo "INSTALL SUCCESSFUL ($RUNTIME seconds)"
-exit 0;
+    if [ $? -eq 0 ]; then
+    END=`date +%s`;
+    RUNTIME=$((END-START));
+    echo "INSTALL SUCCESSFUL ($RUNTIME seconds)"
+    exit 0;
 else
     echo "****INSTALL FAILED***** $? "
     exit 1
@@ -97,28 +394,32 @@ else
 BASH
     
     $install_bash_script =~ s|<DISTRO>|$distro|g;
-    $install_bash_script =~ s|<MINICONDA>|$miniconda|g;
+    $install_bash_script =~ s|<R>|$R|g;
     $install_bash_script =~ s|<INSTALLPATH>|$installpath|g;
-# -----------------
+
     
     
     
     
     
+    # -----------------
+    # Install deps for R
+    my $curl_path = $self->__curl($force_tag)  ;      # install curl
+    my $lzma_path = $self->__xz($force_tag)    ;      # install lzma
+    my $java_path = $self->java($force_tag)    ;      # install lzma
+    
+    
+    my $ldflags="-L${curl_path}/lib -L${lzma_path}/lib";
+    my $cppflags="-I${curl_path}/include/curl -I${lzma_path}/include";
+    $install_bash_script =~ s|<LDFLAGS>|$ldflags|g;
+    $install_bash_script =~ s|<CPPFLAGS>|$cppflags|g ;
     
     
     
+    #-----------------------------------
+    $self->__apply_install($force_tag,$installpath, $install_bash_script);
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+return 1;
     
 }
 
@@ -131,7 +432,21 @@ BASH
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+#############
 sub composer{
+    #########
+    
     my $self = shift;
     my($force_tag) = @_;
 
@@ -215,33 +530,7 @@ $install_bash_script =~ s|<INSTALLPATH>|$installpath|g;
     
    
 #---------------------
-my $ssh = CJ::host($self->{'machine'});
-
-
-# if forced clear the previous installation if any
-if($force_tag == 1){
-    &CJ::message("(forced) removing prior installation of $self->{app} in $installpath");
-    my $cmd = "ssh $ssh->{account} 'rm -rf $installpath' ";
-    &CJ::my_system($cmd,0);
-}
-
-
-
-
-my $filename = "CJ_install_". $self->{app} . ".sh";
-my $filepath = "/tmp/$filename";
-&CJ::writeFile($filepath, $install_bash_script);
-my $cmd = "scp $filepath $ssh->{account}:.";
-&CJ::my_system($cmd,1);
-
-&CJ::message("----- START BASH ON $self->{'machine'}-----",1);
-$cmd = "ssh $ssh->{account} 'cd \$HOME && bash -l $filename' ";
-system($cmd);
-
-$cmd = "ssh $ssh->{account} 'if [ -d \$HOME/$self->{path} ] ; then mv \$HOME/$filename \$HOME/$self->{path}/; fi' ";
-system($cmd);
-
-&CJ::message("----- END BASH ON $self->{'machine'}-----",1);
+    $self->__apply_install($force_tag,$installpath, $install_bash_script);
 
 return 1;
 
@@ -249,8 +538,23 @@ return 1;
 
 
 
-sub miniconda{
 
+
+
+
+
+
+
+
+
+
+
+
+
+##############
+sub miniconda{
+    ##########
+    
 my $self = shift;
 my ($force_tag) = @_;
 
@@ -316,35 +620,7 @@ $install_bash_script =~ s|<INSTALLPATH>|$installpath|g;
 # -----------------
 
 
-my $ssh = CJ::host($self->{'machine'});
-
-    
-# if forced clear the previous installation if any
-if($force_tag == 1){
-    &CJ::message("(forced) removing prior installation of miniconda in $installpath");
-    my $cmd = "ssh $ssh->{account} 'rm -rf $installpath' ";
-    &CJ::my_system($cmd,0);
-}
-    
-    
-    
-    
-my $filename = "CJ_install_miniconda.sh";
-my $filepath = "/tmp/$filename";
-&CJ::writeFile($filepath, $install_bash_script);
-my $cmd = "scp $filepath $ssh->{account}:.";
-&CJ::my_system($cmd,0);
-
-
-&CJ::message("----- START BASH ON $self->{'machine'}-----",1);
-$cmd = "ssh $ssh->{account} 'cd \$HOME && bash -l CJ_install_miniconda.sh' ";
-system($cmd);
-
-$cmd = "ssh $ssh->{account} 'if [ -d \$HOME/$self->{path} ] ; then mv \$HOME/CJ_install_miniconda.sh \$HOME/$self->{path}/; fi' ";
-system($cmd);
-
-
-&CJ::message("----- END BASH ON $self->{'machine'}-----",1);
+    $self->__apply_install($force_tag,$installpath, $install_bash_script);
     
     return 1;
 }
@@ -352,8 +628,25 @@ system($cmd);
 
 
 
-################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#############
 sub anaconda{
+    #########
+    
     my $self = shift;
     my ($force_tag) = @_;
 
@@ -415,45 +708,38 @@ $install_bash_script =~ s|<INSTALLPATH>|$installpath|g;
 # -----------------
 
     
-my $ssh = CJ::host($self->{'machine'});
-
-    
-    
-# if forced clear the previous installation if any
-    if($force_tag == 1){
-        &CJ::message("(forced) removing prior installation of anaconda in $installpath");
-        my $cmd = "ssh $ssh->{account} 'rm -rf $installpath' ";
-        &CJ::my_system($cmd,0);
-    }
-    
-    
-    
-    
-my $filename = "CJ_install_anaconda.sh";
-my $filepath = "/tmp/$filename";
-&CJ::writeFile($filepath, $install_bash_script);
-my $cmd = "scp $filepath $ssh->{account}:.";
-&CJ::my_system($cmd,0);
-
-    
-&CJ::message("----- START BASH ON $self->{'machine'}-----",1);
-$cmd = "ssh $ssh->{account} 'cd \$HOME && bash -l CJ_install_anaconda.sh' ";
-system($cmd);
-
-$cmd = "ssh $ssh->{account} 'if [ -d \$HOME/$self->{path} ] ; then mv \$HOME/CJ_install_anaconda.sh \$HOME/$self->{path}/; fi' ";
-system($cmd);
-
-    
-&CJ::message("----- END BASH ON $self->{'machine'}-----",1);
+    $self->__apply_install($force_tag,$installpath, $install_bash_script);
    
     return 1;
 }
 
 
 
-###################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#########
 sub cvx {
-###################
+    #####
     
     my $self = shift;
     my ($force_tag) = @_;
@@ -500,37 +786,7 @@ $install_bash_script =~ s|<CVX>|$cvx|g;
 $install_bash_script =~ s|<INSTALLPATH>|$installpath|g;
 # -----------------
     
-    
-my $ssh = CJ::host($self->{'machine'});
-    
-    
-
-# if forced clear the previous installation if any
-if($force_tag == 1){
-    &CJ::message("(forced) removing prior installation of cvx in $installpath");
-    my $cmd = "ssh $ssh->{account} 'rm -rf $installpath' ";
-    &CJ::my_system($cmd,0);
-}
-    
-    
-   
-    
-my $filename = "CJ_install_cvx.sh";
-my $filepath = "/tmp/$filename";
-&CJ::writeFile($filepath, $install_bash_script);
-my $cmd = "scp $filepath $ssh->{account}:.";
-&CJ::my_system($cmd,0);
-
-
-&CJ::message("----- START BASH ON $self->{'machine'}-----",1);
-$cmd = "ssh $ssh->{account} 'cd \$HOME && bash -l CJ_install_cvx.sh' ";
-system($cmd);
-
-$cmd = "ssh $ssh->{account} 'if [ -d \$HOME/$self->{path} ] ; then mv \$HOME/CJ_install_cvx.sh \$HOME/$self->{path}/; fi' ";
-system($cmd);
-
-
-&CJ::message("----- END BASH ON $self->{'machine'}-----",1);
+    $self->__apply_install($force_tag,$installpath, $install_bash_script);
 
 return 1;
 }
@@ -541,27 +797,6 @@ return 1;
     
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 1;

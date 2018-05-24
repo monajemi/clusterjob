@@ -1209,23 +1209,13 @@ sub get_summary
 
  	  # This now works for SGE 
   	  my $expr = "qstat -xml | tr \'\n\' \' \' | sed \'s#<job_list[^>]*>#\\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t";
-<<<<<<< HEAD
- 	  $REC_PIDS_STATES = (`ssh ${account} $expr | awk \'{print \$3,\$5}\' `) ;chomp($REC_PIDS_STATES);
-=======
  	  $REC_PIDS_STATES = (`ssh ${account} $expr | awk \'{print \$3,\$5}\'  2>$CJlog_error `) ;chomp($REC_PIDS_STATES);
->>>>>>> master
  	  #print $REC_PIDS_STATES . "\n";
  	  #print $expr . "\n";
 	  
  	  #my $expr = "qstat -xml | tr \'\\n\' \' \' | sed \'s#<job_list[^>]*>#\\n#g\' | sed \'s#<[^>]*>##g\' | grep \" \" | column -t";
        #$REC_PIDS_STATES = `ssh ${account} $expr | awk \'{print \$3,\$5}\'` ;chomp($REC_PIDS_STATES);
-<<<<<<< HEAD
-  		
-	
-=======
->>>>>>> master
-	
-		
+
     }elsif($bqs eq "SLURM"){
        # $REC_STATES = (`ssh ${account} 'sacct --format=state | grep -v "^\\s*[0-9\_]*\\." '`) ;chomp($REC_STATES);
         $REC_PIDS_STATES = (`ssh ${account} 'sacct -n --format=jobname%15,state | grep -v "^\\s*[0-9\_]*\\." '     2>$CJlog_error`);chomp($REC_PIDS_STATES);
@@ -2938,6 +2928,8 @@ sub install_software{
     $installObj->miniconda($force_tag) if $lc_app eq 'miniconda';
     $installObj->cvx($force_tag) if $lc_app eq 'cvx';
     $installObj->composer($force_tag) if $lc_app eq 'composer';
+    $installObj->rstats($force_tag) if $lc_app eq 'r';
+    $installObj->java($force_tag) if $lc_app eq 'java';
 
 }
 
