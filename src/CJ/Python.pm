@@ -193,8 +193,6 @@ random.seed(seed);
 numpy.random.seed(seed);
     
 # may be add torch random torch.manual_seed(args.seed) if torch is imported
-
-    
 CJsavedState = {'myversion': sys.version, 'mydate':mydate, 'numpy_CJsavedState': numpy.random.get_state(), 'CJsavedState': random.getstate()}
     
 fname = "$DIR/CJrandState.pickle";

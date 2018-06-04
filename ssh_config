@@ -6,7 +6,9 @@ Repo		/scratch/users/monajemi/CJRepo_Remote
 MAT     	matlab/R2017a
 MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 Python		python/3.6
-Pythonlib	pytorch:pandas:cuda80:scipy:matplotlib:torchvision:-c soumith   
+Pythonlib	pytorch:pandas:cuda80:scipy:matplotlib:torchvision:-c soumith 
+R	        R/3.4.0 
+Rlib	        ggplot2  
 [sherlock2]
 
 

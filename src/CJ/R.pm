@@ -153,40 +153,68 @@ sub CJrun_body_script{
     
 my $script =<<'BASH';
 
-# activate python venv
-source activate <PY_VENV>
+# load R if there is LMOD installed
+if [ $(type -t module)=='function' ]; then
+module load <MATLAB_MODULE>
+echo "loaded module <MATLAB_MODULE> "
+fi
+    
+    
+R --no-save <<HERE
+# ###########################################################################################
+# Change the behavior of library() and require() to install automatically if
+# Package needed.
+cj_orig_library <- function(package,...) {library(package,...)}
+cj_orig_require <- function(package,...) {require(package,...)}
+    
+# Use function for auto installationation provided by Narasimhan, Balasubramanian
+cj_installIfNeeded <- function(packages, ...) {
+        toInstall <- setdiff(packages, utils::installed.packages()[, 1])
+        if (length(toInstall) > 0) {
+            utils::install.packages(pkgs = toInstall,
+            repos = "https://cloud.r-project.org",
+            ...)
+        }
+}
+library <- function(package,...) {Installlibrary(package,...); cj_orig_library(package,...)}
+require <- function(package,...) {Installlibrary(package,...); cj_orig_require(package,...)}
+#############################################################################################
+    
+    
 
-python <<HERE
 # make sure each run has different random number stream
-import os,sys,pickle,numpy,random;
-
-mydate = numpy.datetime64('now');
+mydate = Sys.time();
 #sum(100*clock)
-seed = numpy.sum(100*numpy.array([mydate.astype(object).year, mydate.astype(object).month, mydate.astype(object).day, mydate.astype(object).hour, mydate.astype(object).minute, mydate.astype(object).second]));
+seed <- sum(100*c(as.integer(format(mydate,"%Y")), as.integer(format(mydate,"%m")), as.integer(format(mydate,"%d")),
+    as.integer(format(mydate,"%H")), as.integer(format(mydate,"%M")),  as.integer(format(mydate,"%S")) ))
+    
+    
+# Set the seed for R
+set.seed(seed);
+CJsavedState = list("myversion"=version, "mydate"=mydate, 'CJsavedState'= .Random.seed)
+fname = "$DIR/CJrandState.Rd";
+save(CJrandState,file=fname)
 
+# later use:
+# CJsavedState = load("CJrandState.Rd");
 
-# Set the seed for numpy and python
-random.seed(seed);
-numpy.random.seed(seed);
-
-# may be add torch random torch.manual_seed(args.seed) if torch is imported
-
-
-CJsavedState = {'myversion': sys.version, 'mydate':mydate, 'numpy_CJsavedState': numpy.random.get_state(), 'CJsavedState': random.getstate()}
-
-fname = "$DIR/CJrandState.pickle";
-with open(fname, 'wb') as RandStateFile:
-pickle.dump(CJsavedState, RandStateFile);
-
-# CJsavedState = pickle.load(open('CJrandState.pickle','rb'));
-
-os.chdir("$DIR")
-import ${PROGRAM};
-#exec(open('${PROGRAM}').read())
-exit();
+setwd("$DIR")
+source(${PROGRAM});
 HERE
 
-
+    #####################################################
+    #
+    #  UP TO HERE>.... now save R env
+    #
+    
+    
+    
+    
+    
+    
+    
+    
+    
 # Freez the environment after you installed all the modules
 # Reproduce with:
 #      conda create --yes -n python_venv_\$PID --file req.txt

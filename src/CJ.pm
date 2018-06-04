@@ -1934,7 +1934,14 @@ sub parse_ssh_config{
     my ($remote_python_module)  = $this_machine_string =~ /\bPython\b[\t\s]*(.*)/i;
     $remote_python_module =remove_white_space($remote_python_module);
     
+    my ($remote_r_lib)  = $this_machine_string =~ /Rlib[\t\s]*(.*)/i;
+    $remote_r_lib =remove_white_space($remote_r_lib);
     
+    my ($remote_r_module)  = $this_machine_string =~ /\bR\b[\t\s]*(.*)/i;
+    $remote_r_module       = remove_white_space($remote_r_module);
+
+    
+
     
     my $account  = $user . "@" . $host;
     
@@ -1948,6 +1955,8 @@ sub parse_ssh_config{
     $ssh_config->{'user'}            = $user;
     $ssh_config->{'py'}              = $remote_python_module;
     $ssh_config->{'pylib'}           = $remote_python_lib;
+    $ssh_config->{'r'}               = $remote_r_module;
+    $ssh_config->{'rlib'}            = $remote_r_lib;
     
     return $ssh_config;
 
@@ -2948,7 +2957,7 @@ my $program_type  = &CJ::program_type($program);
 my $code;
 if($program_type eq 'matlab'){
     $code = CJ::Matlab->new($path,$program,$dep_folder);
-}elsif($program_type eq 'r'){
+}elsif($program_type eq 'R'){
     $code = CJ::R->new($path,$program,$dep_folder);
 }elsif($program_type eq 'python'){
     $code = CJ::Python->new($path,$program,$dep_folder);
