@@ -1910,6 +1910,7 @@ sub parse_ssh_config{
 
     my $ssh_config = {};
     
+    
     my ($user) = $this_machine_string =~ /User[\t\s]*(.*)/i;
     $user =remove_white_space($user);
     
@@ -1937,6 +1938,8 @@ sub parse_ssh_config{
     my ($remote_r_lib)  = $this_machine_string =~ /Rlib[\t\s]*(.*)/i;
     $remote_r_lib =remove_white_space($remote_r_lib);
     
+    
+    
     my ($remote_r_module)  = $this_machine_string =~ /\bR\b[\t\s]*(.*)/i;
     $remote_r_module       = remove_white_space($remote_r_module);
 
@@ -1957,6 +1960,8 @@ sub parse_ssh_config{
     $ssh_config->{'pylib'}           = $remote_python_lib;
     $ssh_config->{'r'}               = $remote_r_module;
     $ssh_config->{'rlib'}            = $remote_r_lib;
+    
+    
     
     return $ssh_config;
 

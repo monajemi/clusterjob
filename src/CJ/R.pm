@@ -121,20 +121,41 @@ my $rp_program_script =<<'RP_PRGRAM';
 # the internal State of the global stream
 # to the one saved when ruuning the code for
 # the fist time;
-import os,sys,pickle,numpy,random;
-CJsavedState = pickle.load(open('CJrandState.pickle','rb'));
-numpy.random.set_state(CJsavedState['numpy_CJsavedState']);
-random.setstate(CJsavedState['CJsavedState']);
 
-RP_PRGRAM
+# Setup environment by loading packages
+##################################################################################
 
-
-if($runflag =~ /^par.*/){
-    $rp_program_script .= "sys.path.append('../.');\n"
-}else{
-    $rp_program_script .= "sys.path.append('.');\n"
+# Use function for auto installationation provided by Narasimhan, Balasubramanian
+cj_installIfNeeded <- function(packages, ...) {
+    toInstall <- setdiff(packages, utils::installed.packages()[, 1])
+    if (length(toInstall) > 0) {
+        utils::install.packages(pkgs = toInstall,
+        repos = "https://cloud.r-project.org",
+        ...)
+    }
 }
 
+load("sessionInfo.Rd")
+cj_installIfNeeded(names(r_session_info$otherPkgs))
+    
+# set random seed to the one that created the results
+#################################################################################
+load("CJrandState.Rd");
+.GlobalEnv$.Random.seed = CJsavedState$CJsavedState
+    
+RP_PRGRAM
+
+# Figure out R path...
+if($runflag =~ /^par.*/){
+    # Here we need to change source to direct to
+    # upper level dir.
+    
+$rp_program_script .=<<'SRC'
+    cj_orig_source <- function(file,...) {source(file,...)}
+    source <- function(file, ...) { cj_orig_source(paste0("../",file), ...)}
+SRC
+}
+    
 $rp_program_script .= $program_script ;
 
 my $rp_program = "reproduce_$self->{program}";
@@ -155,8 +176,8 @@ my $script =<<'BASH';
 
 # load R if there is LMOD installed
 if [ $(type -t module)=='function' ]; then
-module load <MATLAB_MODULE>
-echo "loaded module <MATLAB_MODULE> "
+module load <R_MODULE>
+echo "loaded module <R_MODULE> "
 fi
     
     
@@ -176,8 +197,8 @@ cj_installIfNeeded <- function(packages, ...) {
             ...)
         }
 }
-library <- function(package,...) {Installlibrary(package,...); cj_orig_library(package,...)}
-require <- function(package,...) {Installlibrary(package,...); cj_orig_require(package,...)}
+library <- function(package,...) {cj_installIfNeeded(package,...); cj_orig_library(package,...)}
+require <- function(package,...) {cj_installIfNeeded(package,...); cj_orig_require(package,...)}
 #############################################################################################
     
     
@@ -200,34 +221,18 @@ save(CJrandState,file=fname)
 
 setwd("$DIR")
 source(${PROGRAM});
+
+# Save session info for loading packages in Reproducible code
+r_session_info <- sessionInfo()
+save(r_session_info, file="sessionInfo.Rd")
+    
 HERE
 
-    #####################################################
-    #
-    #  UP TO HERE>.... now save R env
-    #
-    
-    
-    
-    
-    
-    
-    
-    
-    
-# Freez the environment after you installed all the modules
-# Reproduce with:
-#      conda create --yes -n python_venv_\$PID --file req.txt
-conda list -e > ${DIR}/${PID}_py_conda_req.txt
-
-# Get out of virtual env and remove it
-source deactivate
-
+  
 BASH
 
-my $venv_name = "CJ_python_venv";
 
-$script =~ s|<PY_VENV>|$venv_name|;
+$script =~ s|<R_MODULE>|$ssh->{'r'}|;
 
 return $script;
     

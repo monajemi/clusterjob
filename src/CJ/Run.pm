@@ -168,14 +168,13 @@ my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir
 # for python only; check conda exists on the cluster and setup env
 $self->setup_conda_venv($pid,$ssh) if($program_type eq 'python');
 $self->setup_R_env($pid,$ssh) if ($program_type eq 'R');
-    die;
-    
     
     
 &CJ::message("Creating reproducible script(s) reproduce_$self->{program}");
 my $codeobj = &CJ::CodeObj($local_sep_Dir,$self->{program},$self->{dep_folder});
-#$codeobj->build_reproducible_script($self->{runflag});
+$codeobj->build_reproducible_script($self->{runflag});
 
+    
 #===========================================
 # BUILD A BASH WRAPPER
 #===========================================
@@ -784,15 +783,14 @@ sub setup_R_env{
     my ($self,$pid,$ssh) = @_;
     # check to see wether R exists
     
-    
     # if successful, it will return 'function'
-    my $response =`ssh $ssh->{account} 'source ~/.bashrc; source ~/.bash_profile; type -t module1' 2>$CJlog_error`;
+    my $response =`ssh $ssh->{account} 'source ~/.bashrc; source ~/.bash_profile; type -t module' 2>$CJlog_error`;
     
     
     if (  $response !~ m/^function$/ ) {
         
         my $app = 'R';
-        CJ::message("No LMOD module found on $self->{'machine'} to load '$app'. Do you want me to install '$app' on '$self->{'machine'}'?");
+        CJ::message("No LMOD module found on $self->{'machine'} to load '$app'. Do you want CJ to install '$app' on '$self->{'machine'}'?");
         my $yesno = <STDIN>; chomp($yesno);
         
         if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
@@ -800,42 +798,45 @@ sub setup_R_env{
             my $q_yesno = 0;    # anythin other than 1 will avoid asking the same yesno again
             &CJ::install_software($app, $self->{'machine'}, $force_tag, $q_yesno)
         }elsif(lc($yesno) eq "n" or lc($yesno) eq "no"){
-            &CJ::err("CJ cannot find R path required for R jobs. use 'cj install R $self->{machine}'");
+            &CJ::err("CJ cannot find R required for R jobs. use 'cj install R $self->{machine}'");
         }else{
             &CJ::message("Unknown response. Please answer by typing Yes/No");
             exit 0;
         }
         
-    }
+    }else{
     
-    
-    # create conda env for python
-    
-    &CJ::message("Creating/checking conda venv. This may take a while the first time...");
-    
-    
-    # Build conda-venv-script
-    my $conda_venv = "${pid}_conda_venv.sh";
-    my  $conda_venv_script = &CJ::Scripts::build_conda_venv_bash($ssh);
-    &CJ::writeFile("/tmp/$conda_venv", $conda_venv_script);
-    
-    
-    my $cmd = "scp /tmp/$conda_venv $ssh->{account}:.";
-    &CJ::my_system($cmd,$self->{verbose});
-    $cmd = "ssh $ssh->{account} 'source ~/.bashrc; bash -l $conda_venv > /tmp/${pid}_conda_env.txt 2>&1; rm $conda_venv'";
-    &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "deploy");
-    
-    # check that installation has been successful
-    my $venv = 'CJ_python_venv';
-    $response =`ssh $ssh->{account} 'source ~/.bashrc ; source ~/.bash_profile;conda info --envs | grep  $venv' 2>$CJlog_error`;chomp($response);
-    if ($response !~ m/$venv/ ){
-        &CJ::message("CJ failed to create $venv on $self->{machine}");
-        &CJ::message("*********************************************");
+        CJ::message("LMOD module found on $self->{'machine'}");
+        CJ::message("Testing if module $ssh->{r} is availbale via LMOD:");
+        my $response =`ssh $ssh->{account} 'source ~/.bashrc; source ~/.bash_profile; module load $ssh->{r}' 2>$CJlog_error`;
+        if($response =~ /^$/ ){
+            CJ::message("$ssh->{r} avilable.",1);
+        }else{
+            CJ::message("$ssh->{r} NOT avilable.",1);
+            
+            
+            my $app = 'R';
+            CJ::message("Do you want CJ to install '$app' on '$self->{'machine'}'?",1);
+            my $yesno = <STDIN>; chomp($yesno);
+            
+            if(lc($yesno) eq "y" or lc($yesno) eq "yes"){
+                my $force_tag = 1;
+                my $q_yesno = 0;    # anythin other than 1 will avoid asking the same yesno again
+                &CJ::install_software($app, $self->{'machine'}, $force_tag, $q_yesno)
+            }elsif(lc($yesno) eq "n" or lc($yesno) eq "no"){
+                &CJ::err("CJ cannot find R required for R jobs. use 'cj install R $self->{machine}'");
+            }else{
+                &CJ::message("Unknown response. Please answer by typing Yes/No");
+                exit 0;
+            }
+
+            
+        }
         
-        $cmd = "ssh $ssh->{account} 'cat /tmp/${pid}_conda_env.txt' ";
-        system($cmd);
-        exit 1;
+    
     }
+    
+    
     
 }
 
