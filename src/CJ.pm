@@ -2924,17 +2924,31 @@ sub create_ssh_config_md5{
 
 
 
-
 sub ssh_config_md5{
     my ($mode) = @_;
     
+    my $md5;
+    if ( `which md5` =~ /md5/ ){
+        $md5="md5";
+    }elsif( `which md5sum` =~ /md5sum/ ){
+        $md5="md5sum";
+    }else{
+        CJ::err('cannot find md5 on your machine. Please install md5 or md5sum.')
+    }
+    
+    
+    
+    
     if ( $mode eq 'update' ){
         &CJ::message("updating CJ_python_venv",1);
-        my $cmd = `md5 $ssh_config_file > $ssh_config_md5`;
+        
+        my $cmd = `$md5 $ssh_config_file > $ssh_config_md5`;
         return 1;
+        
     }elsif($mode eq 'check'){
         # check whether things are modified
-        my $cmd = `grep \"\$(md5 $ssh_config_file)\" $ssh_config_md5 || echo 1`;chomp($cmd);   # find or else exit 1.
+        
+        my $cmd = `grep \"\$($md5 $ssh_config_file)\" $ssh_config_md5 || echo 1`;chomp($cmd);   # find or else exit 1.
         return ($cmd eq "1") ? 1:0;
     }
     
