@@ -213,6 +213,7 @@ my $spec = <<'EOSPEC';
                                                                 }
      runlog        [<pid> [[/] [<counter>]] ]	  	  shows the run log of a script  [nocase]
                                                                 {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","runlog") }}
+     sanity        <type>  <pid>                      reduce results of parrun [nocase]
      save          <pid> [<path>]	                  save a package in path [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
      show          [<pid> [[/] [<counter>] [[/] <file>]] ]	  show program/error of certain package [nocase]
@@ -297,6 +298,13 @@ if($opts->{'reduce'})
     my $force_tag = defined($opts->{'reduce'}{'-f'}) ? 1 : 0;
     &CJ::Get::reduce_results($opts->{'reduce'}{'<pid>'},$opts->{'reduce'}{'<filename>'},$verbose,$text_header_lines, $force_tag);
 }
+
+if($opts->{'sanity'})
+{
+    &CJ::add_cmd($cmdline);
+    &CJ::Sanity::sanity($opts->{'sanity'}{'type'}, $opts->{'sanity'}{'<pid>'},$verbose);
+}
+
 
 if($opts->{'install'})
 {

@@ -1034,12 +1034,9 @@ exit 0;
 
 
 
-
-
-sub show
-{
-    my ($pid, $num, $file, $show_tag) = @_;
-    	
+sub get_info{
+    my ($pid) = @_;
+    
     my $info;
     if( (!defined $pid) || ($pid eq "") || ($pid eq '$') ){
         #read last_instance.info;
@@ -1059,10 +1056,19 @@ sub show
             &CJ::err("incorrect usage: nothing to show");
         }
         
-        
-        
     }
 
+    return $info;
+    
+}
+
+
+
+sub show
+{
+    my ($pid, $num, $file, $show_tag) = @_;
+    	
+    my $info = &CJ::get_info($pid);
     
     my $short_pid = substr($pid,0,8);
     if(defined($info->{clean}{date})){
@@ -1852,7 +1858,7 @@ sub update_cluster_config{
                     my $yesno  = "no";
                     my $new_value = undef;
                     while ( $yesno !~ m/y[\t\s]*|yes[\t\s]*/i ){
-                        ($new_value, $yesno)=getuserinput("press Enter $old_key (Enter to keep $old_value):", '');
+                        ($new_value, $yesno)=getuserinput("please Enter $old_key (Enter to keep $old_value):", '');
                     }
                     if (not $new_value eq ''){
                         $lines[$i] = "$old_key\t$new_value";
