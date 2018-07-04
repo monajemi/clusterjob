@@ -29,36 +29,48 @@ sub sanity{
 
 
 
-sub file_existance(
+sub file_existance{
     my ($pid) = @_;
     
-       my $info = &CJ::get_info($pid);
-       
+        my $info = &CJ::get_info($pid);
         my $local=0;
         my $local_path_name;
         # Check Connection;
-        eval { &CJ::CheckConnection($info->{'machine'}); };
+        eval{&CJ::CheckConnection($info->{'machine'});};
         # See if user wants local sanity check
+        
         if ($@){
-                   my $yesno = &CJ::yesno("No internet connection, would you like to do sanity check locally?");
+                   my $yesno = &CJ::yesno("No internet connection, would you like to do sanity check locally");
                    
                    if ($yesno){
-                        while ( my $got !~ m/y[\t\s]*|yes[\t\s]*/i ){
-                        ($local_path_name, $got)=getuserinput("Please enter the path to your CJ package", '');
+                        my $got = 'no';
+                        while ( $got !~ m/y[\t\s]*|yes[\t\s]*/i ){
+                            ($local_path_name, $got)=&CJ::getuserinput("Please enter the path to your CJ package:", '');
                         }
                    
                            if (  not $local_path_name eq ''  )  {
                                if (-d $local_path_name){$local = 1
                                }else{
-                               CJ::err("CJ package does not exists: $path_name")
+                               CJ::err("CJ package does not exists: $local_path_name")
                                }
                            }
                    }
         }
                    
 
+        
                    
-                   
+    my $exists_path;
+# Ask the existance of what
+    my $got = 'no';
+while ( $got !~ m/y[\t\s]*|yes[\t\s]*/i ){
+    ($exists_path, $got)=&CJ::getuserinput("What file (e.g., results.txt | */results.txt)? ", '');
+}
+
+                   if ($exists_path eq ''){
+                       CJ::message('nothing etered.');
+                   return;
+                   }
                    
                    
 # Get current remote directory from .ssh_config
@@ -68,13 +80,13 @@ sub file_existance(
 # for the user.
 my $ssh             = &CJ::host($info->{'machine'});
 my $remotePrefix    = $ssh->{remote_repo};
-
+my $remote_path        = $info->{remote_path};
                    
-my ($program_name,$ext)=remove_extension($info->{program});
+my ($program_name,$ext)=&CJ::remove_extension($info->{program});
 my $current_remote_path = "$remotePrefix/$program_name/$info->{'pid'}";
 #print("$remote_path");
 if($current_remote_path ne $remote_path){
-&CJ::warning("the .ssh_config remote directory and the history remote are not the same. CJ is choosing:\n     $account:${current_remote_path}.");
+&CJ::warning("the .ssh_config remote directory and the history remote are not the same. CJ is choosing:\n     $info->{account}:${current_remote_path}.");
 $remote_path = $current_remote_path;
 }
 
@@ -84,45 +96,23 @@ $remote_path = $current_remote_path;
 my @job_ids = split(',', $info->{job_id});
 my $num_res = 1+$#job_ids;
                    
-                   
-                   
-                   
 # Write bash script that does exsiatnce sanity check.
-
-                   
-                   
-                   
-                   
-                   
-                   
-                   
                    
 # header for bqs's
-my $HEADER = &CJ::bash_header($bqs);
+    my $HEADER = &CJ::bash_header($info->{bqs});
 my $bash_remote_path  = $info->{'remote_path'};
 $bash_remote_path =~ s/~/\$HOME/;
                    
 my $existance_bash_script=<<EXISTS;
 $HEADER
 
-TARGET_DIR=$remote_path/$dir_name
-rm -rf \$TARGET_DIR
-mkdir \$TARGET_DIR
 
-for COUNTER in \$(seq $num_res);do
-cd $remote_path/\$COUNTER
-NUMFILES=\$(ls -C1 $pattern | wc -l | tr -d ' ' );
-echo "Gathering -> \$COUNTER: [\$NUMFILES] ";
-for file in \$(ls -C1 $pattern );do
-if [ ! -f \$TARGET_DIR/\$file ];then
-cp \$file \$TARGET_DIR
-#echo "      :\$file";
-else
-echo "Files are not distinct. Use REDUCE instead of GATEHR"; exit 1;
-fi
+for job in \$( ls -d [[:digit:]]* ) ; do
+      if [ -f \$job/ ]
+      printf "\\n SubPackage %d (%s)" \$job \$percent_done
 done
-done
-
+                   
+                   
 EXISTS
                    
                    
@@ -133,6 +123,30 @@ EXISTS
                    
                    
                    
+#                   
+#                   
+#                   
+#                   
+#TARGET_DIR=$remote_path/$dir_name
+#rm -rf \$TARGET_DIR
+#mkdir \$TARGET_DIR
+#
+#for COUNTER in \$(seq $num_res);do
+#cd $remote_path/\$COUNTER
+#NUMFILES=\$(ls -C1 $pattern | wc -l | tr -d ' ' );
+#echo "Gathering -> \$COUNTER: [\$NUMFILES] ";
+#for file in \$(ls -C1 $pattern );do
+#if [ ! -f \$TARGET_DIR/\$file ];then
+#cp \$file \$TARGET_DIR
+##echo "      :\$file";
+#else
+#echo "Files are not distinct. Use REDUCE instead of GATEHR"; exit 1;
+#fi
+#done
+#done
+#
+#EXISTS
+#                   
                    
                    
                    
@@ -140,12 +154,23 @@ EXISTS
                    
                    
                    
-        #
-        if ($local){
-                   # run bash script locally
-        }else{
-                   # run bash script on remote
-        }
+                   
+                   
+                   
+#                   
+#                   
+#                   
+#                   
+#                   
+#        #
+#        if ($local){
+#                   # run bash script locally
+#        }else{
+#                   # run bash script on remote
+#        }
+#                   
+#                   
+#                   
                    
                    
                    
@@ -155,13 +180,8 @@ EXISTS
                    
                    
                    
-                   
-                   
-                   
-                   
-                   
-)
-
+          
+}
 
 
 

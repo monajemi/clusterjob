@@ -110,6 +110,9 @@ return $args;
 
 sub CheckConnection{
     my ($cluster) = @_;
+    
+    CJ::err("No internet connection detected.") if (not defined $localIP);
+    
     my $ssh      = &CJ::host($cluster);
     my $date     = &CJ::date();
     
@@ -2389,8 +2392,7 @@ return 0;
 
 sub err{
     my ($message) = @_;
-    print(' ' x 5 . "CJerr::$message\n");
-	exit;
+    die(' ' x 5 . "CJerr::$message\n");
 }
 
 sub warning{
@@ -2411,8 +2413,8 @@ sub message{
 
 sub yesno{
     my ($question,$noBegin) = @_;
-    my $prompt = $question . "?(Y/N)";
-    CJ::message($prompt,$noBegin);
+    my $prompt = $question . "(Y/N)?";
+    print(' ' x 16 . "$prompt");
     my $yesno =  <STDIN>; chomp($yesno);
     exit 0 unless (lc($yesno) eq "y" or lc($yesno) eq "yes");
 }
@@ -2426,7 +2428,7 @@ sub getuserinput{
     $user_input = remove_white_space($user_input);
     my $yesno;
     if ( !defined($default) || not $user_input eq $default){
-        print ' ' x 5 . "You have entered \'$user_input\'. Is this correct? (Y/N)";
+        print ' ' x 16 . "You have entered \'$user_input\'. Is this correct (Y/N)?";
         $yesno =  <STDIN>; chomp($yesno);
     }else{
         $yesno = 'yes';

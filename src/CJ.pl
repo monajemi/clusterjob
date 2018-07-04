@@ -3,7 +3,6 @@
 # Copyright (c) 2015 Hatef Monajemi (monajemi@stanford.edu)
 # visit http://clsuetrjob.org
 #
-
 use strict;
 use FindBin qw($Bin);
 use lib "$Bin";  #for testing
@@ -18,6 +17,8 @@ use CJ::Matlab;  # Contains Matlab related subs
 use CJ::Get;     # Contains Get related subs
 use CJ::Scripts; # Contains shell scripts
 use CJ::Run;     # Contains run object and methods
+use CJ::Sanity;  # Contains sanity checks
+
 use Getopt::Declare;
 use Data::Dumper;
 use Term::ReadLine;
@@ -83,7 +84,7 @@ if( -d "$info_dir" ){
 
 
 # Dont sync if the command is one of these.
-my @nosync_cmds = qw ( init who help -help -h -Help -HELP prompt version -v install-update);
+my @nosync_cmds = qw ( init who help -help -h -Help -HELP prompt version -v install-update sanity);
 my %nosync = map { $_ => 1 } @nosync_cmds;
 
 if($CJKEY && (!exists($nosync{$cjcmd0})) ){	
@@ -92,7 +93,6 @@ if($CJKEY && (!exists($nosync{$cjcmd0})) ){
 }
 
 }
-
 
 
 my $spec = <<'EOSPEC';
@@ -213,7 +213,7 @@ my $spec = <<'EOSPEC';
                                                                 }
      runlog        [<pid> [[/] [<counter>]] ]	  	  shows the run log of a script  [nocase]
                                                                 {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","runlog") }}
-     sanity        <type>  <pid>                      reduce results of parrun [nocase]
+     sanity        <type>  [<pid>]			          reduce results of parrun [nocase]
      save          <pid> [<path>]	                  save a package in path [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
      show          [<pid> [[/] [<counter>] [[/] <file>]] ]	  show program/error of certain package [nocase]
@@ -301,8 +301,9 @@ if($opts->{'reduce'})
 
 if($opts->{'sanity'})
 {
+    
     &CJ::add_cmd($cmdline);
-    &CJ::Sanity::sanity($opts->{'sanity'}{'type'}, $opts->{'sanity'}{'<pid>'},$verbose);
+    &CJ::Sanity::sanity($opts->{'sanity'}{'<type>'}, $opts->{'sanity'}{'<pid>'},$verbose);
 }
 
 

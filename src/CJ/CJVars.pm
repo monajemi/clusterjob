@@ -15,10 +15,13 @@ my $sock = IO::Socket::INET->new(
     PeerAddr=> "example.com",
     PeerPort=> 80,
     Proto   => "tcp");
-if (!defined($sock)){
-	print "No internet connection!\n";exit 0;
+our $localIP;
+if (defined($sock)){
+    $localIP = $sock->sockhost; chomp($localIP);
+}else{
+    print "Warning: No internet connection. Limited features are available!\n";
+    $localIP = undef;
 }	
-our $localIP = $sock->sockhost; chomp($localIP);
 
 
 
