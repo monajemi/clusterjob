@@ -13,10 +13,10 @@ use Data::Dumper;
 ##############
 sub sanity{
     ##########
-    my ($type, $pid) = @_;
+    my ($type, $pid, $verbose) = @_;
     
     if($type =~ m/exist/i) {
-        CJ::Sanity::file_existance($pid)
+        CJ::Sanity::file_existance($pid,$verbose)
     }elsif($type =~ m/line/i){
         CJ::Sanity::file_numlines($pid)
     }else{
@@ -30,7 +30,7 @@ sub sanity{
 
 
 sub file_existance{
-    my ($pid) = @_;
+    my ($pid,$verbose) = @_;
     
         my $info = &CJ::get_info($pid);
         my $local=0;
@@ -38,7 +38,8 @@ sub file_existance{
         # Check Connection;
         eval{&CJ::CheckConnection($info->{'machine'});};
         # See if user wants local sanity check
-        
+        # if no connection is found
+    
         if ($@){
                    my $yesno = &CJ::yesno("No internet connection, would you like to do sanity check locally");
                    
@@ -58,127 +59,126 @@ sub file_existance{
         }
                    
 
-        
-                   
-    my $exists_path;
+my $exists_filepath;
 # Ask the existance of what
-    my $got = 'no';
+my $got = 'no';
 while ( $got !~ m/y[\t\s]*|yes[\t\s]*/i ){
-    ($exists_path, $got)=&CJ::getuserinput("What file (e.g., results.txt | */results.txt)? ", '');
+    ($exists_filepath, $got)=&CJ::getuserinput("What file (e.g., results.txt | */results.txt)? ", '');
 }
 
-                   if ($exists_path eq ''){
+                   if ($exists_filepath eq ''){
                        CJ::message('nothing etered.');
                    return;
                    }
                    
-                   
-# Get current remote directory from .ssh_config
-# user might wanna rename, copy to anothet place,
-# etc. We consider the latest one , and if the
-# saved remote is different, we issue a warning
-# for the user.
-my $ssh             = &CJ::host($info->{'machine'});
-my $remotePrefix    = $ssh->{remote_repo};
-my $remote_path        = $info->{remote_path};
-                   
-my ($program_name,$ext)=&CJ::remove_extension($info->{program});
-my $current_remote_path = "$remotePrefix/$program_name/$info->{'pid'}";
-#print("$remote_path");
-if($current_remote_path ne $remote_path){
-&CJ::warning("the .ssh_config remote directory and the history remote are not the same. CJ is choosing:\n     $info->{account}:${current_remote_path}.");
-$remote_path = $current_remote_path;
-}
 
-
-
-# Find number of jobs to be gathered
-my @job_ids = split(',', $info->{job_id});
-my $num_res = 1+$#job_ids;
-                   
+    
 # Write bash script that does exsiatnce sanity check.
-                   
-# header for bqs's
-    my $HEADER = &CJ::bash_header($info->{bqs});
-my $bash_remote_path  = $info->{'remote_path'};
-$bash_remote_path =~ s/~/\$HOME/;
-                   
-my $existance_bash_script=<<EXISTS;
-$HEADER
-
-
-for job in \$( ls -d [[:digit:]]* ) ; do
-      if [ -f \$job/ ]
-      printf "\\n SubPackage %d (%s)" \$job \$percent_done
+ 
+    
+    
+    
+    
+    
+    ### header for bqs's
+    my $HEADER = $local ? '#!/bin/bash -l' : &CJ::bash_header($info->{bqs});
+    
+    
+my $existance_bash_script=$HEADER;
+    
+if ( $exists_filepath =~ m/^\*\/(.*)/ ){
+    my $filename = $1;
+    
+$existance_bash_script .= <<'EXISTS';
+declare -a FAILED_FOLDERS;
+count=0;
+    for job in $( ls -d [[:digit:]]* ) ; do
+        if [ ! -f "$job/<FILENAME>" ];then
+        FAILED_FOLDERS[$count]  = $job;
+        count=$(( $count + 1 ))
+        fi
 done
-                   
-                   
+  
+if [ ${#FAILED_FOLDERS[@]} -eq 0 ]; then
+    printf "\tAll files exists.\n";
+else
+    printf "\tFollowing subPackages missing <FILENAME> .\n";
+    for i in ${FAILED_FOLDERS[@]}; do
+        printf "%d\n" ${i}
+    done
+
+fi
+    
+
 EXISTS
+    $existance_bash_script =~ s|<FILENAME>|$filename|g;
+
+}else{
+
+$existance_bash_script .= <<'EXISTS';
+    
+    if [ ! -f '<FILENAME>' ];then
+    printf "\t<FILENAME> is missing.\n";
+    else
+    printf "\t<FILENAME> exists.\n";
+    fi
+
+EXISTS
+
+    $existance_bash_script =~ s|<FILENAME>|$exists_filepath|g;
+
+    
+}
+    
                    
                    
-                   
-                   
-                   
-                   
-                   
-                   
-                   
-#                   
-#                   
-#                   
-#                   
-#TARGET_DIR=$remote_path/$dir_name
-#rm -rf \$TARGET_DIR
-#mkdir \$TARGET_DIR
-#
-#for COUNTER in \$(seq $num_res);do
-#cd $remote_path/\$COUNTER
-#NUMFILES=\$(ls -C1 $pattern | wc -l | tr -d ' ' );
-#echo "Gathering -> \$COUNTER: [\$NUMFILES] ";
-#for file in \$(ls -C1 $pattern );do
-#if [ ! -f \$TARGET_DIR/\$file ];then
-#cp \$file \$TARGET_DIR
-##echo "      :\$file";
-#else
-#echo "Files are not distinct. Use REDUCE instead of GATEHR"; exit 1;
-#fi
-#done
-#done
-#
-#EXISTS
-#                   
-                   
-                   
-                   
-                   
-                   
-                   
-                   
-                   
-                   
-                   
-#                   
-#                   
-#                   
-#                   
-#                   
-#        #
-#        if ($local){
-#                   # run bash script locally
-#        }else{
-#                   # run bash script on remote
-#        }
-#                   
-#                   
-#                   
-                   
-                   
-                   
-                   
-                   
-                   
-                   
-                   
+    #print $existance_bash_script;
+
+        if ($local){
+            # run bash script locally
+            
+            
+            my $sanity_name = "CJsanity_exist.sh";
+            my $sanity_bash_path = "$local_path_name/$sanity_name";
+            &CJ::writeFile($sanity_bash_path,$existance_bash_script);
+            
+            my $cmd = "cd $local_path_name; bash -l $sanity_name'";
+            system($cmd);
+            
+        }else{
+            # run bash script on remote
+            
+            # Get current remote directory from .ssh_config
+            # user might wanna rename, copy to another place,
+            # etc. We consider the latest one , and if the
+            # saved remote is different, we issue a warning
+            # for the user.
+            my $ssh             = &CJ::host($info->{'machine'});
+            my $remotePrefix    = $ssh->{remote_repo};
+            my $remote_path     = $info->{remote_path};
+            
+            my ($program_name,$ext)=&CJ::remove_extension($info->{program});
+            my $current_remote_path = "$remotePrefix/$program_name/$info->{'pid'}";
+            #print("$remote_path");
+            if($current_remote_path ne $remote_path){
+                &CJ::warning("the .ssh_config remote directory and the history remote are not the same. CJ is choosing:\n     $info->{account}:${current_remote_path}.");
+                $remote_path = $current_remote_path;
+            }
+            
+            $remote_path =~ s/~/\$HOME/;
+
+            my $sanity_name = "CJsanity_exist.sh";
+            my $sanity_bash_path = "/tmp/$sanity_name";
+            &CJ::writeFile($sanity_bash_path,$existance_bash_script);
+            
+            my $cmd = "scp $sanity_bash_path  $ssh->{account}:$remote_path/";
+            &CJ::my_system($cmd,$verbose);
+            
+            $cmd = "ssh $ssh->{account} 'cd $remote_path; bash -l $sanity_name'";
+            system($cmd);
+        }
+    
+    
                    
           
 }

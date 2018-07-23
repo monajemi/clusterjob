@@ -2421,14 +2421,17 @@ sub yesno{
 
 
 sub getuserinput{
-    my ($question,$default) = @_;
+    my ($question,$default, $noConfirm) = @_;
+    
     print $question;
     my $user_input =  <STDIN>;
     chomp($user_input);
     $user_input = remove_white_space($user_input);
     my $yesno;
-    if ( !defined($default) || not $user_input eq $default){
-        print ' ' x 16 . "You have entered \'$user_input\'. Is this correct (Y/N)?";
+    
+    
+    if ( ( !defined($default) || not $user_input eq $default ) && (! defined($noConfirm)) ){
+        print ' ' x 8 . "You have entered \'$user_input\'. Is this correct (Y/N)?";
         $yesno =  <STDIN>; chomp($yesno);
     }else{
         $yesno = 'yes';

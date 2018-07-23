@@ -88,7 +88,7 @@ my @nosync_cmds = qw ( init who help -help -h -Help -HELP prompt version -v inst
 my %nosync = map { $_ => 1 } @nosync_cmds;
 
 if($CJKEY && (!exists($nosync{$cjcmd0})) ){
-        CJ::err("no internet connection!") if (not defined $localIP);
+        CJ::err("This action needs internet connection!") if (not defined $localIP);
 		&CJ::add_agent_to_remote();  # if there is no agent, add it.
 		$sync_status = &CJ::AutoSync();
 }
@@ -161,7 +161,6 @@ my $spec = <<'EOSPEC';
                                                     }
                                                     }
                                                 }
-
      connect        <cluster:/\S+/>	                  connect to a cluster
      log            [<argin>]	                          log  -n|all|pid [nocase]
                                                                 {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin,$log_tag,$log_script) }}
@@ -214,7 +213,7 @@ my $spec = <<'EOSPEC';
                                                                 }
      runlog        [<pid> [[/] [<counter>]] ]	  	  shows the run log of a script  [nocase]
                                                                 {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","runlog") }}
-     sanity        <type>  [<pid>]			          reduce results of parrun [nocase]
+     sanity        <type>  [<pid>]			          sanity checks:  exist | line [nocase]
      save          <pid> [<path>]	                  save a package in path [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
      show          [<pid> [[/] [<counter>] [[/] <file>]] ]	  show program/error of certain package [nocase]
