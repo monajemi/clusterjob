@@ -9,185 +9,210 @@ use CJ::CJVars;
 use Data::Dumper;
 
 
-
-##############
+############
 sub sanity{
-    ##########
-    my ($type, $pid, $verbose) = @_;
+    ########
+    my ($type,$pid,$verbose) = @_;
     
+    my $info = &CJ::get_info($pid);
+    # Check Connection;
+    eval{&CJ::CheckConnection($info->{'machine'});};
+    
+    
+    
+    # See if user wants local sanity check
+    # if no connection is found
+    my ($local,$local_path_name) = ask_local() if ($@);
+    
+    
+    
+    # Ask for the path of file to do sanity check on
+    my $sanity_filepath;
+    my $got = 'no';
+    while ( $got !~ m/y[\t\s]*|yes[\t\s]*/i ){
+        ($sanity_filepath, $got)=&CJ::getuserinput("What file (e.g., results.txt | */results.txt)? ", '',1);
+    }
+    
+    if ($sanity_filepath eq ''){
+        CJ::message('nothing etered.');
+        return;
+    }
+
+    
+    # Write bash script that according to type asked.
+    my $sanity_bash_script;
     if($type =~ m/exist/i) {
-        CJ::Sanity::file_existance($pid,$verbose)
+        $sanity_bash_script = make_existance_bash_script($info,$local,$sanity_filepath)
     }elsif($type =~ m/line/i){
-        CJ::Sanity::file_numlines($pid)
+        $sanity_bash_script = make_numline_bash_script($info,$local)
     }else{
         &CJ::err("Sanity type $type is not supported.")
     }
+    #print $sanity_bash_script;
     
-
-}
-
-
-
-
-sub file_existance{
-    my ($pid,$verbose) = @_;
     
-        my $info = &CJ::get_info($pid);
-        my $local=0;
-        my $local_path_name;
-        # Check Connection;
-        eval{&CJ::CheckConnection($info->{'machine'});};
-        # See if user wants local sanity check
-        # if no connection is found
-    
-        if ($@){
-                   my $yesno = &CJ::yesno("No internet connection, would you like to do sanity check locally");
-                   
-                   if ($yesno){
-                        my $got = 'no';
-                        while ( $got !~ m/y[\t\s]*|yes[\t\s]*/i ){
-                            ($local_path_name, $got)=&CJ::getuserinput("Please enter the path to your CJ package:", '', 1); #noConfim
-                        }
-                   
-                           if (  not $local_path_name eq ''  )  {
-                               if (-d $local_path_name){$local = 1
-                               }else{
-                               CJ::err("CJ package does not exists: $local_path_name")
-                               }
-                           }
-                   }
+    my $date  = CJ::date();
+    my $sanity_name = "CJsanity_${type}_$date->{'epoch'}.sh";
+
+        # execute bash
+    if ($local){
+        # run bash script locally
+        my $sanity_bash_path = "$local_path_name/$sanity_name";
+        &CJ::writeFile($sanity_bash_path,$sanity_bash_script);
+
+        my $cmd = "cd $local_path_name; bash -l $sanity_name";
+        system($cmd);
+        
+    }else{
+        # run bash script on remote
+        # Get current remote directory from .ssh_config
+        # user might wanna rename, copy to another place,
+        # etc. We consider the latest one , and if the
+        # saved remote is different, we issue a warning
+        # for the user.
+        my $ssh             = &CJ::host($info->{'machine'});
+        my $remotePrefix    = $ssh->{remote_repo};
+        my $remote_path     = $info->{remote_path};
+        
+        my ($program_name,$ext)=&CJ::remove_extension($info->{program});
+        my $current_remote_path = "$remotePrefix/$program_name/$info->{'pid'}";
+        #print("$remote_path");
+        if($current_remote_path ne $remote_path){
+            &CJ::warning("the .ssh_config remote directory and the history remote are not the same. CJ is choosing:\n     $info->{account}:${current_remote_path}.");
+            $remote_path = $current_remote_path;
         }
-                   
+        
+        $remote_path =~ s/~/\$HOME/;
+        
+        my $sanity_bash_path = "/tmp/$sanity_name";
+        &CJ::writeFile($sanity_bash_path,$sanity_bash_script);
 
-my $exists_filepath;
-# Ask the existance of what
-my $got = 'no';
-while ( $got !~ m/y[\t\s]*|yes[\t\s]*/i ){
-    ($exists_filepath, $got)=&CJ::getuserinput("What file (e.g., results.txt | */results.txt)? ", '',1);
+        my $cmd = "scp $sanity_bash_path  $ssh->{account}:$remote_path/";
+        &CJ::my_system($cmd,$verbose);
+        
+        $cmd = "ssh $ssh->{account} 'cd $remote_path; bash -l $sanity_name'";
+        system($cmd);
+    }
+    
 }
 
-                   if ($exists_filepath eq ''){
-                       CJ::message('nothing etered.');
-                   return;
-                   }
-                   
+
+
+
+
+
+sub ask_local{
+    
+    my $yesno = &CJ::yesno("No internet connection, would you like to do sanity check locally");
+   
+    my $local=0;
+    my $local_path_name=undef;
+
+    if ($yesno){
+        my $got = 'no';
+        while ( $got !~ m/y[\t\s]*|yes[\t\s]*/i ){
+            ($local_path_name, $got)=&CJ::getuserinput("Please enter the path to your CJ package:", '', 1); #noConfim
+        }
+        
+        if (  not $local_path_name eq ''  )  {
+            if (-d $local_path_name){
+                $local = 1
+            }else{
+                CJ::err("CJ package does not exists: $local_path_name")
+            }
+        }
+    }
+
+    return ($local,$local_path_name);
 
     
-# Write bash script that does exsiatnce sanity check.
- 
-    
-    
-    
-    
-    
-    ### header for bqs's
-    my $HEADER = $local ? '#!/bin/bash -l' : &CJ::bash_header($info->{bqs});
-    
-    
+}
+
+
+
+
+
+
+sub make_existance_bash_script{
+
+    my ($info,$local,$exists_filepath) = @_;
+
+### header for bqs's
+my $HEADER = $local ? '#!/bin/bash -l' : &CJ::bash_header($info->{bqs});
+
+
 my $existance_bash_script="$HEADER\n";
-    
+
 if ( $exists_filepath =~ m/^\*\/(.*)/ ){
-    my $filename = $1;
-    
+my $filename = $1;
+
 $existance_bash_script .= <<'EXISTS';
 declare -a FAILED_FOLDERS;
 count=0;
-    
+
 ls -d [[:digit:]]* > /dev/null 2>&1 || \
-    { printf  "\tThis is not a parrun package. */<FILENAME> does not exist.\n"; exit 0; }
-    
-        for job in $( ls -d [[:digit:]]* ) ; do
-            if [ ! -f "$job/<FILENAME>" ];then
-            FAILED_FOLDERS[$count]=$job;
-            count=$(( $count + 1 ))
-            fi
-        done
-    
+{ printf  "\tThis is not a parrun package. */<FILENAME> does not exist.\n"; exit 0; }
+
+for job in $( ls -d [[:digit:]]* ) ; do
+    if [ ! -f "$job/<FILENAME>" ];then
+    FAILED_FOLDERS[$count]=$job;
+    count=$(( $count + 1 ))
+    fi
+done
+
 if [ ${#FAILED_FOLDERS[@]} -eq 0 ]; then
     printf "\t\xE2\x9C\x94 File '<FILENAME>' exists in all subPackages.\n";
 else
     printf "\t\xE2\x9D\x8C  Following subPackages are missing '<FILENAME>':\n";
     sorted=( $( printf "%s\n" "${FAILED_FOLDERS[@]}" | sort -n ) )
-    
+
     missing=$(IFS=, ; echo "${sorted[*]}")
     printf "\t%s\n" $missing
 fi
-    
+
 
 EXISTS
-    $existance_bash_script =~ s|<FILENAME>|$filename|g;
+$existance_bash_script =~ s|<FILENAME>|$filename|g;
 
 }else{
 
 $existance_bash_script .= <<'EXISTS';
-    
-    if [ ! -f '<FILENAME>' ];then
+
+if [ ! -f '<FILENAME>' ];then
     printf "\t\xE2\x9D\x8C  <FILENAME> is missing.\n";
-    else
+else
     printf "\t\xE2\x9C\x94 <FILENAME> exists.\n";
-    fi
+fi
 
 EXISTS
 
-    $existance_bash_script =~ s|<FILENAME>|$exists_filepath|g;
+$existance_bash_script =~ s|<FILENAME>|$exists_filepath|g;
 
-    
-}
-    
-                   
-                   
-    #print $existance_bash_script;
 
-        if ($local){
-            # run bash script locally
-            
-            
-            my $sanity_name = "CJsanity_exist.sh";
-            my $sanity_bash_path = "$local_path_name/$sanity_name";
-            &CJ::writeFile($sanity_bash_path,$existance_bash_script);
-            
-            my $cmd = "cd $local_path_name; bash -l $sanity_name";
-            system($cmd);
-            
-        }else{
-            # run bash script on remote
-            
-            # Get current remote directory from .ssh_config
-            # user might wanna rename, copy to another place,
-            # etc. We consider the latest one , and if the
-            # saved remote is different, we issue a warning
-            # for the user.
-            my $ssh             = &CJ::host($info->{'machine'});
-            my $remotePrefix    = $ssh->{remote_repo};
-            my $remote_path     = $info->{remote_path};
-            
-            my ($program_name,$ext)=&CJ::remove_extension($info->{program});
-            my $current_remote_path = "$remotePrefix/$program_name/$info->{'pid'}";
-            #print("$remote_path");
-            if($current_remote_path ne $remote_path){
-                &CJ::warning("the .ssh_config remote directory and the history remote are not the same. CJ is choosing:\n     $info->{account}:${current_remote_path}.");
-                $remote_path = $current_remote_path;
-            }
-            
-            $remote_path =~ s/~/\$HOME/;
-
-            my $sanity_name = "CJsanity_exist.sh";
-            my $sanity_bash_path = "/tmp/$sanity_name";
-            &CJ::writeFile($sanity_bash_path,$existance_bash_script);
-            
-            my $cmd = "scp $sanity_bash_path  $ssh->{account}:$remote_path/";
-            &CJ::my_system($cmd,$verbose);
-            
-            $cmd = "ssh $ssh->{account} 'cd $remote_path; bash -l $sanity_name'";
-            system($cmd);
-        }
-    
-    
-                   
-          
 }
 
 
+    return $existance_bash_script;
+
+
+}
+
+
+
+
+
+
+
+
+
+    
+    
+    
+    
+    
+
+    
+    
 
 sub gather_results{
     my ($pid, $pattern, $dir_name, $verbose) = @_;
