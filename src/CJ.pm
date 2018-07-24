@@ -279,11 +279,13 @@ sub write2firebase
 
 sub add_agent_to_remote{
 	# This is the first time agent is added.
-	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);	
+	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
+    # make sure there is internet
+    return if (not defined $localIP);
 	# make sure agent doesnt exist already
-	return if eval {my $fb_get = $firebase->get("users/${CJID}/agents/$AgentID")};
-	my $agentHash = {"SyncReq" => "null", "last_instance" => "null", "push_timestamp" =>0  ,"pull_timestamp" => 0}; 
-    my $result = $firebase->patch("users/${CJID}/agents/$AgentID",  $agentHash); 	
+    return if eval {my $fb_get = $firebase->get("users/${CJID}/agents/$AgentID")};
+    my $agentHash = {"SyncReq" => "null", "last_instance" => "null", "push_timestamp" =>0  ,"pull_timestamp" => 0};
+    my $result = $firebase->patch("users/${CJID}/agents/$AgentID",  $agentHash);
 }
 
 sub informOtherAgents{
@@ -2414,7 +2416,7 @@ sub message{
 sub yesno{
     my ($question,$noBegin) = @_;
     my $prompt = $question . "(Y/N)?";
-    print(' ' x 16 . "$prompt");
+    print(' ' x 8 . "$prompt");
     my $yesno =  <STDIN>; chomp($yesno);
     exit 0 unless (lc($yesno) eq "y" or lc($yesno) eq "yes");
 }

@@ -88,9 +88,12 @@ my @nosync_cmds = qw ( init who help -help -h -Help -HELP prompt version -v inst
 my %nosync = map { $_ => 1 } @nosync_cmds;
 
 if($CJKEY && (!exists($nosync{$cjcmd0})) ){
-        CJ::err("This action needs internet connection!") if (not defined $localIP);
-		&CJ::add_agent_to_remote();  # if there is no agent, add it.
-		$sync_status = &CJ::AutoSync();
+    #CJ::err("This action needs internet connection!") if (not defined $localIP);
+    eval {
+        &CJ::add_agent_to_remote();  # if there is no agent, add it.
+        $sync_status = &CJ::AutoSync();
+    };
+    
 }
 
 }

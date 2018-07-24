@@ -46,7 +46,7 @@ sub file_existance{
                    if ($yesno){
                         my $got = 'no';
                         while ( $got !~ m/y[\t\s]*|yes[\t\s]*/i ){
-                            ($local_path_name, $got)=&CJ::getuserinput("Please enter the path to your CJ package:", '');
+                            ($local_path_name, $got)=&CJ::getuserinput("Please enter the path to your CJ package:", '', 1); #noConfim
                         }
                    
                            if (  not $local_path_name eq ''  )  {
@@ -63,7 +63,7 @@ my $exists_filepath;
 # Ask the existance of what
 my $got = 'no';
 while ( $got !~ m/y[\t\s]*|yes[\t\s]*/i ){
-    ($exists_filepath, $got)=&CJ::getuserinput("What file (e.g., results.txt | */results.txt)? ", '');
+    ($exists_filepath, $got)=&CJ::getuserinput("What file (e.g., results.txt | */results.txt)? ", '',1);
 }
 
                    if ($exists_filepath eq ''){
@@ -84,7 +84,7 @@ while ( $got !~ m/y[\t\s]*|yes[\t\s]*/i ){
     my $HEADER = $local ? '#!/bin/bash -l' : &CJ::bash_header($info->{bqs});
     
     
-my $existance_bash_script=$HEADER;
+my $existance_bash_script="$HEADER\n";
     
 if ( $exists_filepath =~ m/^\*\/(.*)/ ){
     my $filename = $1;
@@ -92,21 +92,25 @@ if ( $exists_filepath =~ m/^\*\/(.*)/ ){
 $existance_bash_script .= <<'EXISTS';
 declare -a FAILED_FOLDERS;
 count=0;
-    for job in $( ls -d [[:digit:]]* ) ; do
-        if [ ! -f "$job/<FILENAME>" ];then
-        FAILED_FOLDERS[$count]  = $job;
-        count=$(( $count + 1 ))
-        fi
-done
-  
+    
+ls -d [[:digit:]]* > /dev/null 2>&1 || \
+    { printf  "\tThis is not a parrun package. */<FILENAME> does not exist.\n"; exit 0; }
+    
+        for job in $( ls -d [[:digit:]]* ) ; do
+            if [ ! -f "$job/<FILENAME>" ];then
+            FAILED_FOLDERS[$count]=$job;
+            count=$(( $count + 1 ))
+            fi
+        done
+    
 if [ ${#FAILED_FOLDERS[@]} -eq 0 ]; then
-    printf "\tAll files exists.\n";
+    printf "\t\xE2\x9C\x94 File '<FILENAME>' exists in all subPackages.\n";
 else
-    printf "\tFollowing subPackages missing <FILENAME> .\n";
-    for i in ${FAILED_FOLDERS[@]}; do
-        printf "%d\n" ${i}
-    done
-
+    printf "\t\xE2\x9D\x8C  Following subPackages are missing '<FILENAME>':\n";
+    sorted=( $( printf "%s\n" "${FAILED_FOLDERS[@]}" | sort -n ) )
+    
+    missing=$(IFS=, ; echo "${sorted[*]}")
+    printf "\t%s\n" $missing
 fi
     
 
@@ -118,9 +122,9 @@ EXISTS
 $existance_bash_script .= <<'EXISTS';
     
     if [ ! -f '<FILENAME>' ];then
-    printf "\t<FILENAME> is missing.\n";
+    printf "\t\xE2\x9D\x8C  <FILENAME> is missing.\n";
     else
-    printf "\t<FILENAME> exists.\n";
+    printf "\t\xE2\x9C\x94 <FILENAME> exists.\n";
     fi
 
 EXISTS
@@ -142,7 +146,7 @@ EXISTS
             my $sanity_bash_path = "$local_path_name/$sanity_name";
             &CJ::writeFile($sanity_bash_path,$existance_bash_script);
             
-            my $cmd = "cd $local_path_name; bash -l $sanity_name'";
+            my $cmd = "cd $local_path_name; bash -l $sanity_name";
             system($cmd);
             
         }else{
