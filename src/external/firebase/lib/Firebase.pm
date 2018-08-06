@@ -21,9 +21,14 @@ has auth => (
     predicate   => 'has_auth',
 );
 
-has auth_token => (
+has jwt => (
     is          => 'ro',
-    predicate   => 'has_token',
+    predicate   => 'has_jwt',
+);
+
+has api_key => (
+    is          => 'ro',
+    predicate   => 'has_api_key',
 );
 
 has authobj        => (
@@ -31,7 +36,8 @@ has authobj        => (
     lazy        => 1,
     predicate   => 'has_authobj',
     default     => sub {
-        Firebase::Auth->new(%{$_[0]->auth});
+        my ($self) = @_;
+        Firebase::Auth->new(firebase => $self->firebase, secret => $self->jwt, api_key => $self->api_key);
     },
 );
 
@@ -50,15 +56,15 @@ has agent => (
 sub get {
     my ($self, $path, $param_hash) = @_;
     my $uri = $self->create_uri($path);
-	
+
 	my $req  = $uri->as_string;
-	
+
 	if(defined($param_hash)){
 		while(my ($key, $value) = each (%$param_hash)){
 			$req .= "\&".$key."=$value";
 		}
 	}
-	#print "$req\n"; 
+	#print "$req\n";
 	my $request = GET($req);
 	return $self->process_request($request);
 }
@@ -71,21 +77,21 @@ sub delete {
 
 sub put {
     my ($self, $path, $params) = @_;
-	
+
 	#print $path . "\n";
-	
+
     my $uri = $self->create_uri($path);
 	#print $uri . "\n";
     my $request = POST($uri->as_string, Content_Type => 'form-data', Content => to_json($params));
-	
-    
+
+
     $request->method('PUT'); # because HTTP::Request::Common treats PUT as GET rather than POST
     return $self->process_request( $request );
 }
 
 sub patch {
     my ($self, $path, $params) = @_;
-    
+
     my $uri = $self->create_uri($path);
     my $request = POST($uri->as_string, Content_Type => 'form-data', Content => to_json($params));
     $request->method('PATCH'); # because HTTP::Request::Common treats PUT as GET rather than POST
@@ -100,16 +106,11 @@ sub post {
 }
 
 sub create_uri {
-    my ($self, $path,$param) = @_;
-	
-	my $token;
-	$token = $self->authobj->create_token if $self->has_authobj || $self->has_auth;
-	$token = $self->auth_token  if $self->has_token;
-		
-    my $url = 'https://'.$self->firebase.'.firebaseio.com/'.$path.'.json';
-    $url .= '?auth='. $token;
+  my ($self, $path,$param) = @_;
+
+  my $url = 'https://'.$self->firebase.'.firebaseio.com/'.$path.'.json';
+    $url .= '?auth='.$self->authobj->get_token;
 	my $uri = URI->new($url);
-	 
     return $uri;
 }
 
@@ -120,15 +121,15 @@ sub process_request {
 
 sub process_response {
     my ($self, $response) = @_;
-    
+
 	$self->debug($response->header('X-Firebase-Auth-Debug'));
-	
+
 	if ($response->is_success) {
         if ($response->decoded_content eq 'null') {
             return undef;
         }
         else {
-            my $result = eval { from_json($response->decoded_content) }; 
+            my $result = eval { from_json($response->decoded_content) };
             if ($@) {
  				warn $response->decoded_content;
                 ouch 500, 'Server returned unparsable content.';#, { error => $@, content => $response->decoded_content };
@@ -149,13 +150,13 @@ Firebase - An interface to firebase.com.
 =head1 SYNOPSIS
 
  use Firebase;
- 
+
  my $fb = Firebase->new(firebase => 'myfirebase', auth => { secret => 'xxxxxxx', data => { uid => 'xxx', username => 'fred' }, admin => \1 } );
- 
+
  my $result = $fb->put('foo', { this => 'that' });
  my $result = $fb->get('foo'); # or $fb->get('foo/this');
  my $result = $fb->delete('foo');
- 
+
 =head1 DESCRIPTION
 
 This is a light-weight wrapper around the Firebase REST API. Firebase is a real-time web service that acts as both a queue and a datastore. It's used for building real-time web apps and web services.
@@ -391,7 +392,7 @@ YOUR LOCAL LAW. UNLESS REQUIRED BY LAW, NO COPYRIGHT HOLDER OR
 CONTRIBUTOR WILL BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, OR
 CONSEQUENTIAL DAMAGES ARISING IN ANY WAY OUT OF THE USE OF THE PACKAGE,
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- 
+
 =cut
 
 1;

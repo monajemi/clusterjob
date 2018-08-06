@@ -7,7 +7,11 @@ use JSON::XS;
 use POSIX;
 use MIME::Base64;
 use Moo;
+use HTTP::Thin;
 use Ouch;
+use JSON;
+use HTTP::Request::Common qw(POST);
+use DateTime;
 
 
 has token_version => (
@@ -15,7 +19,17 @@ has token_version => (
     default => sub { 0 },
 );
 
+has firebase => (
+    is          => 'ro',
+    required    => 1,
+);
+
 has secret => (
+    is       => 'rw',
+    required => 1,
+);
+
+has api_key => (
     is       => 'rw',
     required => 1,
 );
@@ -50,7 +64,47 @@ has debug => (
     predicate   => 'has_debug',
 );
 
+has token_provider => (
+    is          => 'ro',
+    required    => 0,
+    lazy        => 1,
+    default     => sub { HTTP::Thin->new() },
+);
+
+has id_token => (
+    is          => 'rw'
+);
+
+# Check if the current authentication token is expired
+# if so create a new one and return it
 sub create_token {
+  my ($self, $data) = @_;
+  my $url = 'https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=';
+  $url .= $self->api_key;
+  my %payload = (
+    token => $self->secret,
+    returnSecureToken => 'true'
+  );
+  my $call = POST($url, Content => encode_json(\%payload), Content_Type => 'JSON(application/json)');
+  $self->id_token(decode_json($self->token_provider->request($call)->decoded_content)->{idToken});
+  $self->expires(DateTime->now(time_zone=>'local')->add(seconds => 3600));
+  return $self->id_token;
+}
+
+sub get_token {
+  my ($self, $data) = @_;
+  my $token;
+  if($self->id_token && $self->expires && DateTime->compare($self->expires, DateTime->now(time_zone=>'local')) > 0){
+    $token = $self->id_token;
+  }else{
+    $token = $self->create_token;
+  }
+  use Data::Dumper;
+  print Dumper $token;
+  return $token;
+}
+
+sub create_jwt {
     my ($self, $data) = @_;
     return $self->encode_token($self->create_claims($data || $self->data));
 }
@@ -60,7 +114,7 @@ sub create_claims {
     if (! exists $data->{uid}) {
         ouch('missing param', 'Data payload must contain a "uid" key that must be a string.', 'uid') unless $self->admin;
     }
-    elsif ($data->{uid} eq '') { 
+    elsif ($data->{uid} eq '') {
         ouch('param out of range', 'Data payload must contain a "uid" key that must not be empty or null.', 'uid');
     }
     elsif (length $data->{uid} > 256) {
@@ -78,7 +132,7 @@ sub create_claims {
     return \%claims;
 }
 
-sub encode_token {
+sub encode_jwt {
     my ($self, $claims) = @_;
     my $ejsn = JSON::XS->new->utf8->space_after->encode ({'typ'=> 'JWT', 'alg'=> 'HS256'}) ;
     my $encoded_header = $self->urlbase64_encode( $ejsn);
@@ -97,7 +151,7 @@ sub urlbase64_encode {
 
 sub sign {
     my ($self, $bits) = @_;
-    return hmac_sha256($bits, $self->secret); 
+    return hmac_sha256($bits, $self->secret);
 }
 
 
@@ -109,15 +163,15 @@ Firebase::Auth - Auth token generation for firebase.com.
 =head1 SYNOPSIS
 
  use Firebase::Auth;
- 
+
  my $token = Firebase::Auth->new(token => 'xxxxxxxxx', admin => 'true', data => { uid => '1' } )->create_token();
 
 
 =head1 DESCRIPTION
 
 This module provides a Perl class to generate auth tokens for L<http://www.firebase.com>. See L<https://www.firebase.com/docs/security/custom-login.html> for details on the spec.
-    
-    
+
+
 =head1 METHODS
 
 
@@ -187,7 +241,7 @@ Generates a signed token. This is probably the only method you'll ever need to c
 
 =item data
 
-Required if not specified in constructor. Defaults to the C<data> element in the constructor. A hash reference of parameters you wish to pass to the service. If specified it must have a C<uid> key that contain's the users unique user id, which must be a non-null string that is no longer than 256 characters. 
+Required if not specified in constructor. Defaults to the C<data> element in the constructor. A hash reference of parameters you wish to pass to the service. If specified it must have a C<uid> key that contain's the users unique user id, which must be a non-null string that is no longer than 256 characters.
 
 =back
 
@@ -195,7 +249,7 @@ Required if not specified in constructor. Defaults to the C<data> element in the
 
 =head2 create_claims
 
-Generates a list of claims based upon the options provided to the constructor. 
+Generates a list of claims based upon the options provided to the constructor.
 
 =over
 
