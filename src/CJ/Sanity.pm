@@ -168,7 +168,7 @@ else
     printf "\t\xE2\x9D\x8C  Following subPackages are missing '<FILENAME>':\n";
     sorted=( $( printf "%s\n" "${FAILED_FOLDERS[@]}" | sort -n ) )
 
-    missing=$(IFS=, ; echo "${sorted[*]}")
+    missing=$(IFS=' ' ; echo "${sorted[*]}")
     printf "\t%s\n" $missing
 fi
 
@@ -341,7 +341,7 @@ printf "\033[32mMode # lines: \033[0m%s\n" $mod;
             done
         
             sorted=( $( printf "%s\n" "${troubles[@]}" | sort -n ) )
-            tmp=$(IFS=, ; echo "${sorted[*]}" )
+            tmp=$(IFS=' ' ; echo "${sorted[*]}" )
             printf "\t%s\n" $tmp
 
     fi
@@ -349,7 +349,7 @@ printf "\033[32mMode # lines: \033[0m%s\n" $mod;
     if [ ! ${#FAILED_FOLDERS[@]} -eq 0 ]; then
         printf "\t\xE2\x9D\x8C\xE2\x9D\x8C  Following subPackages are missing '<FILENAME>':\n";
         sorted=( $( printf "%s\n" "${FAILED_FOLDERS[@]}" | sort -n ) )
-        missing=$(IFS=, ; echo "${sorted[*]}")
+        missing=$(IFS=' ' ; echo "${sorted[*]}")
         printf "\t%s\n" $missing
     fi
         
