@@ -26,7 +26,7 @@ use JSON::PP;
 #use Term::ANSIColor qw(:constants); # for changing terminal text colors
 #use Term::ReadKey;
 
-use vars qw( $submit_defaults $qSubmitDefault $sync_status $message $dep_folder $verbose $log_script $text_header_lines $show_tag $log_tag $force_tag $qsub_extra $cmdline);  # options
+use vars qw( $submit_defaults $qSubmitDefault $sync_status $message $dep_folder $verbose $log_script $text_header_lines $show_tag $log_tag $force_tag $qsub_extra $cmdline $sanity_expand);  # options
 
 
 $::VERSION = &CJ::version_info();
@@ -64,7 +64,7 @@ $log_tag           = "all";
 $log_script        = undef;
 $sync_status 	   = 0;
 $qSubmitDefault    = 1;
-
+$sanity_expand     = 0;
 #=========================================
 #        CJ SUMBMIT DEFAULTS
 #=========================================
@@ -124,6 +124,8 @@ my $spec = <<'EOSPEC';
                                                                {$log_tag="showclean";}
      --err[or]	                                          error tag for show [nocase] [requires: show]
                                                               {$show_tag="error"}
+     --expand	                                          more info for sanity [nocase] [requires: sanity]
+                                                                {$sanity_expand=1}
      --no-submit-default	                          turns off default submit parameters [nocase]
                                                               {$qSubmitDefault=0}
      --json      	                                  json tag for show [nocase]  [requires: show]
@@ -306,7 +308,7 @@ if($opts->{'sanity'})
 {
     
     &CJ::add_cmd($cmdline);
-    &CJ::Sanity::sanity($opts->{'sanity'}{'<type>'}, $opts->{'sanity'}{'<pid>'},$verbose);
+    &CJ::Sanity::sanity($opts->{'sanity'}{'<type>'}, $opts->{'sanity'}{'<pid>'},$verbose,$sanity_expand);
 }
 
 

@@ -12,7 +12,8 @@ use Data::Dumper;
 ############
 sub sanity{
     ########
-    my ($type,$pid,$verbose) = @_;
+    my ($type,$pid,$verbose,$expand) = @_;
+    
     
     my $info = &CJ::get_info($pid);
     # Check Connection;
@@ -44,7 +45,7 @@ sub sanity{
     if($type =~ m/exist/i) {
         $sanity_bash_script = make_existance_bash_script($info,$local,$sanity_filepath)
     }elsif($type =~ m/line/i){
-        $sanity_bash_script = make_numline_bash_script($info,$local, $sanity_filepath)
+        $sanity_bash_script = make_numline_bash_script($info,$local, $sanity_filepath, $expand)
     }else{
         &CJ::err("Sanity type $type is not supported.")
     }
@@ -92,6 +93,7 @@ sub sanity{
         
         $cmd = "ssh $ssh->{account} 'cd $remote_path; bash -l $sanity_name; rm $sanity_name'";
         system($cmd);
+        
     }
     
 }
@@ -208,7 +210,7 @@ $existance_bash_script =~ s|<FILENAME>|$exists_filepath|g;
 sub make_numline_bash_script{
     ###########################
     
-        my ($info,$local,$numline_filepath) = @_;
+        my ($info,$local,$numline_filepath, $expand) = @_;
         
 ### header for bqs's
 my $HEADER = $local ? '#!/bin/bash -l' : &CJ::bash_header($info->{bqs});
@@ -216,7 +218,7 @@ my $HEADER = $local ? '#!/bin/bash -l' : &CJ::bash_header($info->{bqs});
     
 my $numline_bash_script="$HEADER\n";
 
-$numline_bash_script .= <<'BASH_FUN';
+$numline_bash_script .= <<'BASH_FUNC';
     
 max()
 {
@@ -268,25 +270,33 @@ mode()
         echo "$m";
 }
     
-BASH_FUN
+BASH_FUNC
 
     
 if ( $numline_filepath =~ m/^\*\/(.*)/ ){
 my $filename = $1;
 
-$numline_bash_script .= <<'EXISTS';
+$numline_bash_script .= <<'NUMLINES';
 
 declare -a NUM_LINES_ARR;
 declare -a FAILED_FOLDERS;
 
     
-    
+# Check that this is a parrun packages
 ls -d [[:digit:]]* > /dev/null 2>&1 || \
     { printf  "\tThis is not a parrun package. */<FILENAME> does not exist.\n"; exit 0; }
+    
+    
+    
+alljobs=($( ls -d [[:digit:]]* | sort -n ))
+    
+#echo ${alljobs[*]}
+total=${#alljobs[@]}
+    
 count=0
-    for job in $( ls -d [[:digit:]]* ) ; do
+    for job in $( seq $total ) ; do
          idx=$(($job-1))
-        if [ ! -f "$job/<FILENAME>" ];then
+            if [ ! -f "$job/<FILENAME>" ];then
     
             NUM_LINES_ARR[$idx]=0
             FAILED_FOLDERS[$count]=$job
@@ -298,16 +308,10 @@ count=0
     done
 
             
-[ ${#FAILED_FOLDERS[@]} -eq $job ] && \
+[ ${#FAILED_FOLDERS[@]} -eq $total ] && \
         { printf "\t\xE2\x9D\x8C  '<FILENAME>' does not exists in any subPackage\n"; exit 0; }
     
-            
-            
-            
-            
-            
-            
-            
+    
             
             
 m=$(min ${NUM_LINES_ARR[@]})
@@ -316,7 +320,8 @@ M=$(max ${NUM_LINES_ARR[@]})
 unq=($(unique ${NUM_LINES_ARR[@]}) )
 U=$(IFS=, ; echo "${unq[*]}")
 mod=$(mode ${NUM_LINES_ARR[@]})
-    
+  
+printf "\033[32m#subPackages: \033[0m%d\n" $total;
 printf "\033[32mMin  # lines: \033[0m%d\n" $m;
 printf "\033[32mMax  # lines: \033[0m%d\n" $M;
     #printf "\033[32mUnq  # lines: \033[0m%s\n" $U;
@@ -348,22 +353,46 @@ printf "\033[32mMode # lines: \033[0m%s\n" $mod;
         printf "\t%s\n" $missing
     fi
         
+        
+        
+NUMLINES
+      
+        
+        
+if($expand){
+$numline_bash_script .= <<'EXPAND';
+            printf "\033[32mExpanded: \033[0m\n"
+                printf "SubPkg   =========>  Lines\n" $subPackage ${NUM_LINES_ARR[$(($subPackage-1))]};
 
-                    
-EXISTS
+            for subPackage in $( seq ${#NUM_LINES_ARR[@]} ) ; do
+                printf "%4d     =========> %4d\n" $subPackage ${NUM_LINES_ARR[$(($subPackage-1))]};
+            done
+          
+EXPAND
+        
+}
+        
+        
+        
+        
+        
+        
+        
                 $numline_bash_script =~ s|<FILENAME>|$filename|g;
                 
 }else{
                 
-$numline_bash_script .= <<'EXISTS';
+$numline_bash_script .= <<'NUMLINES';
                 
                 if [ ! -f '<FILENAME>' ];then
                     printf "\t\xE2\x9D\x8C  <FILENAME> is missing.\n";
                 else
-                    printf "\t\xE2\x9C\x94 <FILENAME> exists.\n";
+                    
+                    NUM_LINES=`wc -l < "<FILENAME>"`
+                    printf "\033[32m# lines: \033[0m%d\n" $NUM_LINES;
                 fi
                 
-EXISTS
+NUMLINES
                 
                 $numline_bash_script =~ s|<FILENAME>|$numline_filepath|g;
                 
