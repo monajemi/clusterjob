@@ -714,10 +714,11 @@ for idx = start:length(completed_list)
     count  = completed_list(idx);
     newres = load([num2str(count),'/StudyGradientOnGrid_HM_delta_0.02.mat']);
     for i = 1:length(flds)  % for all variables
-        if(qPrint); fprintf('\n reducing %s ', flds{i}) ;end
+        if(qPrint); fprintf('\\n reducing %s ', flds{i});end
         res.(flds{i}) =  CJ_reduce( res.(flds{i}) ,  newres.(flds{i}) );
     end
-qPrint=false;
+
+    qPrint=false;
 
 \% save after each packgae
 save('$res_filename','-struct', 'res');
