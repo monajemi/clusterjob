@@ -708,14 +708,16 @@ fprintf('\\n SubPackage %d Collected (%3.2f%%)', completed_list(1), percent_done
 end
 
 flds = fields(res);
-
+qPrint=true;
+    
 for idx = start:length(completed_list)
-count  = completed_list(idx);
-newres = load([num2str(count),'/$res_filename']);
-
-for i = 1:length(flds)  \% for all variables
-res.(flds{i}) =  CJ_reduce( res.(flds{i}) ,  newres.(flds{i}) );
-end
+    count  = completed_list(idx);
+    newres = load([num2str(count),'/StudyGradientOnGrid_HM_delta_0.02.mat']);
+    for i = 1:length(flds)  % for all variables
+        if(qPrint); fprintf('\n reducing %s ', flds{i}) ;end
+        res.(flds{i}) =  CJ_reduce( res.(flds{i}) ,  newres.(flds{i}) );
+    end
+qPrint=false;
 
 \% save after each packgae
 save('$res_filename','-struct', 'res');

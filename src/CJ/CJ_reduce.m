@@ -6,8 +6,9 @@ function C = CJ_reduce(A,B)
 if( ~check(A,B) ) ; error('   CJerr::A, and B are of different size or class'); end;
 
 
-if(     isa(A,'double') )
+if(  isa(A,'double') || isa(A,'uint64') )
     C = reduce_double(A,B);
+
 elseif( isa(A, 'cell'))  % double or char
     C = reduce_cell(A,B);
 elseif( isa(A,'struct') )
@@ -137,8 +138,8 @@ return;
 end
 
 % check if the class of elements is double
-if(~ strcmp( class(a) , 'double') ); error('   CJerr::Beyond the scope of CJ at the moment. Cells must contain double or char class variables'); end
-if(~ strcmp( class(b) , 'double') ); error('   CJerr::Beyond the scope of CJ at the moment. Cells must contain double or char class variables'); end
+%if(~ strcmp( class(a) , 'double') ); error('   CJerr::Beyond the scope of CJ at the moment. Cells must contain double or char class variables'); end
+%if(~ strcmp( class(b) , 'double') ); error('   CJerr::Beyond the scope of CJ at the moment. Cells must contain double or char class variables'); end
 
 
 A = num2cell(a);
