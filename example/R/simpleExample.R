@@ -3,6 +3,8 @@
 
 rm(list=ls()) 
 
+library(Matrix)
+
 myFile = "results.csv";
 system(paste("rm ", myFile));
 
