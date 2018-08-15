@@ -261,7 +261,7 @@ sub update_install {
 	CJ::message("$star_line",1);
 	CJ::message("The newest version may not be compatible with your old data structure",1);
 	CJ::message("It is recommended that you backup your old installation before this action.",1);
-    CJ::yesno("Are you sure you want to update your installation? Y/N",1);
+    CJ::yesno("Are you sure you want to update your installation",1);
     
     CJ::message("Updating CJ installation...");
 	my $date = CJ::date();
