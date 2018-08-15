@@ -188,7 +188,8 @@ R --no-save <<HERE
 cj_orig_library <- function(package,...) {library(package,...)}
 cj_orig_require <- function(package,...) {require(package,...)}
     
-# Use function for auto installationation provided by Narasimhan, Balasubramanian
+# Use function for auto installation
+# Courtesy of Narasimhan, Balasubramanian
 cj_installIfNeeded <- function(packages, ...) {
         toInstall <- setdiff(packages, utils::installed.packages()[, 1])
         if (length(toInstall) > 0) {
@@ -214,15 +215,15 @@ seed <- sum(100*c(as.integer(format(mydate,"%Y")), as.integer(format(mydate,"%m"
 set.seed(seed);
 CJsavedState = list("myversion"=version, "mydate"=mydate, 'CJsavedState'= .Random.seed)
 fname = "$DIR/CJrandState.Rd";
-save(CJrandState,file=fname)
+save(CJsavedState,file=fname)
 
 # later use:
 # CJsavedState = load("CJrandState.Rd");
 
 setwd("$DIR")
-source(${PROGRAM});
+source("${PROGRAM}");
 
-# Save session info for loading packages in Reproducible code
+# Save session info for loading packages later in Reproducible code
 r_session_info <- sessionInfo()
 save(r_session_info, file="sessionInfo.Rd")
     

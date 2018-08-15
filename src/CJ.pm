@@ -1040,7 +1040,7 @@ sub show
     	
     my $info = &CJ::get_info($pid);
     
-    my $short_pid = substr($pid,0,8);
+    my $short_pid = substr($info->{pid},0,8);
     if(defined($info->{clean}{date})){
         CJ::message("Nothing to show. Package $short_pid has been cleaned on $info->{clean}{date}{datestr}.");
         exit 0;
@@ -1753,8 +1753,10 @@ sub cluster_config_template{
         'Repo' => {example=>'/home/ubuntu/CJRepo_Remote',default=>undef},
         'MAT'  => {example=>undef,default=>'matlab/r2016b'},
         'MATlib' => {example=>undef,default=>'CJinstalled/cvx:CJinstalled/mosek/7/toolbox/r2013a'},
-        'Python' => {example=>undef,default=>'python3.4'},,
-        'Pythonlib'  => {example=>undef,default=>'pytorch:torchvision:cuda80:pandas:matplotlib:-c soumith'}
+        'Python' => {example=>undef,default=>'python3.4'},
+        'Pythonlib'  => {example=>undef,default=>'pytorch:torchvision:cuda80:pandas:matplotlib:-c soumith'},
+        'R'     => {example=>undef,default=>'R'},
+        'Rlib'  => {example=>undef,default=>'ggplot2'}
     };
     
     return ($cluster_config,\@config_keys);
@@ -1769,7 +1771,6 @@ sub update_cluster_config{
     my $file_content = &CJ::readFile($ssh_config_file);
     
     # read the contents
-
     my %machine_hash = $file_content =~ /\[($cluster)\](.*?)\[\g{-2}\]/isg;
     my $size = keys %machine_hash;
     
@@ -2441,13 +2442,16 @@ sub my_system
    my($cmd,$verbose) = @_;
     if($verbose){
         &CJ::message("system:$cmd",1);
-        system("$cmd");
+        die if ( system("$cmd") );
         
     }else{
 		system("touch $CJlog_out") unless (-f $CJlog_out);
         system("touch $CJlog_error") unless (-f $CJlog_error);
         &CJ::writeFile($CJlog_out,"system: $cmd\n", "-a");
-        system("$cmd >> $CJlog_out 2>$CJlog_error") ;
+        if ( system("$cmd >> $CJlog_out 2>$CJlog_error")  ){
+            system("cat $CJlog_error");
+            die;
+        };
     }
 
 }

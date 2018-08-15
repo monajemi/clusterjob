@@ -6,7 +6,9 @@ Repo		/scratch/users/monajemi/CJRepo_Remote
 MAT     	matlab/R2017a
 MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 Python		python/3.6
-Pythonlib	pytorch:pandas:cuda80:scipy:matplotlib:torchvision:-c soumith   
+Pythonlib	pytorch:pandas:cuda80:scipy:matplotlib:torchvision:-c soumith 
+R	        R/3.4.0 
+Rlib	        ggplot2  
 [sherlock2]
 
 
@@ -55,6 +57,8 @@ MAT		matlab/R2016a
 MATlib		~/cvx
 Python		python/3.4.3
 Pythonlib	scipy
+R		R/3.4.1-mkl
+Rlib		ggplot2
 [bridges]
 
 
@@ -68,30 +72,6 @@ MATlib		~/BPDN/CVX/cvx
 Python		python/3.4.3
 Pythonlib	scipy
 [stampede]
-
-
-[sherlock]
-Host		sherlock.stanford.edu
-User		monajemi
-Bqs		SLURM
-Repo		/scratch/users/monajemi/CJRepo_Remote
-MAT     	matlab/R2016b
-MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
-Python		python/3.4.3
-Pythonlib	pytorch:cuda80:scipy:matplotlib:torchvision -c soumith
-[sherlock]
-
-
-[sherlock2]
-Host		login.sherlock.stanford.edu
-User		monajemi
-Bqs		SLURM
-Repo		/scratch/users/monajemi/CJRepo_Remote
-MAT     	matlab/R2017a
-MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
-Python		python/3.6
-Pythonlib	pytorch:cuda80:scipy:matplotlib:torchvision:-c soumith
-[sherlock2]
 
 
 [gce]
@@ -129,7 +109,7 @@ Pythonlib	pytorch:torchvision:cuda80:pandas:-c soumith
 
 
 [gce-hatef]
-Host	35.185.238.124
+host	35.18.20.12
 User	moosh
 Bqs	SLURM
 Repo	~/CJRepo

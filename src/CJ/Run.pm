@@ -56,6 +56,7 @@ my $date = &CJ::date();
 my $sha_expr = "$CJID:$localIP:$self->{program}:$ssh->{account}:$date->{datestr}";
 my $pid  = sha1_hex("$sha_expr");
 my $short_pid = &CJ::short_pid($pid);  # we use an 8 character abbrviation
+CJ::message("initiating package \033[32m$short_pid\033[0m");
 
 
 #  Check to see if the file and dep folder exists
@@ -74,8 +75,9 @@ if(defined($self->{dep_folder})){
 my ($program_name,$ext) = &CJ::remove_extension($self->{program});
 my $program_type = CJ::program_type($self->{program});
 
+
 CJ::message("$self->{runflag}"."ing [$self->{program}] on [$self->{machine}]");
-&CJ::message("Sending from: $self->{path}");
+&CJ::message("sending from: $self->{path}");
 
 
 
@@ -163,14 +165,14 @@ my $self = shift;
         
 # create directories etc.
 my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
-
+    
     
 # for python only; check conda exists on the cluster and setup env
 $self->setup_conda_venv($pid,$ssh) if($program_type eq 'python');
 $self->setup_R_env($pid,$ssh) if ($program_type eq 'R');
     
     
-&CJ::message("Creating reproducible script(s) reproduce_$self->{program}");
+&CJ::message("creating reproducible script(s) reproduce_$self->{program}");
 my $codeobj = &CJ::CodeObj($local_sep_Dir,$self->{program},$self->{dep_folder});
 $codeobj->build_reproducible_script($self->{runflag});
 
@@ -198,25 +200,24 @@ my $local_master_path="$local_sep_Dir/master.sh";
 #==============================================
 #    PROPAGATE THE FILES AND RUN ON CLUSTER
 #==============================================
-&CJ::message("Compressing files to propagate...");
+&CJ::message("compressing files to propagate...");
     
 my $tarfile="$pid".".tar.gz";
 my $cmd="cd $localDir; tar  --exclude '.git' --exclude '*~' --exclude '*.pdf'  -czf $tarfile $pid/  ; rm -rf $local_sep_Dir  ; cd $self->{path}";
 &CJ::my_system($cmd,$self->{verbose});
-
+    
+    
+&CJ::message("sending to: $self->{machine}:$remoteDir");
+    
 # create remote directory  using outText
 $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
 &CJ::my_system($cmd,$self->{verbose});
-
     
-    
-    
-&CJ::message("Sending package \033[32m$short_pid\033[0m");
 # copy tar.gz file to remoteDir
 $cmd = "rsync -avz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
 &CJ::my_system($cmd,$self->{verbose});
     
-&CJ::message("Extracting package...");
+&CJ::message("extracting package...");
 $cmd = "ssh $ssh->{account} 'source ~/.bashrc; cd $remoteDir; tar -xzf ${tarfile} --exclude=\"._*\";exit 0'";
 &CJ::my_system($cmd,$self->{verbose});
     
@@ -377,7 +378,7 @@ my $local_master_path="$local_sep_Dir/master.sh";
 #       PROPAGATE THE FILES
 #       AND RUN ON CLUSTER
 #==================================
-&CJ::message("Compressing files to propagate...");
+&CJ::message("compressing files to propagate...");
 my $tarfile="$pid".".tar.gz";
 my $cmd="cd $localDir; tar --exclude '.git' --exclude '*~' --exclude '*.pdf' -czf  $tarfile $pid/   ; rm -rf $local_sep_Dir  ; cd $self->{path}";
 &CJ::my_system($cmd,$self->{verbose});
@@ -386,13 +387,13 @@ my $cmd="cd $localDir; tar --exclude '.git' --exclude '*~' --exclude '*.pdf' -cz
 $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
 &CJ::my_system($cmd,$self->{verbose});
 
-&CJ::message("Sending package \033[32m$short_pid\033[0m");
+&CJ::message("sending package \033[32m$short_pid\033[0m");
 # copy tar.gz file to remoteDir
 $cmd = "rsync -arvz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
 &CJ::my_system($cmd,$self->{verbose});
 
     
-&CJ::message("Extracting package...");
+&CJ::message("extracting package...");
 $cmd = "ssh $ssh->{account} 'source ~/.bashrc; cd $remoteDir; tar -xzf ${tarfile} --exclude=\"._*\";exit 0'";
 &CJ::my_system($cmd,$self->{verbose});
     

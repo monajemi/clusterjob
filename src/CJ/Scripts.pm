@@ -394,8 +394,9 @@ sub make_shell_script{
     $sh_script    .= &CJ::shell_neck($program,$pid, $remote_path);             # setting PID, and SHELLSCRIPT, LOGFILE PATH
     $sh_script    .= &CJ::Scripts::make_CJrun_bash_script($ssh,$program,$bqs); # Program specific Mat, Py, R,
     $sh_script    .= &CJ::shell_toe($bqs);
-
 return $sh_script;
+    
+
 }
 
 
