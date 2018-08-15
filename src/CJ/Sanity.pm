@@ -1,5 +1,5 @@
-package CJ::Get;
-# This is part of Clusterjob that handles GET option
+package CJ::Sanity;
+# This is part of Clusterjob that handles Saniy checks
 # Copyright 2015 Hatef Monajemi (monajemi@stanford.edu)
 
 use strict;
@@ -9,7 +9,432 @@ use CJ::CJVars;
 use Data::Dumper;
 
 
+############
+sub sanity{
+    ########
+    my ($type,$pid,$verbose,$expand) = @_;
+    
+    
+    my $info = &CJ::get_info($pid);
+    # Check Connection;
+    eval{&CJ::CheckConnection($info->{'machine'});};
+    
+    
+    
+    # See if user wants local sanity check
+    # if no connection is found
+    my ($local,$local_path_name) = ask_local() if ($@);
+    
+    
+    
+    # Ask for the path of file to do sanity check on
+    my $sanity_filepath;
+    my $got = 'no';
+    while ( $got !~ m/y[\t\s]*|yes[\t\s]*/i ){
+        ($sanity_filepath, $got)=&CJ::getuserinput("What file (e.g., results.txt | */results.txt)? ", '',1);
+    }
+    
+    if ($sanity_filepath eq ''){
+        CJ::message('nothing etered.');
+        return;
+    }
 
+    
+    # Write bash script that according to type asked.
+    my $sanity_bash_script;
+    if($type =~ m/exist/i) {
+        $sanity_bash_script = make_existance_bash_script($info,$local,$sanity_filepath)
+    }elsif($type =~ m/line/i){
+        $sanity_bash_script = make_numline_bash_script($info,$local, $sanity_filepath, $expand)
+    }else{
+        &CJ::err("Sanity type $type is not supported.")
+    }
+    #print $sanity_bash_script;
+    
+    
+    my $date  = CJ::date();
+    my $sanity_name = "CJsanity_${type}_$date->{'epoch'}.sh";
+
+        # execute bash
+    if ($local){
+        # run bash script locally
+        my $sanity_bash_path = "$local_path_name/$sanity_name";
+        &CJ::writeFile($sanity_bash_path,$sanity_bash_script);
+
+        my $cmd = "cd $local_path_name; bash -l $sanity_name ; rm $sanity_name";
+        system($cmd);
+        
+    }else{
+        # run bash script on remote
+        # Get current remote directory from .ssh_config
+        # user might wanna rename, copy to another place,
+        # etc. We consider the latest one , and if the
+        # saved remote is different, we issue a warning
+        # for the user.
+        my $ssh             = &CJ::host($info->{'machine'});
+        my $remotePrefix    = $ssh->{remote_repo};
+        my $remote_path     = $info->{remote_path};
+        
+        my ($program_name,$ext)=&CJ::remove_extension($info->{program});
+        my $current_remote_path = "$remotePrefix/$program_name/$info->{'pid'}";
+        #print("$remote_path");
+        if($current_remote_path ne $remote_path){
+            &CJ::warning("the .ssh_config remote directory and the history remote are not the same. CJ is choosing:\n     $info->{account}:${current_remote_path}.");
+            $remote_path = $current_remote_path;
+        }
+        
+        $remote_path =~ s/~/\$HOME/;
+        
+        my $sanity_bash_path = "/tmp/$sanity_name";
+        &CJ::writeFile($sanity_bash_path,$sanity_bash_script);
+
+        my $cmd = "scp $sanity_bash_path  $ssh->{account}:$remote_path/";
+        &CJ::my_system($cmd,$verbose);
+        
+        $cmd = "ssh $ssh->{account} 'cd $remote_path; bash -l $sanity_name; rm $sanity_name'";
+        system($cmd);
+        
+    }
+    
+}
+
+
+
+
+
+
+sub ask_local{
+    
+    my $yesno = &CJ::yesno("No internet connection, would you like to do sanity check locally");
+   
+    my $local=0;
+    my $local_path_name=undef;
+
+    if ($yesno){
+        my $got = 'no';
+        while ( $got !~ m/y[\t\s]*|yes[\t\s]*/i ){
+            ($local_path_name, $got)=&CJ::getuserinput("Please enter the path to your CJ package:", '', 1); #noConfim
+        }
+        
+        if (  not $local_path_name eq ''  )  {
+            if (-d $local_path_name){
+                $local = 1
+            }else{
+                CJ::err("CJ package does not exists: $local_path_name")
+            }
+        }
+    }
+
+    return ($local,$local_path_name);
+
+    
+}
+
+
+
+
+
+
+sub make_existance_bash_script{
+
+    my ($info,$local,$exists_filepath) = @_;
+
+### header for bqs's
+my $HEADER = $local ? '#!/bin/bash -l' : &CJ::bash_header($info->{bqs});
+
+
+my $existance_bash_script="$HEADER\n";
+
+if ( $exists_filepath =~ m/^\*\/(.*)/ ){
+my $filename = $1;
+
+$existance_bash_script .= <<'EXISTS';
+declare -a FAILED_FOLDERS;
+count=0;
+
+ls -d [[:digit:]]* > /dev/null 2>&1 || \
+{ printf  "\tThis is not a parrun package. */<FILENAME> does not exist.\n"; exit 0; }
+
+for job in $( ls -d [[:digit:]]* ) ; do
+    if [ ! -f "$job/<FILENAME>" ];then
+    FAILED_FOLDERS[$count]=$job;
+    count=$(( $count + 1 ))
+    fi
+done
+
+if [ ${#FAILED_FOLDERS[@]} -eq 0 ]; then
+    printf "\t\xE2\x9C\x94 File '<FILENAME>' exists in all subPackages.\n";
+else
+    printf "\t\xE2\x9D\x8C  Following subPackages are missing '<FILENAME>':\n";
+    sorted=( $( printf "%s\n" "${FAILED_FOLDERS[@]}" | sort -n ) )
+
+    printf "\t"
+    printf "%s " ${sorted[*]}
+    echo
+    
+    #missing=$(IFS=, ; echo "${sorted[*]}")
+    #printf "\t%s\n" $missing
+fi
+
+
+EXISTS
+$existance_bash_script =~ s|<FILENAME>|$filename|g;
+
+}else{
+
+$existance_bash_script .= <<'EXISTS';
+
+if [ ! -f '<FILENAME>' ];then
+    printf "\t\xE2\x9D\x8C  <FILENAME> is missing.\n";
+else
+    printf "\t\xE2\x9C\x94 <FILENAME> exists.\n";
+fi
+
+EXISTS
+
+$existance_bash_script =~ s|<FILENAME>|$exists_filepath|g;
+
+
+}
+
+
+    return $existance_bash_script;
+
+
+}
+
+
+
+
+
+
+
+
+###############################
+sub make_numline_bash_script{
+    ###########################
+    
+        my ($info,$local,$numline_filepath, $expand) = @_;
+        
+### header for bqs's
+my $HEADER = $local ? '#!/bin/bash -l' : &CJ::bash_header($info->{bqs});
+
+    
+my $numline_bash_script="$HEADER\n";
+
+$numline_bash_script .= <<'BASH_FUNC';
+    
+max()
+{
+    local m="$1"
+    for n in "$@"; do
+        [ "$n" -gt "$m" ] && m="$n"
+        done
+        echo "$m"
+        }
+
+min()
+{
+    local m="$1"
+    for n in "$@"; do
+        [ "$n" -lt "$m" ] && m="$n"
+        done
+        echo "$m"
+        }
+
+
+unique()
+{
+    local uniq;
+    uniq=($(printf "%s\n" "$@" | sort -u));
+    echo "${uniq[@]}"
+}
+
+mode()
+{
+    local m;
+    
+    local uniq=($(unique "$@"))
+    length=${#uniq[@]}
+        declare -a count_arr=( $(for i in {0..$length}; do echo 0; done) )
+        
+        m=${uniq[0]}
+        
+        for (( i=0; i< $length ; i++ )) ;do
+            this=${uniq[$i]}
+        
+        for s in $@;do
+            [ "$s" -eq "$this" ] && count_arr[$i]=$(( ${count_arr[$i]} + 1 ))
+        done
+        
+        [ ${count_arr[$i]} -gt "$m" ] && m=$this;
+        
+        done
+        
+        echo "$m";
+}
+    
+BASH_FUNC
+
+    
+if ( $numline_filepath =~ m/^\*\/(.*)/ ){
+my $filename = $1;
+
+$numline_bash_script .= <<'NUMLINES';
+
+declare -a NUM_LINES_ARR;
+declare -a FAILED_FOLDERS;
+
+    
+# Check that this is a parrun packages
+ls -d [[:digit:]]* > /dev/null 2>&1 || \
+    { printf  "\tThis is not a parrun package. */<FILENAME> does not exist.\n"; exit 0; }
+    
+    
+    
+alljobs=($( ls -d [[:digit:]]* | sort -n ))
+    
+#echo ${alljobs[*]}
+total=${#alljobs[@]}
+    
+count=0
+    for job in $( seq $total ) ; do
+         idx=$(($job-1))
+            if [ ! -f "$job/<FILENAME>" ];then
+    
+            NUM_LINES_ARR[$idx]=0
+            FAILED_FOLDERS[$count]=$job
+            count=$(( $count + 1 ))
+
+        else
+            NUM_LINES_ARR[$idx]=`wc -l < "$job/<FILENAME>"`
+        fi
+    done
+
+            
+[ ${#FAILED_FOLDERS[@]} -eq $total ] && \
+        { printf "\t\xE2\x9D\x8C  '<FILENAME>' does not exists in any subPackage\n"; exit 0; }
+    
+    
+            
+            
+m=$(min ${NUM_LINES_ARR[@]})
+M=$(max ${NUM_LINES_ARR[@]})
+
+unq=($(unique ${NUM_LINES_ARR[@]}) )
+U=$(IFS=, ; echo "${unq[*]}")
+mod=$(mode ${NUM_LINES_ARR[@]})
+  
+printf "\033[32m#subPackages: \033[0m%d\n" $total;
+printf "\033[32mMin  # lines: \033[0m%d\n" $m;
+printf "\033[32mMax  # lines: \033[0m%d\n" $M;
+    #printf "\033[32mUnq  # lines: \033[0m%s\n" $U;
+printf "\033[32mMode # lines: \033[0m%s\n" $mod;
+    
+    if [ ! "$m" -eq "$M" ]; then
+        # Potentially some experiments have issues and need rerun
+        printf "\t\xE2\x9D\x8C  Following subPackages have different # lines than %d (mode of # lines)\n" $mod
+        declare -a troubles;
+            count=0
+            length=${#NUM_LINES_ARR[*]}
+            for (( i=0; i< $length ; i++ ));
+            do
+                [[ ${NUM_LINES_ARR[$i]} -eq "$mod" ]] || \
+                { troubles[$count]=$(( $i+1 ));  count=$(( $count + 1 )) ; }
+                
+            done
+        
+            sorted=( $( printf "%s\n" "${troubles[@]}" | sort -n ) )
+            #tmp=$(IFS=, ;echo "${sorted[*]}")
+            printf "\t"
+            printf "%s " ${sorted[*]}
+            echo
+    fi
+            
+    if [ ! ${#FAILED_FOLDERS[@]} -eq 0 ]; then
+        printf "\t\xE2\x9D\x8C\xE2\x9D\x8C  Following subPackages are missing '<FILENAME>':\n";
+        sorted=( $( printf "%s\n" "${FAILED_FOLDERS[@]}" | sort -n ) )
+        printf "\t"
+        printf "%s " ${sorted[*]}
+        echo
+        
+        #missing=$(IFS="," ; echo "${sorted[*]}")
+        #printf "\t%s\n" $missing
+    fi
+        
+        
+        
+NUMLINES
+      
+        
+        
+if($expand){
+$numline_bash_script .= <<'EXPAND';
+            printf "\033[32mExpanded: \033[0m\n"
+                printf "SubPkg   =========>  Lines\n" $subPackage ${NUM_LINES_ARR[$(($subPackage-1))]};
+
+            for subPackage in $( seq ${#NUM_LINES_ARR[@]} ) ; do
+                printf "%4d     =========> %4d\n" $subPackage ${NUM_LINES_ARR[$(($subPackage-1))]};
+            done
+          
+EXPAND
+        
+}
+        
+        
+        
+        
+        
+        
+        
+                $numline_bash_script =~ s|<FILENAME>|$filename|g;
+                
+}else{
+                
+$numline_bash_script .= <<'NUMLINES';
+                
+                if [ ! -f '<FILENAME>' ];then
+                    printf "\t\xE2\x9D\x8C  <FILENAME> is missing.\n";
+                else
+                    
+                    NUM_LINES=`wc -l < "<FILENAME>"`
+                    printf "\033[32m# lines: \033[0m%d\n" $NUM_LINES;
+                fi
+                
+NUMLINES
+                
+                $numline_bash_script =~ s|<FILENAME>|$numline_filepath|g;
+                
+                
+            }
+            
+            
+            return $numline_bash_script;
+            
+}
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
+    
 
 sub gather_results{
     my ($pid, $pattern, $dir_name, $verbose) = @_;
@@ -20,30 +445,7 @@ sub gather_results{
     }
 
     
-    
-    
-    my $info;
-    if( (!defined $pid) || ($pid eq "") ){
-        #read last_instance.info;
-        $info = &CJ::retrieve_package_info();
-        $pid        = $info->{'pid'};
-    }else{
-        if( &CJ::is_valid_pid($pid) ){
-            # read info from $run_history_file
-            $info = &CJ::retrieve_package_info($pid);
-            
-            if (!defined($info)){
-                CJ::err("No such job found in the database");
-            }
-            
-        }else{
-            &CJ::err("incorrect usage: nothing to show");
-        }
-        
-        
-        
-    }
-
+    my $info = &CJ::get_info($pid);
     
     my $machine    = $info->{'machine'};
     my $account    = $info->{'account'};
@@ -375,28 +777,7 @@ sub get_results{
    
 
     
-    my $info;
-    if( (!defined $pid) || ($pid eq "") ){
-        #read last_instance.info;
-        $info = &CJ::retrieve_package_info();
-        $pid           = $info->{'pid'};
-    }else{
-        if( &CJ::is_valid_pid($pid) ){
-            # read info from $run_history_file
-            $info = &CJ::retrieve_package_info($pid);
-            
-            if (!defined($info)){
-                CJ::err("No such job found in the database");
-            }
-            
-        }else{
-            &CJ::err("incorrect usage: nothing to show");
-        }
-        
-        
-        
-    }
-    
+    my $info = &CJ::get_info($pid);
     
     my $machine       = $info->{'machine'};
     my $account       = $info->{'account'};
@@ -708,17 +1089,14 @@ fprintf('\\n SubPackage %d Collected (%3.2f%%)', completed_list(1), percent_done
 end
 
 flds = fields(res);
-qPrint=true;
-    
-for idx = start:length(completed_list)
-    count  = completed_list(idx);
-    newres = load([num2str(count),'/StudyGradientOnGrid_HM_delta_0.02.mat']);
-    for i = 1:length(flds)  % for all variables
-        if(qPrint); fprintf('\\n reducing %s ', flds{i});end
-        res.(flds{i}) =  CJ_reduce( res.(flds{i}) ,  newres.(flds{i}) );
-    end
 
-    qPrint=false;
+for idx = start:length(completed_list)
+count  = completed_list(idx);
+newres = load([num2str(count),'/$res_filename']);
+
+for i = 1:length(flds)  \% for all variables
+res.(flds{i}) =  CJ_reduce( res.(flds{i}) ,  newres.(flds{i}) );
+end
 
 \% save after each packgae
 save('$res_filename','-struct', 'res');

@@ -108,6 +108,9 @@ return $args;
 
 sub CheckConnection{
     my ($cluster) = @_;
+    
+    CJ::err("No internet connection detected.") if (not defined $localIP);
+    
     my $ssh      = &CJ::host($cluster);
     my $date     = &CJ::date();
     
@@ -267,11 +270,13 @@ sub write2firebase
 
 sub add_agent_to_remote{
 	# This is the first time agent is added.
-	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);	
+	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
+    # make sure there is internet
+    return if (not defined $localIP);
 	# make sure agent doesnt exist already
-	return if eval {my $fb_get = $firebase->get("users/${CJID}/agents/$AgentID")};
-	my $agentHash = {"SyncReq" => "null", "last_instance" => "null", "push_timestamp" =>0  ,"pull_timestamp" => 0}; 
-    my $result = $firebase->patch("users/${CJID}/agents/$AgentID",  $agentHash); 	
+    return if eval {my $fb_get = $firebase->get("users/${CJID}/agents/$AgentID")};
+    my $agentHash = {"SyncReq" => "null", "last_instance" => "null", "push_timestamp" =>0  ,"pull_timestamp" => 0};
+    my $result = $firebase->patch("users/${CJID}/agents/$AgentID",  $agentHash);
 }
 
 sub informOtherAgents{
@@ -999,12 +1004,9 @@ exit 0;
 
 
 
-
-
-sub show
-{
-    my ($pid, $num, $file, $show_tag) = @_;
-    	
+sub get_info{
+    my ($pid) = @_;
+    
     my $info;
     if( (!defined $pid) || ($pid eq "") || ($pid eq '$') ){
         #read last_instance.info;
@@ -1024,10 +1026,19 @@ sub show
             &CJ::err("incorrect usage: nothing to show");
         }
         
-        
-        
     }
 
+    return $info;
+    
+}
+
+
+
+sub show
+{
+    my ($pid, $num, $file, $show_tag) = @_;
+    	
+    my $info = &CJ::get_info($pid);
     
     my $short_pid = substr($pid,0,8);
     if(defined($info->{clean}{date})){
@@ -1816,7 +1827,7 @@ sub update_cluster_config{
                     my $yesno  = "no";
                     my $new_value = undef;
                     while ( $yesno !~ m/y[\t\s]*|yes[\t\s]*/i ){
-                        ($new_value, $yesno)=getuserinput("press Enter $old_key (Enter to keep $old_value):", '');
+                        ($new_value, $yesno)=getuserinput("please Enter $old_key (Enter to keep $old_value):", '');
                     }
                     if (not $new_value eq ''){
                         $lines[$i] = "$old_key\t$new_value";
@@ -2361,8 +2372,7 @@ return 0;
 
 sub err{
     my ($message) = @_;
-    print(' ' x 5 . "CJerr::$message\n");
-	exit;
+    die(' ' x 5 . "CJerr::$message\n");
 }
 
 sub warning{
@@ -2383,22 +2393,25 @@ sub message{
 
 sub yesno{
     my ($question,$noBegin) = @_;
-    my $prompt = $question . "?(Y/N)";
-    CJ::message($prompt,$noBegin);
+    my $prompt = $question . "(Y/N)?";
+    print(' ' x 8 . "$prompt");
     my $yesno =  <STDIN>; chomp($yesno);
     exit 0 unless (lc($yesno) eq "y" or lc($yesno) eq "yes");
 }
 
 
 sub getuserinput{
-    my ($question,$default) = @_;
+    my ($question,$default, $noConfirm) = @_;
+    
     print $question;
     my $user_input =  <STDIN>;
     chomp($user_input);
     $user_input = remove_white_space($user_input);
     my $yesno;
-    if ( !defined($default) || not $user_input eq $default){
-        print ' ' x 5 . "You have entered \'$user_input\'. Is this correct? (Y/N)";
+    
+    
+    if ( ( !defined($default) || not $user_input eq $default ) && (! defined($noConfirm)) ){
+        print ' ' x 8 . "You have entered \'$user_input\'. Is this correct (Y/N)?";
         $yesno =  <STDIN>; chomp($yesno);
     }else{
         $yesno = 'yes';
@@ -2902,7 +2915,6 @@ sub create_ssh_config_md5{
 
 
 
-
 sub ssh_config_md5{
     my ($mode) = @_;
     
@@ -2915,16 +2927,14 @@ sub ssh_config_md5{
         CJ::err('cannot find md5 on your machine. Please install md5 or md5sum.')
     }
     
-
-    
     
     if ( $mode eq 'update' ){
         &CJ::message("updating CJ_python_venv",1);
-            
+        
         my $cmd = `$md5 $ssh_config_file > $ssh_config_md5`;
         return 1;
         
-        }elsif($mode eq 'check'){
+    }elsif($mode eq 'check'){
         # check whether things are modified
         
         my $cmd = `grep \"\$($md5 $ssh_config_file)\" $ssh_config_md5 || echo 1`;chomp($cmd);   # find or else exit 1.

@@ -3,7 +3,6 @@
 # Copyright (c) 2015 Hatef Monajemi (monajemi@stanford.edu)
 # visit http://clsuetrjob.org
 #
-
 use strict;
 use FindBin qw($Bin);
 use lib "$Bin";  #for testing
@@ -18,6 +17,8 @@ use CJ::Matlab;  # Contains Matlab related subs
 use CJ::Get;     # Contains Get related subs
 use CJ::Scripts; # Contains shell scripts
 use CJ::Run;     # Contains run object and methods
+use CJ::Sanity;  # Contains sanity checks
+
 use Getopt::Declare;
 use Data::Dumper;
 use Term::ReadLine;
@@ -25,7 +26,7 @@ use JSON::PP;
 #use Term::ANSIColor qw(:constants); # for changing terminal text colors
 #use Term::ReadKey;
 
-use vars qw( $submit_defaults $qSubmitDefault $sync_status $message $dep_folder $verbose $log_script $text_header_lines $show_tag $log_tag $force_tag $qsub_extra $cmdline);  # options
+use vars qw( $submit_defaults $qSubmitDefault $sync_status $message $dep_folder $verbose $log_script $text_header_lines $show_tag $log_tag $force_tag $qsub_extra $cmdline $sanity_expand);  # options
 
 
 $::VERSION = &CJ::version_info();
@@ -63,7 +64,7 @@ $log_tag           = "all";
 $log_script        = undef;
 $sync_status 	   = 0;
 $qSubmitDefault    = 1;
-
+$sanity_expand     = 0;
 #=========================================
 #        CJ SUMBMIT DEFAULTS
 #=========================================
@@ -83,16 +84,19 @@ if( -d "$info_dir" ){
 
 
 # Dont sync if the command is one of these.
-my @nosync_cmds = qw ( init who help -help -h -Help -HELP prompt version -v install-update);
+my @nosync_cmds = qw ( init who help -help -h -Help -HELP prompt version -v install-update sanity);
 my %nosync = map { $_ => 1 } @nosync_cmds;
 
-if($CJKEY && (!exists($nosync{$cjcmd0})) ){	
-		&CJ::add_agent_to_remote();  # if there is no agent, add it.
-		$sync_status = &CJ::AutoSync();
+if($CJKEY && (!exists($nosync{$cjcmd0})) ){
+    #CJ::err("This action needs internet connection!") if (not defined $localIP);
+    eval {
+        &CJ::add_agent_to_remote();  # if there is no agent, add it.
+        $sync_status = &CJ::AutoSync();
+    };
+    
 }
 
 }
-
 
 
 my $spec = <<'EOSPEC';
@@ -120,6 +124,8 @@ my $spec = <<'EOSPEC';
                                                                {$log_tag="showclean";}
      --err[or]	                                          error tag for show [nocase] [requires: show]
                                                               {$show_tag="error"}
+     --expand	                                          more info for sanity [nocase] [requires: sanity]
+                                                                {$sanity_expand=1}
      --no-submit-default	                          turns off default submit parameters [nocase]
                                                               {$qSubmitDefault=0}
      --json      	                                  json tag for show [nocase]  [requires: show]
@@ -160,7 +166,6 @@ my $spec = <<'EOSPEC';
                                                     }
                                                     }
                                                 }
-
      connect        <cluster:/\S+/>	                  connect to a cluster
      log            [<argin>]	                          log  -n|all|pid [nocase]
                                                                 {defer{&CJ::add_cmd($cmdline); &CJ::show_log($argin,$log_tag,$log_script) }}
@@ -213,6 +218,7 @@ my $spec = <<'EOSPEC';
                                                                 }
      runlog        [<pid> [[/] [<counter>]] ]	  	  shows the run log of a script  [nocase]
                                                                 {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","runlog") }}
+     sanity        <type>  [<pid>]			          sanity checks:  exist | line [nocase]
      save          <pid> [<path>]	                  save a package in path [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
      show          [<pid> [[/] [<counter>] [[/] <file>]] ]	  show program/error of certain package [nocase]
@@ -297,6 +303,14 @@ if($opts->{'reduce'})
     my $force_tag = defined($opts->{'reduce'}{'-f'}) ? 1 : 0;
     &CJ::Get::reduce_results($opts->{'reduce'}{'<pid>'},$opts->{'reduce'}{'<filename>'},$verbose,$text_header_lines, $force_tag);
 }
+
+if($opts->{'sanity'})
+{
+    
+    &CJ::add_cmd($cmdline);
+    &CJ::Sanity::sanity($opts->{'sanity'}{'<type>'}, $opts->{'sanity'}{'<pid>'},$verbose,$sanity_expand);
+}
+
 
 if($opts->{'install'})
 {
