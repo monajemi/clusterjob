@@ -99,8 +99,6 @@ sub get_token {
   }else{
     $token = $self->create_token;
   }
-  use Data::Dumper;
-  print Dumper $token;
   return $token;
 }
 
