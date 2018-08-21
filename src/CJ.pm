@@ -2442,15 +2442,20 @@ sub my_system
    my($cmd,$verbose) = @_;
     if($verbose){
         &CJ::message("system:$cmd",1);
-        die if ( system("$cmd") );
+        
+        my $response=system("$cmd");
+        CJ::warning("command [$cmd] returned $response (!= 0)") if ( $response );
         
     }else{
 		system("touch $CJlog_out") unless (-f $CJlog_out);
         system("touch $CJlog_error") unless (-f $CJlog_error);
         &CJ::writeFile($CJlog_out,"system: $cmd\n", "-a");
-        if ( system("$cmd >> $CJlog_out 2>$CJlog_error")  ){
+        
+        my $response=system("$cmd >> $CJlog_out 2>$CJlog_error");
+        #        print $response  . "\n";
+        if ( $response ){
             system("cat $CJlog_error");
-            die;
+            CJ::warning("command [$cmd] returned $response (!= 0)")
         };
     }
 

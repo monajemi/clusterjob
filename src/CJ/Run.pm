@@ -408,8 +408,6 @@ $wait = $wait > 5 ? $wait: 5;
 $cmd = "ssh $ssh->{account} 'source ~/.bashrc && cd $remoteDir/${pid} && bash -l master.sh > $remote_sep_Dir/qsub.info && sleep $wait'";
 &CJ::my_system($cmd,$self->{verbose}) unless ($self->{runflag} eq "pardeploy");
 
-
-
 # bring the log file
 my $qsubfilepath="$remote_sep_Dir/qsub.info";
 $cmd = "rsync -avz $ssh->{account}:$qsubfilepath  $info_dir/";
