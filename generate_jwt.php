@@ -2,9 +2,8 @@
 require __DIR__ . '/vendor/autoload.php';
 
 // Get your service account's email address and private key from the JSON key file
-$service_account_email = "bekk-677@united-pier-211422.iam.gserviceaccount.com";
-$private_key = "";
-$uid = 'XB16TASkHORCIrLapCP2LZDp04s1';
+$service_account_email = "";
+$private_key = "';
 
 use Firebase\JWT\JWT;
 function create_custom_token($cj_id, $cjpasscode) {
@@ -30,4 +29,4 @@ function create_custom_token($cj_id, $cjpasscode) {
   return JWT::encode($payload, $private_key, "RS256");
 }
 
-create_custom_token("bekk", "f2bbae54f0d9717511c49cf77e4d2a22");
+create_custom_token("bekk", "");
