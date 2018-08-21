@@ -170,6 +170,9 @@ my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir
 # for python only; check conda exists on the cluster and setup env
 $self->setup_conda_venv($pid,$ssh) if($program_type eq 'python');
 $self->setup_R_env($pid,$ssh) if ($program_type eq 'R');
+$self->check_LMOD_avail($pid,$ssh) if ($program_type eq 'matlab');
+
+    
     
     
 &CJ::message("creating reproducible script(s) reproduce_$self->{program}");
@@ -214,7 +217,7 @@ $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
 &CJ::my_system($cmd,$self->{verbose});
     
 # copy tar.gz file to remoteDir
-$cmd = "rsync -avz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
+$cmd = "rsync -avz ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
 &CJ::my_system($cmd,$self->{verbose});
     
 &CJ::message("extracting package...");
@@ -843,6 +846,52 @@ sub setup_R_env{
 
 
 
+########################
+sub check_LMOD_avail{
+    #####################
+    my ($self,$pid,$ssh) = @_;
+    
+    
+    # get app
+    my $app = &CJ::program_type($self->{program});
+    
+    my $module;
+    if($app eq 'matlab'){
+        $module = $ssh->{'mat'};
+    }elsif($app eq 'R'){
+        $module = $ssh->{'r'};
+    }elsif($app eq 'python'){
+        $module = $ssh->{'py'};
+    }
+    
+    
+    
+    # check to see wether program_type exists on machine
+    
+    # checking LMOD if successful, it will return 'function'
+    my $response =`ssh $ssh->{account} 'source ~/.bashrc; source ~/.bash_profile; type -t module' 2>$CJlog_error`;
+    
+    
+    if (  $response !~ m/^function$/ ) {
+        
+        CJ::err("No LMOD module found on $self->{'machine'} to load '$app'.");
+        
+    }else{
+        
+        CJ::message("LMOD module found on $self->{'machine'}");
+        
+        CJ::message("Testing if module $module is availbale via LMOD:");
+        my $response =`ssh $ssh->{account} 'source ~/.bashrc; source ~/.bash_profile; module load $module' 2>$CJlog_error`;
+        if($response =~ /^$/ ){
+            CJ::message("$module avilable.",1);
+        }else{
+            CJ::err("$module NOT avilable.",1);
+        }
+        
+        
+    }
+    
+}
 
 
 
