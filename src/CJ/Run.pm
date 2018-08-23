@@ -142,6 +142,21 @@ TEXT
 &CJ::err("unknown BQS");
 }
 
+    
+    
+    
+    
+    
+## Check setup for the program:
+$self->setup_conda_venv($pid,$ssh) if($program_type eq 'python');
+$self->setup_R_env($pid,$ssh) if ($program_type eq 'R');
+$self->check_LMOD_avail($pid,$ssh) if ($program_type eq 'matlab');
+    
+    
+    
+    
+    
+    
 return ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText);
 }
 
@@ -165,14 +180,6 @@ my $self = shift;
         
 # create directories etc.
 my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
-    
-    
-# for python only; check conda exists on the cluster and setup env
-$self->setup_conda_venv($pid,$ssh) if($program_type eq 'python');
-$self->setup_R_env($pid,$ssh) if ($program_type eq 'R');
-$self->check_LMOD_avail($pid,$ssh) if ($program_type eq 'matlab');
-
-    
     
     
 &CJ::message("creating reproducible script(s) reproduce_$self->{program}");
@@ -309,13 +316,6 @@ my $self = shift;
 
 # create directories etc.
 my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
-
-    
-    
-# for python only; check conda exists on the cluster and setup env
-$self->setup_conda_venv($pid,$ssh) if($program_type eq 'python');
-    
-    
     
     
     
