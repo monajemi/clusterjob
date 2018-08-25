@@ -1677,6 +1677,7 @@ sub show_cluster_config{
         my $ssh_config_hashref =  &CJ::read_ssh_config();
         my $fieldsize = 20;
         while ( my ($key, $value) = each %{ $ssh_config_hashref->{$cluster} } ){
+            $value = $value // "";
             printf "\n\033[32m%-${fieldsize}s\033[0m%s", $key, $value;
         }
         print "\n\n";
@@ -1776,6 +1777,7 @@ sub update_cluster_config{
                     my $yesno  = "no";
                     my $new_value = undef;
                     while ( $yesno !~ m/y[\t\s]*|yes[\t\s]*/i ){
+                        $old_value = $old_value // "''";
                         ($new_value, $yesno)=getuserinput("please Enter $old_key (Enter to keep $old_value):", '');
                     }
                     if (not $new_value eq ''){
