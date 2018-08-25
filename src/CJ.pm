@@ -1356,28 +1356,29 @@ sub get_state
 {
     my ($pid,$num) = @_;
     
-    my $info;
-    if( (!defined $pid) || ($pid eq "") ){
-        #read last_instance.info;
-        $info = &CJ::retrieve_package_info();
-        $pid = $info->{'pid'};
-        
-    }else{
-        if( &CJ::is_valid_pid($pid) ){
-            # read info from $run_history_file
-            $info = &CJ::retrieve_package_info($pid);
-            
-            if (!defined($info)){
-                CJ::err("No such job found in the database");
-            }
-            
-        }else{
-            &CJ::err("incorrect usage: nothing to show");
-        }
-        
-        
-        
-    }
+    my $info = &CJ::get_info($pid);
+    
+#    if( (!defined $pid) || ($pid eq "") ){
+#        #read last_instance.info;
+#        $info = &CJ::retrieve_package_info();
+#        $pid = $info->{'pid'};
+#        
+#    }else{
+#        if( &CJ::is_valid_pid($pid) ){
+#            # read info from $run_history_file
+#            $info = &CJ::retrieve_package_info($pid);
+#            
+#            if (!defined($info)){
+#                CJ::err("No such job found in the database");
+#            }
+#            
+#        }else{
+#            &CJ::err("incorrect usage: nothing to show");
+#        }
+#        
+#        
+#        
+#    }
    
     &CJ::CheckConnection($info->{'machine'});
     
