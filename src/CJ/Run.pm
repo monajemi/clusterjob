@@ -96,24 +96,32 @@ my $program_type = CJ::program_type($self->{program});
 
 
 CJ::message("$self->{runflag}"."ing [$self->{program}] on [$self->{machine}] with:");
+
     
-if (not $self->{qsub_extra} =~ m/^\s*$/){
+# whatever is in qsub_extra
 &CJ::message("alloc: $self->{qsub_extra}",1);
-    if(keys($self->{user_submit_defaults}) > 0){
-        my $str="";
+# whatever user has asked to change in defaults
+if(keys($self->{user_submit_defaults}) > 0){
+    my $str="";
         while ( my ($key, $value) = each (%{$self->{user_submit_defaults}})){
-         $str = $str."$key=$value ";
+            $str = $str."$key=$value ";
         }
         &CJ::message("user : $str",1);
-    }
+}
 
-}else{
+# CJ will be active in determining:
+if ( not (defined($ssh->{alloc}) and $ssh->{alloc} =~/^\s*$/) ) {
     my $str="";
     while ( my ($key, $value) = each (%{$self->{submit_defaults}})){
-        $str = $str."$key=$value ";
+        $str = $str."$key=$value " if (!exists($self->{user_submit_defaults}->{$key}));
     }
-    &CJ::message("cj   : $str",1);
+    &CJ::message("cj   : $str",1) if ($str ne "");
 }
+    
+    
+    
+    
+    
     
 &CJ::message("sending from: $self->{path}");
 
