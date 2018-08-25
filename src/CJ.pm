@@ -1695,7 +1695,7 @@ sub show_cluster_config{
 
 sub cluster_config_template{
     # for sorting purposes
-    my @config_keys=('Host','User','Bqs','Alloc','Repo','MAT','MATlib','Python','Pythonlib');
+    my @config_keys=('Host','User','Bqs','Alloc','Repo','MAT','MATlib','Python','Pythonlib','R','Rlib');
     my $cluster_config = {
         'Host' => {example=>'35.185.238.124', default=>undef},
         'User' => {example=>$CJID, default=>undef},

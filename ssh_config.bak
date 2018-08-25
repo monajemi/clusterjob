@@ -59,6 +59,7 @@ Python		python/3.4.3
 Pythonlib	scipy
 R		R/3.4.1-mkl
 Rlib		ggplot2
+Alloc	-p LM -t 48:00:00 --mem 128G
 [bridges]
 
 
@@ -73,7 +74,7 @@ Python	python/3.4.3
 Pythonlib	scipy	
 R	R
 Rlib		
-alloc	-n 1 -N 1 -p normal
+alloc	-n 1 -N 1 -p normal -t 48:00:00
 [stampede]
 
 
@@ -121,3 +122,18 @@ MATlib	CJinstalled/cvx:CJinstalled/mosek/7/toolbox/r2013a
 Python	python3.4
 Pythonlib	pytorch:torchvision:cuda80:pandas:matplotlib:-c soumith
 [gce-hatef]
+
+[comet]
+Host	comet.sdsc.xsede.org
+User	monajemi
+Bqs	SLURM
+alloc	-A nca110 -p compute -t 48:00:00
+Repo	/oasis/scratch/comet/monajemi/temp_project
+MAT	matlab/2018a
+MATlib	CJinstalled/cvx:CJinstalled/mosek/7/toolbox/r2013a
+Python	python3.4
+Pythonlib	pytorch:torchvision:cuda80:pandas:matplotlib:-c soumith
+Rlib	ggplot2
+R	R
+Alloc	-A nca110 -p compute -t 48:00:00
+[comet]
