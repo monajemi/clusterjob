@@ -45,9 +45,12 @@ sub _update_submit_default {
     
     my $ssh = CJ::host($self->{machine});
     if(exists $ssh->{alloc}){
+        
+        if (not $ssh->{alloc}=~/\s*/ ){
         #print "ssh->alloc exists. I will supply these to qsub\n";
         $self->{qsub_extra} .= " $ssh->{alloc}";
         $self->{qSubmitDefault}=0;   # turn off CJ's default vals if users gives an alloc
+        }
     }
 }
 
@@ -93,7 +96,13 @@ my $program_type = CJ::program_type($self->{program});
 
 
 CJ::message("$self->{runflag}"."ing [$self->{program}] on [$self->{machine}] with:");
+    
+if (not $self->{qsub_extra} =~ /\s*/){
 &CJ::message("$self->{qsub_extra}",1);
+}else{
+&CJ::message("CJ's default values: mem=8G runtime=48:00:00",1);
+}
+    
 &CJ::message("sending from: $self->{path}");
 
 
