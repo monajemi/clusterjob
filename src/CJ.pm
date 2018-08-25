@@ -974,6 +974,9 @@ exit 0;
 sub get_info{
     my ($pid) = @_;
     
+    
+    my $info;
+    
     if( (!defined $pid) || ($pid eq "") || ($pid eq '$') ){
         #read last_instance.info;
         $info = &CJ::retrieve_package_info();
