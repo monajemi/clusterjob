@@ -3133,7 +3133,7 @@ sub formatFileSize {
 sub getFileSize {
     my $file=shift;
     my $size = -s "$file";
-    return &CJ::formatFileSize($size);
+    return $size;
 }
 
 

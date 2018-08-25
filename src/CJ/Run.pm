@@ -265,10 +265,9 @@ my $cmd="cd $localDir; tar  --exclude '.git' --exclude '*~' --exclude '*.pdf'  -
    
     
     
-my $pkgsize = CJ::getFileSize("${localDir}/${tarfile}") ;
-
-    
-&CJ::message("sending \033[32m$pkgsize\033[0m to: $self->{machine}:$remoteDir");
+    my $pkgsize = CJ::getFileSize("${localDir}/${tarfile}") ;
+    my $pkgsize_human=&CJ::formatFileSize($pkgsize);
+    &CJ::message("sending \033[32m$pkgsize_human\033[0m to: $self->{machine}:$remoteDir");
     
 # create remote directory  using outText
 $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
@@ -347,6 +346,8 @@ my $runinfo={
     submit_defaults => $self->{'submit_defaults'},
     user_submit_defaults => $self->{'user_submit_defaults'},
     alloc         => $self->{'qsub_extra'},
+    total_jobs    => 1,
+    pkgsize       => $pkgsize,
 };	
 
 # add_record locally
@@ -446,7 +447,8 @@ $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
 
     
 my $pkgsize = CJ::getFileSize("${localDir}/${tarfile}") ;
-&CJ::message("sending \033[32m$pkgsize\033[0m to: $self->{machine}:$remoteDir");
+my $pkgsize_human=&CJ::formatFileSize($pkgsize);
+&CJ::message("sending \033[32m$pkgsize_human\033[0m to: $self->{machine}:$remoteDir");
     
 #&CJ::message("sending package \033[32m$short_pid\033[0m");
 # copy tar.gz file to remoteDir
@@ -488,7 +490,7 @@ if($self->{runflag} eq "parrun"){
     $job_id = join(',', @{$job_ids});
     my $numJobs = $#{$job_ids}+1;
     
-    CJ::message("$numJobs job(s) submitted ($job_ids->[0]-$job_ids->[-1])");
+    CJ::message("$numJobs/$totalJobs job(s) submitted ($job_ids->[0]-$job_ids->[-1])");
     
     foreach my $error (@{$errors}) {
         CJ::warning($error);
@@ -530,6 +532,8 @@ my $runinfo={
     submit_defaults => $self->{'submit_defaults'},
     user_submit_defaults => $self->{'user_submit_defaults'},
     alloc         => $self->{'qsub_extra'},
+    total_jobs    => $totalJobs,
+    pkgsize       => $pkgsize,
 };
 
 
@@ -692,10 +696,10 @@ $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
 &CJ::my_system($cmd,$self->{verbose});
 
 
-my $pkgsize = CJ::getFileSize("${localDir}/${tarfile}") ;
-    
-&CJ::message("sending \033[32m$pkgsize\033[0m to: $self->{machine}:$remoteDir");
-    
+    my $pkgsize = CJ::getFileSize("${localDir}/${tarfile}") ;
+    my $pkgsize_human=&CJ::formatFileSize($pkgsize);
+    &CJ::message("sending \033[32m$pkgsize_human\033[0m to: $self->{machine}:$remoteDir");
+   
     
 # copy tar.gz file to remoteDir
 $cmd = "rsync -arvz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
@@ -772,6 +776,8 @@ message       => $self->{message},
 submit_defaults => $self->{'submit_defaults'},
 user_submit_defaults => $self->{'user_submit_defaults'},
 alloc         => $self->{'qsub_extra'},
+total_jobs    => $totalJobs,
+pkgsize       => $pkgsize,
 };
 
 
