@@ -866,7 +866,7 @@ sub clean
     
  
     my $info = &CJ::get_info($pid);
-    my $pid  = $info->{'pid'};
+    $pid  = $info->{'pid'};
     
     my $bqs         =   $info->{'bqs'};
     my $account     =   $info->{'account'};
