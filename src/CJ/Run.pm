@@ -254,8 +254,13 @@ my $tarfile="$pid".".tar.gz";
 my $cmd="cd $localDir; tar  --exclude '.git' --exclude '*~' --exclude '*.pdf'  -czf $tarfile $pid/  ; rm -rf $local_sep_Dir  ; cd $self->{path}";
 &CJ::my_system($cmd,$self->{verbose});
     
+   
     
-&CJ::message("sending to: $self->{machine}:$remoteDir");
+    
+my $pkgsize = CJ::getFileSize("${localDir}/${tarfile}") ;
+
+    
+&CJ::message("sending \033[32m$pkgsize\033[0m to: $self->{machine}:$remoteDir");
     
 # create remote directory  using outText
 $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
@@ -430,7 +435,12 @@ my $cmd="cd $localDir; tar --exclude '.git' --exclude '*~' --exclude '*.pdf' -cz
 $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
 &CJ::my_system($cmd,$self->{verbose});
 
-&CJ::message("sending package \033[32m$short_pid\033[0m");
+
+    
+my $pkgsize = CJ::getFileSize("${localDir}/${tarfile}") ;
+&CJ::message("sending \033[32m$pkgsize\033[0m to: $self->{machine}:$remoteDir");
+    
+#&CJ::message("sending package \033[32m$short_pid\033[0m");
 # copy tar.gz file to remoteDir
 $cmd = "rsync -arvz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
 &CJ::my_system($cmd,$self->{verbose});
@@ -673,7 +683,12 @@ my $cmd="cd $localDir; tar --exclude '.git' --exclude '*~' --exclude '*.pdf' -cz
 $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
 &CJ::my_system($cmd,$self->{verbose});
 
-&CJ::message("Sending package \033[32m$short_pid\033[0m");
+
+my $pkgsize = CJ::getFileSize("${localDir}/${tarfile}") ;
+    
+&CJ::message("sending \033[32m$pkgsize\033[0m to: $self->{machine}:$remoteDir");
+    
+    
 # copy tar.gz file to remoteDir
 $cmd = "rsync -arvz  ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
 &CJ::my_system($cmd,$self->{verbose});

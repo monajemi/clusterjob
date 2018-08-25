@@ -14,7 +14,7 @@ use Data::Dumper;
 use Data::UUID;
 use Getopt::Declare;
 use feature 'say';
-
+use feature 'state';
 
 sub version_info{
 my $version_script="\n\n          This is ClusterJob (CJ) version V0.0.4";
@@ -3116,10 +3116,25 @@ sub max {
 
 
 
+############# change kb to human readable
+sub formatFileSize {
+    my $size = shift;
+    my $exp = 0;
+    state $units = [qw(B KB MB GB TB PB)];
+    for (@$units) {
+        last if $size < 1024;
+        $size /= 1024;
+        $exp++;
+    }
+    return wantarray ? ($size, $units->[$exp]) : sprintf("%.2f %s", $size, $units->[$exp]);
+}
 
 
-
-
+sub getFileSize {
+    my $file=shift;
+    my $size = -s "$file";
+    return &CJ::formatFileSize($size);
+}
 
 
 
