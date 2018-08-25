@@ -606,13 +606,7 @@ sub save_results{
     my ($pid,$save_dir,$verbose) = @_;
     
 
-    
-    if(! &CJ::is_valid_pid($pid)){
-        &CJ::err("Please enter a valid package name");
-    }
-    
-    my $info  = &CJ::retrieve_package_info($pid);
-    
+    my $info = &CJ::get_info($pid);
     
     my $save_path;
     if( !defined($save_dir)){
@@ -870,43 +864,16 @@ sub clean
 {
     my ($pid, $verbose) = @_;
     
+ 
+    my $info = &CJ::get_info($pid);
     
     
-    
-    
-    my $account;
-    my $local_path;
-    my $remote_path;
-    my $job_id;
-    my $save_path;
-	my $bqs ;
-    
-    my $info;
-    if((!defined $pid)  || ($pid eq "") ){
-        #read the first lines of last_instance.info;
-        $info =  &CJ::retrieve_package_info();
-        $pid = $info->{'pid'};
-    }else{
-        
-        if(&CJ::is_valid_pid($pid)){
-            # read info from $run_history_file
-            $info =  &CJ::retrieve_package_info($pid);
-            if(!defined($info)){ &CJ::err("No such job found in CJ database.")};
-            
-        }else{
-            &CJ::err("incorrect usage: nothing to show");
-        }
-        
-        
-    }
-    
-    
-    $bqs         =   $info->{'bqs'};
-    $account     =   $info->{'account'};
-    $local_path  =   $info->{'local_path'};
-    $remote_path =   $info->{'remote_path'};
-    $job_id      =   $info->{'job_id'};
-    $save_path   =   $info->{'save_path'};
+    my $bqs         =   $info->{'bqs'};
+    my $account     =   $info->{'account'};
+    my $local_path  =   $info->{'local_path'};
+    my $remote_path =   $info->{'remote_path'};
+    my $job_id      =   $info->{'job_id'};
+    my $save_path   =   $info->{'save_path'};
     
     
     my $short_pid = substr($pid,0,8);
@@ -1007,7 +974,6 @@ exit 0;
 sub get_info{
     my ($pid) = @_;
     
-    my $info;
     if( (!defined $pid) || ($pid eq "") || ($pid eq '$') ){
         #read last_instance.info;
         $info = &CJ::retrieve_package_info();
@@ -1357,7 +1323,7 @@ sub get_state
     my ($pid,$num) = @_;
     
     my $info = &CJ::get_info($pid);
-    
+
 #    if( (!defined $pid) || ($pid eq "") ){
 #        #read last_instance.info;
 #        $info = &CJ::retrieve_package_info();
@@ -1503,29 +1469,7 @@ sub get_print_state
     
 	
 	
-	
-    my $info;
-    if( (!defined $pid) || ($pid eq "") ){
-        #read last_instance.info;
-        $info = &CJ::retrieve_package_info();
-        $pid = $info->{'pid'};
-        
-    }else{
-        if( &CJ::is_valid_pid($pid) ){
-            # read info from $run_history_file
-            $info = &CJ::retrieve_package_info($pid);
-            
-            if (!defined($info)){
-                CJ::err("No such job found in the database");
-            }
-            
-        }else{
-            &CJ::err("incorrect usage: nothing to show");
-        }
-        
-        
-        
-    }
+    my $info = &CJ::get_info($pid);
     
 	
     my $short_pid = substr($info->{pid},0,8);
