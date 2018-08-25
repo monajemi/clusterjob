@@ -63,16 +63,17 @@ Rlib		ggplot2
 
 
 [stampede]
-Host		stampede2.tacc.utexas.edu
-User		tg840998
-Bqs		SLURM
-Repo		/work/04800/tg840998/CJRepo_Remote
-MAT		matlab/2018a
-MATlib		~/BPDN/CVX/cvx
-Python		python/3.4.3
-Pythonlib	scipy
-R 		R
-Rlib
+Host		stampede2.tacc.utexas.edu	
+User		tg840998	
+Bqs		SLURM	
+Repo		/work/04800/tg840998/CJRepo_Remote	
+MAT	matlab/2018a	
+MATlib		~/BPDN/CVX/cvx	
+Python	python/3.4.3	
+Pythonlib	scipy	
+R	R
+Rlib		
+Alloc	-n 1 -N 1 -p normal
 [stampede]
 
 

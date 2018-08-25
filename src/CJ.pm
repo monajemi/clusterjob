@@ -1676,8 +1676,9 @@ sub show_cluster_config{
         CJ::err("No such cluster found. add $cluster to ssh_config (you may use 'CJ config-update $cluster') .") if !is_valid_machine($cluster);
         my $ssh_config_hashref =  &CJ::read_ssh_config();
         my $fieldsize = 20;
+        
         while ( my ($key, $value) = each %{ $ssh_config_hashref->{$cluster} } ){
-            $value = $value // "";
+            $value = $value // "''";
             printf "\n\033[32m%-${fieldsize}s\033[0m%s", $key, $value;
         }
         print "\n\n";
@@ -1694,11 +1695,12 @@ sub show_cluster_config{
 
 sub cluster_config_template{
     # for sorting purposes
-    my @config_keys=('Host','User','Bqs','Repo','MAT','MATlib','Python','Pythonlib');
+    my @config_keys=('Host','User','Bqs','Alloc','Repo','MAT','MATlib','Python','Pythonlib');
     my $cluster_config = {
         'Host' => {example=>'35.185.238.124', default=>undef},
         'User' => {example=>$CJID, default=>undef},
         'Bqs'  => {example=>undef, default=>'SLURM'},
+        'Alloc'  => {example=>'-n 1 -N 1 -p gpu', default=>undef},
         'Repo' => {example=>'/home/ubuntu/CJRepo_Remote',default=>undef},
         'MAT'  => {example=>undef,default=>'matlab/r2016b'},
         'MATlib' => {example=>undef,default=>'CJinstalled/cvx:CJinstalled/mosek/7/toolbox/r2013a'},
@@ -1761,7 +1763,9 @@ sub update_cluster_config{
     my @lines = split '\n', $machine_hash{$cluster};
     
     #print Dumper @lines;
-    
+    my ($cluster_config,$config_keys) = &CJ::cluster_config_template();
+
+    #print Dumper $cluster_config->{'Alloc'};
     
     #print Dumper $ssh_config;
     
@@ -1769,11 +1773,17 @@ sub update_cluster_config{
     
     if ( not @keyval){
         
+        my $existing_config={};
+        
         foreach my $i (0..$#lines){
             if ($lines[$i] !~ /^\s*$/){
                     my ($old_key,$old_value)  =  split(/\s/, $lines[$i], 2);
+                
                     $old_key   =remove_white_space($old_key);
                     $old_value =remove_white_space($old_value);
+                
+                    $existing_config->{$old_key} = $old_value;
+                
                     my $yesno  = "no";
                     my $new_value = undef;
                     while ( $yesno !~ m/y[\t\s]*|yes[\t\s]*/i ){
@@ -1784,13 +1794,45 @@ sub update_cluster_config{
                         $lines[$i] = "$old_key\t$new_value";
                         $num_changes += 1;
                     }
+                
+                
+            }
+        }
+      
+        # see if you miss any keys
+        foreach my $key (keys %$cluster_config){
+            if ( exists $existing_config->{$key} ){
+                delete $cluster_config->{$key};
             }
         }
         
-     }else{
+        # The remaining keys are new
+        my $length = keys %$cluster_config;
+
+        if ($length > 0 ){
+            foreach my $key (keys %$cluster_config){
+                    my $yesno  = "no";
+                    my $new_value = undef;
+                    while ( $yesno !~ m/y[\t\s]*|yes[\t\s]*/i ){
+                        my $prompt  = defined($cluster_config->{$key}{default}) ? "enter '$key' (press Enter key for default value '$cluster_config->{$key}{default}'):":"Enter $key (e.g., $cluster_config->{$key}{example}):";
+                        my $default_entry = defined($cluster_config->{$key}) ? '':undef;
+                        ($new_value, $yesno)=getuserinput($prompt, $default_entry);
+                        
+                        if ($new_value eq $default_entry){
+                            if (defined($cluster_config->{$key}{default}) ){
+                                $new_value = $cluster_config->{$key}{default}
+                            }else{
+                                $yesno="no";
+                            }
+                        }
+                    }
+                push @lines, "$key\t$new_value";
+                $num_changes += 1;
+            }
+        }
+        
+    }else{
         # just update those keys that exists
-        
-        
         #print Dumper @keyval;
         my $new_keyval = {};
         foreach (@keyval){
@@ -1822,9 +1864,11 @@ sub update_cluster_config{
     
     if ($num_changes > 0 ){
         my $new_config = "[$cluster]";
+        
         foreach (@lines){
             $new_config .= $_ . "\n";
         }
+        
         $new_config .= "[$cluster]";
         $file_content =~ s/\[$cluster\](.*?)\[$cluster\]/$new_config/isg ;
         &CJ::writeFile($ssh_config_file, $file_content);
@@ -1833,6 +1877,7 @@ sub update_cluster_config{
     }else{
         &CJ::message("no change applied to ssh_config.");
     }
+    
     
 }
 
@@ -1848,9 +1893,12 @@ sub read_ssh_config{
     
     my %machine_hash = $file_content =~ /\[([\w\-]+)\](.*?)\[\g{-2}\]/isg;
     
+    
     foreach my $machine (keys %machine_hash){
-        $ssh_config->{$machine} = &CJ::parse_ssh_config($machine_hash{$machine});
+        $ssh_config->{"$machine"} = &CJ::parse_ssh_config($machine_hash{$machine});
     }
+    
+    
     return $ssh_config;
 }
 
@@ -1873,36 +1921,37 @@ sub parse_ssh_config{
     my $ssh_config = {};
     
     
-    my ($user) = $this_machine_string =~ /User[\t\s]*(.*)/i;
+    my ($user) = $this_machine_string =~ /User[\t\s]+?(.*)/i;
     $user =remove_white_space($user);
     
-    my ($host) = $this_machine_string =~ /Host[\t\s]*(.*)/i;
+    my ($host) = $this_machine_string =~ /Host[\t\s]+?(.*)/i;
     $host =remove_white_space($host);
     
-    my ($bqs)  = $this_machine_string =~ /Bqs[\t\s]*(.*)/i ;
-    $bqs  =remove_white_space($bqs);
+    my ($bqs)  = $this_machine_string =~ /Bqs[\t\s]+?(.*)/i ;
+    $bqs   = remove_white_space($bqs);
     
-    my ($remote_repo)  = $this_machine_string =~ /Repo[\t\s]*(.*)/i ;
+    my ($alloc) = $this_machine_string =~ /Alloc[\t\s]+?(.*)/i ;
+    $alloc = remove_white_space($alloc);
+    
+    my ($remote_repo)  = $this_machine_string =~ /Repo[\t\s]+?(.*)/i ;
     $remote_repo   = remove_white_space($remote_repo);
     
-    my ($remote_matlab_lib)  =$this_machine_string =~ /MATlib[\t\s]*(.*)/i;
+    my ($remote_matlab_lib)  =$this_machine_string =~ /MATlib[\t\s]+?(.*)/i;
     $remote_matlab_lib =remove_white_space($remote_matlab_lib);
     
-    my ($remote_matlab_module)  = $this_machine_string =~ /\bMAT\b[\t\s]*(.*)/i;
+    my ($remote_matlab_module)  = $this_machine_string =~ /\bMAT\b[\t\s]+?(.*)/i;
     $remote_matlab_module =remove_white_space($remote_matlab_module);
     
-    my ($remote_python_lib)  = $this_machine_string =~ /Pythonlib[\t\s]*(.*)/i;
+    my ($remote_python_lib)  = $this_machine_string =~ /Pythonlib[\t\s]+?(.*)/i;
     $remote_python_lib =remove_white_space($remote_python_lib);
     
-    my ($remote_python_module)  = $this_machine_string =~ /\bPython\b[\t\s]*(.*)/i;
+    my ($remote_python_module)  = $this_machine_string =~ /\bPython\b[\t\s]+?(.*)/i;
     $remote_python_module =remove_white_space($remote_python_module);
     
-    my ($remote_r_lib)  = $this_machine_string =~ /Rlib[\t\s]*(.*)/i;
+    my ($remote_r_lib)  = $this_machine_string =~ /Rlib[\t\s]+?(.*)/i;
     $remote_r_lib =remove_white_space($remote_r_lib);
     
-    
-    
-    my ($remote_r_module)  = $this_machine_string =~ /\bR\b[\t\s]*(.*)/i;
+    my ($remote_r_module)  = $this_machine_string =~ /\bR\b[\t\s]+?(.*)/i;
     $remote_r_module       = remove_white_space($remote_r_module);
 
     
@@ -1910,10 +1959,11 @@ sub parse_ssh_config{
     
     my $account  = $user . "@" . $host;
     
-    $ssh_config->{'user'}         = $user;
-    $ssh_config->{'host'}         = $host;
+    $ssh_config->{'user'}            = $user;
+    $ssh_config->{'host'}            = $host;
     $ssh_config->{'account'}         = $account;
     $ssh_config->{'bqs'}             = $bqs;
+    $ssh_config->{'alloc'}           = $alloc;
     $ssh_config->{'remote_repo'}     = $remote_repo;
     $ssh_config->{'matlib'}          = $remote_matlab_lib;
     $ssh_config->{'mat'}             = $remote_matlab_module;
@@ -1922,7 +1972,6 @@ sub parse_ssh_config{
     $ssh_config->{'pylib'}           = $remote_python_lib;
     $ssh_config->{'r'}               = $remote_r_module;
     $ssh_config->{'rlib'}            = $remote_r_lib;
-    
     
     
     return $ssh_config;
