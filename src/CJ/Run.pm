@@ -17,7 +17,7 @@ use Digest::SHA qw(sha1_hex); # generate hexa-decimal SHA1 PID
 sub new {
 ####################
  	my $class= shift;
- 	my ($path,$program,$machine, $runflag,$dep_folder,$message, $qsub_extra, $qSubmitDefault, $submit_defaults,  $verbose) = @_;
+ 	my ($path,$program,$machine, $runflag,$dep_folder,$message, $qsub_extra, $qSubmitDefault, $submit_defaults, $user_submit_defaults, $verbose) = @_;
 	
 	my $self = bless {
 		path    => $path,
@@ -29,10 +29,11 @@ sub new {
         verbose    => $verbose,
         qSubmitDefault => $qSubmitDefault,
         submit_defaults => $submit_defaults,
+        user_submit_defaults => $user_submit_defaults,
         message => $message
 	}, $class;
     
-    $self->_update_submit_default();
+    $self->_update_qsub_extra();
     
 	return $self;
 }
@@ -40,12 +41,12 @@ sub new {
 
 ##############################################
 # if user definded alloc change submit default
-sub _update_submit_default {
+sub _update_qsub_extra {
     my $self = shift;
     
     my $ssh = CJ::host($self->{machine});
-    if(exists $ssh->{alloc}){
-        if ( not $ssh->{'alloc'} =~ /^\s*$/ ){
+    if( exists($ssh->{alloc}) and defined($ssh->{alloc}) ){
+        if ( not $ssh->{'alloc'} =~ m/^\s*$/ ){
         #print "ssh->alloc exists. I will supply these to qsub\n";
         $self->{qsub_extra} .= " $ssh->{alloc}";
         $self->{qSubmitDefault}=0;   # turn off CJ's default vals if users gives an alloc
@@ -97,9 +98,21 @@ my $program_type = CJ::program_type($self->{program});
 CJ::message("$self->{runflag}"."ing [$self->{program}] on [$self->{machine}] with:");
     
 if (not $self->{qsub_extra} =~ m/^\s*$/){
-&CJ::message("$self->{qsub_extra}",1);
+&CJ::message("alloc: $self->{qsub_extra}",1);
+    if(keys($self->{user_submit_defaults}) > 0){
+        my $str="";
+        while ( my ($key, $value) = each (%{$self->{user_submit_defaults}})){
+         $str = $str."$key=$value ";
+        }
+        &CJ::message("user : $str",1);
+    }
+
 }else{
-&CJ::message("CJ's default values: mem=8G runtime=48:00:00",1);
+    my $str="";
+    while ( my ($key, $value) = each (%{$self->{submit_defaults}})){
+        $str = $str."$key=$value ";
+    }
+    &CJ::message("cj   : $str",1);
 }
     
 &CJ::message("sending from: $self->{path}");
@@ -222,7 +235,7 @@ my $local_sh_path = "$local_sep_Dir/bashMain.sh";
 # Build master-script for submission
 my $master_script;
     
-$master_script = &CJ::Scripts::make_master_script($master_script,$self->{runflag},$self->{program},$date,$pid,$ssh,$self->{submit_defaults},$self->{qSubmitDefault},$remote_sep_Dir,$self->{qsub_extra});
+$master_script = &CJ::Scripts::make_master_script($master_script,$self->{runflag},$self->{program},$date,$pid,$ssh,$self->{submit_defaults},$self->{qSubmitDefault},$self->{user_submit_defaults},$remote_sep_Dir,$self->{qsub_extra});
 
 
 my $local_master_path="$local_sep_Dir/master.sh";
@@ -319,6 +332,7 @@ my $runinfo={
     program       => $self->{program},
     message       => $self->{message},
     submit_defaults => $self->{'submit_defaults'},
+    user_submit_defaults => $self->{'user_submit_defaults'},
     alloc         => $self->{'qsub_extra'},
 };	
 
@@ -387,8 +401,9 @@ $extra->{date}= $date;
 $extra->{pid}= $pid;
 $extra->{bqs}= $ssh->{bqs};
 $extra->{submit_defaults}=$self->{submit_defaults};
+$extra->{user_submit_defaults}=$self->{user_submit_defaults};
 $extra->{qsub_extra}=$self->{qsub_extra};
-$extra->{runtime}=$self->{submit_defaults}->{runtime};
+#$extra->{runtime}=$self->{submit_defaults}->{runtime};
 $extra->{ssh}=$ssh;
 $extra->{qSubmitDefault}=$self->{qSubmitDefault};
 
@@ -495,6 +510,7 @@ my $runinfo={
     program       => $self->{program},
     message       => $self->{message},
     submit_defaults => $self->{'submit_defaults'},
+    user_submit_defaults => $self->{'user_submit_defaults'},
     alloc         => $self->{'qsub_extra'},
 };
 
@@ -731,6 +747,7 @@ runflag       => $self->{runflag},
 program       => $self->{program},
 message       => $self->{message},
 submit_defaults => $self->{'submit_defaults'},
+user_submit_defaults => $self->{'user_submit_defaults'},
 alloc         => $self->{'qsub_extra'},
 };
 

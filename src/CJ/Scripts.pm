@@ -72,11 +72,12 @@ sub build_rrun_master_script
     my $bqs = $extra->{bqs};
     my $submit_defaults=$extra->{submit_defaults};
     my $qSubmitDefault = $extra->{qSubmitDefault};
+    my $user_submit_defaults=$extra->{user_submit_defaults};
     my $qsub_extra = $extra->{qsub_extra};
     my $ssh = $extra->{ssh};
     my $total_jobs = $extra->{totalJobs};
     my $master_script;
-     $master_script = &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$total_jobs);
+     $master_script = &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$user_submit_defaults,$remote_sep_Dir,$qsub_extra,$total_jobs);
     return  $master_script;
 }
 
@@ -136,6 +137,7 @@ sub build_nloop_code
 	   my $bqs            = $extra->{bqs};
 	   my $submit_defaults=$extra->{submit_defaults};
        my $qSubmitDefault = $extra->{qSubmitDefault};
+       my $user_submit_defaults=$extra->{user_submit_defaults};
        my $qsub_extra     = $extra->{qsub_extra};
 	   my $ssh = $extra->{ssh};
 
@@ -171,7 +173,7 @@ sub build_nloop_code
        my $cmd = "mkdir  $local_sep_Dir/$counter/logs; mkdir  $local_sep_Dir/$counter/scripts";
        &CJ::my_system($cmd,0);
     
-       $master_script = &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$counter);
+       $master_script = &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$user_submit_defaults,$remote_sep_Dir,$qsub_extra,$counter);
 	   return ($counter,$master_script);
 }
 
@@ -266,10 +268,19 @@ return $env;
 # Build master script
 sub make_master_script{
 #######################
-my($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$remote_sep_Dir,$qsub_extra,$counter) = @_;
+my($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$user_submit_defaults,$remote_sep_Dir,$qsub_extra,$counter) = @_;
     
-    my $mem = $submit_defaults->{mem};
-    my $runtime = $submit_defaults->{runtime};
+    
+    # if the CJ's default is imposed (i.e., no 'alloc' field in ssh),
+    # we will check to see when running user demanded any change
+    my $mem;
+    my $runtime;
+    if ($qSubmitDefault){
+        $mem = exists($user_submit_defaults->{mem}) ? $user_submit_defaults->{mem} : $submit_defaults->{mem};
+        $runtime = exists($user_submit_defaults->{runtime}) ? $user_submit_defaults->{runtime} : $submit_defaults->{runtime} ;
+    }
+        
+        
     my $bqs = $ssh->{'bqs'};
     #my $numberTasks = $submit_defaults->{numberTasks};
     
@@ -306,6 +317,10 @@ $master_script.="$docstring";
             if($qSubmitDefault){
                 $master_script.="sbatch --array=1-$totalArrayJobs  --mem=$mem --time=$runtime $qsub_extra -J $tagstr -o ${remote_sep_Dir}/\%a/logs/${tagstr}.stdout -e ${remote_sep_Dir}/\%a/logs/${tagstr}.stderr ${remote_sep_Dir}/array_bashMain.sh \n"
             }else{
+                # attach some stuff to qsub_extra as asked by user in user_submit_default.
+                $qsub_extra = $qsub_extra . " --mem=$user_submit_defaults->{mem} "  if (exists($user_submit_defaults->{mem}));
+                $qsub_extra = $qsub_extra . " --time=$user_submit_defaults->{runtime} "  if (exists($user_submit_defaults->{runtime}));
+                
                 $master_script.="sbatch --array=1-$totalArrayJobs $qsub_extra -J $tagstr -o ${remote_sep_Dir}/\%a/logs/${tagstr}.stdout -e ${remote_sep_Dir}/\%a/logs/${tagstr}.stderr ${remote_sep_Dir}/array_bashMain.sh \n"
             }
         }else{
@@ -324,7 +339,12 @@ $master_script.="$docstring";
             if($qSubmitDefault){
                 $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem -l h_rt=$runtime $qsub_extra -N $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n";
             }else{
-                $master_script.= "qsub -S /bin/bash -w e -l $qsub_extra -N $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n";
+                
+                $qsub_extra = $qsub_extra . " -l h_vmem=$user_submit_defaults->{mem} "  if (exists($user_submit_defaults->{mem}));
+                $qsub_extra = $qsub_extra . " -l h_rt==$user_submit_defaults->{runtime} "   if (exists($user_submit_defaults->{runtime}));
+                
+                
+                $master_script.= "qsub -S /bin/bash -w e $qsub_extra -N $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n";
                 
             }
             
@@ -334,6 +354,10 @@ $master_script.="$docstring";
             if($qSubmitDefault){
                 $master_script.="sbatch --mem=$mem --time=$runtime $qsub_extra -J $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n";
             }else{
+                
+                $qsub_extra = $qsub_extra . " --mem=$user_submit_defaults->{mem} "  if (exists($user_submit_defaults->{mem}));
+                $qsub_extra = $qsub_extra . " --time=$user_submit_defaults->{runtime} "  if (exists($user_submit_defaults->{runtime}));
+                
                 $master_script.="sbatch $qsub_extra -J $tagstr -o ${remote_sep_Dir}/logs/${tagstr}.stdout -e ${remote_sep_Dir}/logs/${tagstr}.stderr ${remote_sep_Dir}/bashMain.sh \n";
             }
         }else{
@@ -356,7 +380,11 @@ $master_script.="$docstring";
             if($qSubmitDefault){
             $master_script.= "qsub -S /bin/bash -w e -l h_vmem=$mem  -l h_rt=$runtime $qsub_extra -N $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n";
             }else{
-            $master_script.= "qsub -S /bin/bash -w e -l $qsub_extra -N $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n";
+                
+                $qsub_extra = $qsub_extra . " -l h_vmem=$user_submit_defaults->{mem} "  if (exists($user_submit_defaults->{mem}));
+                $qsub_extra = $qsub_extra . " -l h_rt==$user_submit_defaults->{runtime} "   if (exists($user_submit_defaults->{runtime}));
+                
+            $master_script.= "qsub -S /bin/bash -w e $qsub_extra -N $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n";
                 
             }
         
@@ -367,6 +395,10 @@ $master_script.="$docstring";
             if($qSubmitDefault){
              $master_script.="sbatch --mem=$mem --time=$runtime $qsub_extra -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
             }else{
+                
+                $qsub_extra = $qsub_extra . " --mem=$user_submit_defaults->{mem} "  if (exists($user_submit_defaults->{mem}));
+                $qsub_extra = $qsub_extra . " --time=$user_submit_defaults->{runtime} "  if (exists($user_submit_defaults->{runtime}));
+                
              $master_script.="sbatch $qsub_extra -J $tagstr -o ${remote_sep_Dir}/$counter/logs/${tagstr}.stdout -e ${remote_sep_Dir}/$counter/logs/${tagstr}.stderr ${remote_sep_Dir}/$counter/bashMain.sh \n"
             }
         }else{

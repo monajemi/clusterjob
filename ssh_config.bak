@@ -73,7 +73,7 @@ Python	python/3.4.3
 Pythonlib	scipy	
 R	R
 Rlib		
-alloc	-n 1 -N 1 -p normal -t 48:00:00
+alloc	-n 1 -N 1 -p normal
 [stampede]
 
 

@@ -26,7 +26,7 @@ use JSON::PP;
 #use Term::ANSIColor qw(:constants); # for changing terminal text colors
 #use Term::ReadKey;
 
-use vars qw( $submit_defaults $qSubmitDefault $sync_status $message $dep_folder $verbose $log_script $text_header_lines $show_tag $log_tag $force_tag $qsub_extra $cmdline $sanity_expand);  # options
+use vars qw( $user_submit_defaults $submit_defaults $qSubmitDefault $sync_status $message $dep_folder $verbose $log_script $text_header_lines $show_tag $log_tag $force_tag $qsub_extra $cmdline $sanity_expand);  # options
 
 
 $::VERSION = &CJ::version_info();
@@ -68,8 +68,9 @@ $sanity_expand     = 0;
 #=========================================
 #        CJ SUMBMIT DEFAULTS
 #=========================================
-
 $submit_defaults = &CJ::submit_defaults();
+$user_submit_defaults = {};  # user can fill it up using runtime, or mem
+
 
 
 if( -d "$info_dir" ){
@@ -145,10 +146,10 @@ my $spec = <<'EOSPEC';
                                                                 {$dep_folder=$dep_path}
      -m            <msg>	                          reminder message
                                                                 {$message=$msg}
-     -mem          <memory>	                          memory requested [nocase]
-                                                                {$submit_defaults->{'mem'}=$memory}
-     -runtime      <r_time>	                          run time requested (default=48:00:00) [nocase]
-  	                                                          {$submit_defaults->{'runtime'}=$r_time}
+     -mem     [=]     <memory>	                          memory requested [nocase]
+                                                                {$user_submit_defaults->{'mem'}=$memory}
+     -runtime [=]     <r_time>	                          run time requested (default=48:00:00) [nocase]
+  	                                                          {$user_submit_defaults->{'runtime'}=$r_time}
      avail         <tag> 		                  list available resources <tag> = cluster|app
 								  { defer{ &CJ::avail($tag) } }
      sync 	                                          force sync [nocase]
@@ -436,7 +437,7 @@ sub run{
     
     my ($machine,$program, $runflag,$qsub_extra) = @_;	
     my $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
-    my $run = CJ::Run->new($BASE,$program,$machine,$runflag,$dep_folder,$message,$qsub_extra,$qSubmitDefault, $submit_defaults,$verbose);
+    my $run = CJ::Run->new($BASE,$program,$machine,$runflag,$dep_folder,$message,$qsub_extra,$qSubmitDefault,$submit_defaults,$user_submit_defaults,$verbose);
 
     if ($runflag eq "deploy" || $runflag eq "run"){
         $run->SERIAL_DEPLOY_RUN();
