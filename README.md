@@ -2,9 +2,9 @@ Clusterjob, hereafter CJ, is an automation software system, written mainly in pe
 computational jobs to clusters in a hassle-free and reproducible manner.
 CJ produces 'reporoducible' computational packages for academic 
 publications at no-cost. CJ project started in 2013 at Stanford University by Hatef Monajemi and his PhD advisor David L. Donoho with the goal of encouraging  more efficient and reproducible research paradigm. 
-CJ is currently under development. Current implementation allows submission of MATLAB and Python jobs. 
-In the future versions, we hope to include other heavily used programming languages 
-such as R and Julia. 
+CJ is currently under development. Current implementation allows submission of MATLAB,Python and R jobs. 
+The code for R works partially for serial jobs only. In the future versions, we hope to include other data science 
+programming languages such as Julia. 
 
 You can read more about CJ on http://clusterjob.org
 
