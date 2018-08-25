@@ -17,7 +17,7 @@ use Digest::SHA qw(sha1_hex); # generate hexa-decimal SHA1 PID
 sub new {
 ####################
  	my $class= shift;
- 	my ($path,$program,$machine, $runflag,$dep_folder,$message,$qsub_extra, $qSubmitDefault, $submit_defaults,  $verbose) = @_;
+ 	my ($path,$program,$machine, $runflag,$dep_folder,$message, $qsub_extra, $qSubmitDefault, $submit_defaults,  $verbose) = @_;
 	
 	my $self = bless {
 		path    => $path,
@@ -31,9 +31,25 @@ sub new {
         submit_defaults => $submit_defaults,
         message => $message
 	}, $class;
+    
+    $self->_update_submit_default();
+    
 	return $self;
 }
 
+
+##############################################
+# if user definded alloc change submit default
+sub _update_submit_default {
+    my $self = shift;
+    
+    my $ssh = CJ::host($self->{machine});
+    if(exists $ssh->{alloc}){
+        #print "ssh->alloc exists. I will supply these to qsub\n";
+        $self->{qsub_extra} .= " $ssh->{alloc}";
+        $self->{qSubmitDefault}=0;   # turn off CJ's default vals if users gives an alloc
+    }
+}
 
 
 
@@ -76,7 +92,8 @@ my ($program_name,$ext) = &CJ::remove_extension($self->{program});
 my $program_type = CJ::program_type($self->{program});
 
 
-CJ::message("$self->{runflag}"."ing [$self->{program}] on [$self->{machine}]");
+CJ::message("$self->{runflag}"."ing [$self->{program}] on [$self->{machine}] with:");
+&CJ::message("$self->{qsub_extra}",1);
 &CJ::message("sending from: $self->{path}");
 
 

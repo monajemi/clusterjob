@@ -72,7 +72,6 @@ $sanity_expand     = 0;
 $submit_defaults = &CJ::submit_defaults();
 
 
-
 if( -d "$info_dir" ){
 #=========================================
 # refresh CJlog before declaring options.
@@ -126,7 +125,7 @@ my $spec = <<'EOSPEC';
                                                               {$show_tag="error"}
      --expand	                                          more info for sanity [nocase] [requires: sanity]
                                                                 {$sanity_expand=1}
-     --no-submit-default	                          turns off default submit parameters [nocase]
+     --no-submit-default[s]	                          turns off default submit parameters [nocase]
                                                               {$qSubmitDefault=0}
      --json      	                                  json tag for show [nocase]  [requires: show]
                                                                     {$show_tag="json";}

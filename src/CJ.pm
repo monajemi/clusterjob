@@ -1836,7 +1836,7 @@ sub update_cluster_config{
         #print Dumper @keyval;
         my $new_keyval = {};
         foreach (@keyval){
-            my ($new_key, $new_val)  = split( /=|:/ , $_);
+            my ($new_key, $new_val)  = split( /=|:/ , $_ , 2);
             $new_keyval->{$new_key} = $new_val;
         }
         
@@ -2701,7 +2701,8 @@ sub submit_defaults {
     
     $submit_defaults->{mem}               = "8G";       # default memeory
     $submit_defaults->{runtime}           = "48:00:00"; # default memeory
-    $submit_defaults->{numberTasks}       = 1        ;  # default value for number of task
+    #$submit_defaults->{numberTasks}       = 1        ;  # default value for number of task
+    #$submit_defaults->{numberNodes}       = 1        ;  # default value for number of nodes
     
     return $submit_defaults;
 }
