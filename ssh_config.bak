@@ -52,7 +52,7 @@ Pythonlib	scipy
 Host		bridges.psc.edu
 User		monajemi
 Bqs		SLURM
-Repo		/pylon2/cc3l6jp/monajemi/
+Repo	/pylon5/cc3l6jp/monajemi
 MAT		matlab/R2016a
 MATlib		~/cvx
 Python		python/3.4.3

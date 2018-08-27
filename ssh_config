@@ -9,6 +9,7 @@ Python		python/3.6
 Pythonlib	pytorch:pandas:cuda80:scipy:matplotlib:torchvision:-c soumith 
 R	        R/3.4.0 
 Rlib	        ggplot2  
+Alloc	-p donoho --time 48:00:00 --mem 8G
 [sherlock2]
 
 

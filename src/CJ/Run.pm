@@ -110,7 +110,7 @@ if(keys($self->{user_submit_defaults}) > 0){
 }
 
 # CJ will be active in determining:
-if ( not (defined($ssh->{alloc}) and $ssh->{alloc} =~/^\s*$/) ) {
+if ( not (defined($ssh->{alloc}) and $ssh->{alloc} !~/^\s*$/) ) {
     my $str="";
     while ( my ($key, $value) = each (%{$self->{submit_defaults}})){
         $str = $str."$key=$value " if (!exists($self->{user_submit_defaults}->{$key}));
