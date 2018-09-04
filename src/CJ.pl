@@ -140,6 +140,8 @@ my $spec = <<'EOSPEC';
                                                                {$log_script=$pattern;}
      --header [=]  <num_lines:+i>	                  number of header lines for reducing text files [requires: reduce]
                                                                {$text_header_lines=$num_lines;}
+     --update                                         	  updates accordingly [requires: config]
+
      -alloc[ate]   <resources>	                          machine specific allocation [nocase]
                                                                 {$qsub_extra=$resources}
      -dep          <dep_path>		                  dependency folder path [nocase]
@@ -159,7 +161,7 @@ my $spec = <<'EOSPEC';
      config[-update]   [<cluster:/\S+/> [<keyval>...]]	  list|update cluster configuration
                                                 {defer{
                                                     &CJ::add_cmd($cmdline);
-                                                    if ($_PUNCT_{"-update"}) {
+                                                    if ($_PUNCT_{"-update"} || defined($self->{'--update'}) ) {
                                                         &CJ::update_cluster_config($cluster,@keyval);
                                                     }else{
                                                         &CJ::show_cluster_config($cluster);
