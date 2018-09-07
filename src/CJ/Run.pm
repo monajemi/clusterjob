@@ -48,7 +48,7 @@ sub _update_qsub_extra {
     if( exists($ssh->{alloc}) and defined($ssh->{alloc}) ){
         if ( not $ssh->{'alloc'} =~ m/^\s*$/ ){
         #print "ssh->alloc exists. I will supply these to qsub\n";
-        $self->{qsub_extra} .= " $ssh->{alloc}";
+        $self->{qsub_extra} = "$ssh->{alloc} $self->{qsub_extra}"; # append the user defined after default to take effect
         $self->{qSubmitDefault}=0;   # turn off CJ's default vals if users gives an alloc
         }
     }
