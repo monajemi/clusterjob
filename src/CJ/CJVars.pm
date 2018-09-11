@@ -56,7 +56,7 @@ our $lastSync_file      = "$info_dir/last_sync";
 our $save_info_file     = "$info_dir/save.info";
 our $ssh_config_file    = "$install_dir/ssh_config";
 our $remote_config_file = "$install_dir/cj_config";
-our $firebase_name		= "united-pier-211422"; # Changing Temp to test firebase
+our $firebase_name		= "clusterjob-78552"; # Changing Temp to test firebase
 our $app_list_file      = "$src_dir/.app_list";
 our $ssh_config_md5    = "$install_dir/.ssh_config.md5";
 
