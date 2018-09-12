@@ -13,9 +13,10 @@ You can find CJ book project at https://github.com/monajemi/CJ-book
 
 # key contributors:
 
-1. Hatef Monajemi @monajemi
-2. Bekk Blando @bekkblando
+1. Hatef Monajemi
+2. Bekk Blando 
 3. David Donoho
+
 
 
 Copyright 2015 Hatef Monajemi (monajemi@stanford.edu)
