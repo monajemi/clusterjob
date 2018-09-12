@@ -10,6 +10,13 @@ You can read more about CJ on http://clusterjob.org
 
 You can find CJ book project at https://github.com/monajemi/CJ-book  
 
+
+# key collaborators:
+. Hatef Monajemi
+. Bekk Blando
+. David Donoho
+
+
 Copyright 2015 Hatef Monajemi (monajemi@stanford.edu)
 
 
