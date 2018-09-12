@@ -90,7 +90,7 @@ has id_token => (
 # if so create a new one and return it
 sub create_token {
   my ($self, $data) = @_;
-  if(!$self->has_custom_token){
+  if(!$self->has_custom_token || DateTime->compare($self->expires, DateTime->now(time_zone=>'local')) < 0){
     $self->get_custom_token;
   }
   my $url = 'https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=';
@@ -100,8 +100,8 @@ sub create_token {
     returnSecureToken => 'true'
   );
   my $call = POST($url, Content => encode_json(\%payload), Content_Type => 'JSON(application/json)');
-  $self->id_token(decode_json($self->token_provider->request($call)->decoded_content)->{idToken});
   $self->expires(DateTime->now(time_zone=>'local')->add(seconds => 3600));
+  $self->id_token(decode_json($self->token_provider->request($call)->decoded_content)->{idToken});
   return $self->id_token;
 }
 
@@ -110,8 +110,8 @@ sub get_custom_token {
   my $url = 'https://us-central1-clusterjob-78552.cloudfunctions.net/customToken?cjkey=';
   $url .= $self->secret;
   my $call = GET($url, Content_Type => 'JSON(application/json)');
-  $self->custom_token(decode_json($self->token_provider->request($call)->decoded_content)->{token});
   $self->custom_expires(DateTime->now(time_zone=>'local')->add(seconds => 3600));
+  $self->custom_token(decode_json($self->token_provider->request($call)->decoded_content)->{token});
 }
 
 sub get_token {
