@@ -72,6 +72,7 @@ $submit_defaults = &CJ::submit_defaults();
 
 
 
+
 if( -d "$info_dir" ){
 #=========================================
 # refresh CJlog before declaring options.
@@ -86,7 +87,8 @@ if( -d "$info_dir" ){
 my @nosync_cmds = qw ( init who help -help -h -Help -HELP prompt version -v install-update);
 my %nosync = map { $_ => 1 } @nosync_cmds;
 
-if($CJKEY && (!exists($nosync{$cjcmd0})) ){	
+if($CJKEY && (!exists($nosync{$cjcmd0})) ){
+    
 		&CJ::add_agent_to_remote();  # if there is no agent, add it.
 		$sync_status = &CJ::AutoSync();
 }

@@ -12,6 +12,7 @@ use Ouch;
 use JSON;
 use HTTP::Request::Common qw(POST);
 use DateTime;
+use Data::Dumper;
 
 
 has token_version => (
@@ -79,14 +80,23 @@ has id_token => (
 # if so create a new one and return it
 sub create_token {
   my ($self, $data) = @_;
+    
+    
   my $url = 'https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=';
   $url .= $self->api_key;
+    
+    print "URL:".$url."\n";
   my %payload = (
     token => $self->secret,
     returnSecureToken => 'true'
   );
   my $call = POST($url, Content => encode_json(\%payload), Content_Type => 'JSON(application/json)');
-  $self->id_token(decode_json($self->token_provider->request($call)->decoded_content)->{idToken});
+    
+  my $result = decode_json( $self->token_provider->request($call)->decoded_content );
+    print Dumper $result;
+    
+    
+  $self->id_token($result->{idToken});
   $self->expires(DateTime->now(time_zone=>'local')->add(seconds => 3600));
   return $self->id_token;
 }
@@ -94,6 +104,8 @@ sub create_token {
 sub get_token {
   my ($self, $data) = @_;
   my $token;
+    
+  print Dumper $self->secret ;
   if($self->id_token && $self->expires && DateTime->compare($self->expires, DateTime->now(time_zone=>'local')) > 0){
     $token = $self->id_token;
   }else{

@@ -225,7 +225,7 @@ sub write2firebase
     
 	return if not defined($CJKEY);	
 	
-	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
+    my $firebase = Firebase->new(firebase => $firebase_name, jwt => $CJKEY, api_key => $CJ_API_KEY);
 	# Check to see if this agent is defined in the agents 
 	# if not add it.
 	&CJ::add_agent_to_remote($AgentID);
@@ -270,7 +270,7 @@ sub write2firebase
 
 sub add_agent_to_remote{
 	# This is the first time agent is added.
-	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
+    my $firebase = Firebase->new(firebase => $firebase_name, jwt => $CJKEY, api_key => $CJ_API_KEY);
     # make sure there is internet
     return if (not defined $localIP);
 	# make sure agent doesnt exist already
@@ -282,7 +282,7 @@ sub add_agent_to_remote{
 sub informOtherAgents{
 	my ($pid,$timestamp) = @_;
 	
-	my $firebase = Firebase->new(firebase => $firebase_name, auth_token => $CJKEY);
+    my $firebase = Firebase->new(firebase => $firebase_name, jwt => $CJKEY, api_key => $CJ_API_KEY);
 	# Get Agent List
 	my $fb_get;
 	return unless eval {$fb_get = $firebase->get("users/${CJID}/agents")};
@@ -317,8 +317,11 @@ sub informOtherAgents{
 
 sub sync_forced
 {
-	my ($status) = @_;		
+	my ($status) = @_;
+
+
 	return if $status;   #if AutoSync has been done, don't sync it again.
+
 	my $sync = CJ::Sync->new($AgentID);
 	&CJ::sync($sync);
 	&CJ::message("All up-to-date.");
