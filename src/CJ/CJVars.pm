@@ -56,9 +56,15 @@ our $lastSync_file      = "$info_dir/last_sync";
 our $save_info_file     = "$info_dir/save.info";
 our $ssh_config_file    = "$install_dir/ssh_config";
 our $remote_config_file = "$install_dir/cj_config";
-our $firebase_name		= "clusterjob-78552"; # Changing Temp to test firebase
+our $firebase_name		= "clusterjob-78552";
+
 our $app_list_file      = "$src_dir/.app_list";
 our $ssh_config_md5    = "$install_dir/.ssh_config.md5";
+
+
+# Database related. Hard-coded. User need not to worry about this.
+our $CJ_API_KEY="AIzaSyDWxanHy2j8rWjeXYjJF4tULX60d1Siq9A";
+
 
 # Read AgentID
 our $AgentID= undef;
@@ -79,7 +85,8 @@ if($AgentID){$AgentID =~ s/^\s+|\s+$//g};
 # Read CJID and CJKEY
 our $CJID =undef;
 our $CJKEY=undef;
-our $CJ_API_KEY=undef;
+
+
 my $lines;
 open(my $FILE, $remote_config_file) or  die "could not open $remote_config_file: $!";
 local $/ = undef;
@@ -88,7 +95,6 @@ close ($FILE);
 
 my ($ID) = $lines =~ /^CJID(.*)/im;  if($ID){$ID =~ s/^\s+|\s+$//g};
 my ($KEY) = $lines =~/^CJKEY(.*)/im; if($KEY) {$KEY=~ s/^\s+|\s+$//g};
-my ($API_KEY) = $lines =~/^CJ_API_KEY(.*)/im; if($API_KEY) {$API_KEY=~ s/^\s+|\s+$//g};
 
 if($ID){
 	$CJID = $ID;
@@ -99,13 +105,6 @@ if($ID){
 if($KEY){
 	$CJKEY=$KEY;
 }
-
-if($API_KEY){
-  $CJ_API_KEY=$API_KEY;
-}
-
-
-
 
 
 

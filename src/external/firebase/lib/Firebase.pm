@@ -108,8 +108,11 @@ sub post {
 sub create_uri {
   my ($self, $path,$param) = @_;
 
+    my $token=$self->authobj->get_token;
+    print $token ."\n";
+    die;
   my $url = 'https://'.$self->firebase.'.firebaseio.com/'.$path.'.json';
-    $url .= '?auth='.$self->authobj->get_token;
+    $url .= '?auth='.$token;
 	my $uri = URI->new($url);
     return $uri;
 }

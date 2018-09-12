@@ -36,6 +36,8 @@ sub UserRequired
 {
 	my $self = shift;
 
+    
+   
 	my $user_type = &CJ::grep_config_var($remote_config_file, "SYNC_TYPE");
 	return unless defined($user_type);
 	$self->update("type", $user_type);
@@ -65,6 +67,8 @@ sub request{
 # null,  it should update the corresponding PIDs (keys of the hashref);
 # once all updates are done the agent changes the value of todo to null
 # to indicate all updates are done.
+    
+    
 
 my $firebase = Firebase->new(firebase => $firebase_name, jwt => $CJKEY, api_key => $CJ_API_KEY);
 # Get todo list
@@ -127,6 +131,7 @@ return unless @pids;
 sub pull_timestamp{
 		my $self = shift;
 		my $agent = $self->{agent};
+
 
 # This type of sync is a pull sync. It checkes the pull_timestamp
 # of the agent, and pulls every pid in pid_list that has a bigger
@@ -191,6 +196,8 @@ sub push_timestamp{
 	my $self = shift;
 	my $agent = $self->{agent};
 
+  
+    
 # This type of sync is a push sync. It checkes the push_timestamp
 # of the agent, and if the local push_timestamp is bigger
 # than the remote counterpart, it sends to the server the local info that hasnt been pushed.

@@ -12,6 +12,7 @@ use Ouch;
 use JSON;
 use HTTP::Request::Common qw(POST GET);
 use DateTime;
+use Data::Dumper;
 
 
 has token_version => (
@@ -90,16 +91,20 @@ has id_token => (
 # if so create a new one and return it
 sub create_token {
   my ($self, $data) = @_;
-  if(!$self->has_custom_token || DateTime->compare($self->expires, DateTime->now(time_zone=>'local')) < 0){
+
+  if(!$self->has_custom_token || DateTime->compare($self->expires, DateTime->now(time_zone=>'local')) < 0){    
     $self->get_custom_token;
   }
+  
   my $url = 'https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=';
   $url .= $self->api_key;
+    
+    print "URL:".$url."\n";
   my %payload = (
     token => $self->custom_token,
     returnSecureToken => 'true'
   );
-  my $call = POST($url, Content => encode_json(\%payload), Content_Type => 'JSON(application/json)');
+  my $call = POST($url, Content => encode_json(\%payload), Content_Type => 'JSON(application/json)');         
   $self->expires(DateTime->now(time_zone=>'local')->add(seconds => 3600));
   $self->id_token(decode_json($self->token_provider->request($call)->decoded_content)->{idToken});
   return $self->id_token;
@@ -117,6 +122,8 @@ sub get_custom_token {
 sub get_token {
   my ($self, $data) = @_;
   my $token;
+    
+  print Dumper $self->secret ;
   if($self->id_token && $self->expires && DateTime->compare($self->expires, DateTime->now(time_zone=>'local')) > 0){
     $token = $self->id_token;
   }else{
