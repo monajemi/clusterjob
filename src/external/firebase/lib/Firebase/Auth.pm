@@ -10,7 +10,7 @@ use Moo;
 use HTTP::Thin;
 use Ouch;
 use JSON;
-use HTTP::Request::Common qw(POST);
+use HTTP::Request::Common qw(POST GET);
 use DateTime;
 use Data::Dumper;
 
@@ -28,6 +28,12 @@ has firebase => (
 has secret => (
     is       => 'rw',
     required => 1,
+);
+
+has custom_token => (
+    is       => 'rw',
+    required => 0,
+    predicate => 'has_custom_token'
 );
 
 has api_key => (
@@ -48,6 +54,11 @@ has token_seperator => (
 has expires => (
     is          => 'rw',
     predicate   => 'has_expires',
+);
+
+has custom_expires => (
+    is          => 'rw',
+    predicate   => 'has_custom_expires',
 );
 
 has not_before => (
@@ -80,14 +91,20 @@ has id_token => (
 # if so create a new one and return it
 sub create_token {
   my ($self, $data) = @_;
+<<<<<<< HEAD
     
     
+=======
+  if(!$self->has_custom_token){
+    $self->get_custom_token;
+  }
+>>>>>>> 52786402fde732faf68843a1087b1dc661b9904e
   my $url = 'https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=';
   $url .= $self->api_key;
     
     print "URL:".$url."\n";
   my %payload = (
-    token => $self->secret,
+    token => $self->custom_token,
     returnSecureToken => 'true'
   );
   my $call = POST($url, Content => encode_json(\%payload), Content_Type => 'JSON(application/json)');
@@ -99,6 +116,15 @@ sub create_token {
   $self->id_token($result->{idToken});
   $self->expires(DateTime->now(time_zone=>'local')->add(seconds => 3600));
   return $self->id_token;
+}
+
+sub get_custom_token {
+  my ($self, $data) = @_;
+  my $url = 'https://us-central1-clusterjob-78552.cloudfunctions.net/customToken?cjkey=';
+  $url .= $self->secret;
+  my $call = GET($url, Content_Type => 'JSON(application/json)');
+  $self->custom_token(decode_json($self->token_provider->request($call)->decoded_content)->{token});
+  $self->custom_expires(DateTime->now(time_zone=>'local')->add(seconds => 3600));
 }
 
 sub get_token {
