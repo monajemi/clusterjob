@@ -1,3 +1,4 @@
+# ClusterJob
 Clusterjob, hereafter CJ, is an experiment management system (EMS) for data science. CJ is 
 written mainly in perl and allows submiting computational jobs to clusters in a hassle-free and reproducible manner.
 CJ produces 'reporoducible' computational packages for academic publications at no-cost. CJ project started in 2013 at Stanford University by Hatef Monajemi and his PhD advisor David L. Donoho with the goal of encouraging  more efficient and reproducible research paradigm. 
