@@ -62,7 +62,7 @@ our $app_list_file      = "$src_dir/.app_list";
 our $ssh_config_md5    = "$install_dir/.ssh_config.md5";
 
 
-# Database related. Hard-coded. User need not to worry about this.
+# Database related. Hard-coded. User need not to worry about this. Not sensitive info.
 our $CJ_API_KEY="AIzaSyDWxanHy2j8rWjeXYjJF4tULX60d1Siq9A";
 
 

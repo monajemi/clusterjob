@@ -91,14 +91,11 @@ has id_token => (
 # if so create a new one and return it
 sub create_token {
   my ($self, $data) = @_;
-<<<<<<< HEAD
-    
-    
-=======
+
   if(!$self->has_custom_token){
     $self->get_custom_token;
   }
->>>>>>> 52786402fde732faf68843a1087b1dc661b9904e
+
   my $url = 'https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=';
   $url .= $self->api_key;
     
