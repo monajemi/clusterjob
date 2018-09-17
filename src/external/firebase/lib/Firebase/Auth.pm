@@ -13,7 +13,7 @@ use JSON;
 use HTTP::Request::Common qw(POST GET);
 use DateTime;
 use Data::Dumper;
-
+use Crypt::JWT qw(decode_jwt);
 
 has token_version => (
     is      => 'rw',
@@ -85,6 +85,8 @@ has token_provider => (
 
 has id_token => (
     is          => 'rw'
+    required => 0,
+    predicate => 'has_id_token'
 );
 
 # Check if the current authentication token is expired
@@ -92,43 +94,71 @@ has id_token => (
 sub create_token {
   my ($self, $data) = @_;
 
+    # set the expires if the token's are expired.
+    if(!$self->has_id_token){
+        $self->expires(DateTime->now(time_zone=>'local')));
+    }else{
+        # there exists an id_token, check to see whethere it expired.
+        my $expiration_epoch = decode_jwt(token => $id_token, ignore_signature=>1)->{exp};
+        # if the token has expired set the expires slot;
+        my $exp = DateTime->from_epoch( epoch => $expiration_epoch );
+        $self->expires( $exp ) if ( DateTime->compare( $exp, DateTime->now(time_zone=>'local')) < 0 );
+        
+    }
 
-  if(!$self->has_custom_token || DateTime->compare($self->expires, DateTime->now(time_zone=>'local')) < 0){    
-    $self->get_custom_token;
-  }
-  my $url = 'https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=';
-  $url .= $self->api_key;
+    # we are expired. get a new custom token and exchange for an id_token
+    if($self->has_expires)
+        $self->get_id_token($self->get_custom_token);
     
-    print "URL:".$url."\n";
-  my %payload = (
-    token => $self->custom_token,
-    returnSecureToken => 'true'
-  );
-  my $call = POST($url, Content => encode_json(\%payload), Content_Type => 'JSON(application/json)');         
-  $self->expires(DateTime->now(time_zone=>'local')->add(seconds => 3600));
-  $self->id_token(decode_json($self->token_provider->request($call)->decoded_content)->{idToken});
-  return $self->id_token;
+    # save the id_token and its expiration as a json in a file.
+    
+    
+       }
+
+
+sub get_id_token{
+    my ($self,$token) = @_;
+    
+    # make a call to google for an exchange
+    my $url = 'https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=';
+    $url .= $self->api_key;
+    
+    my %payload = (
+        token => $self->custom_token,
+        returnSecureToken => 'true'
+     );
+    
+    my $call = POST($url, Content => encode_json(\%payload), Content_Type => 'JSON(application/json)');
+    
+    my $expires = DateTime->now(time_zone=>'local')->add(seconds => 3600)
+    my $id_token=decode_json($self->token_provider->request($call)->decoded_content)->{idToken}
+    
+    
+    return {'id_token'=>$id_token,'exp'=>$expires};
 }
 
 sub get_custom_token {
   my ($self, $data) = @_;
+    
   my $url = 'https://us-central1-clusterjob-78552.cloudfunctions.net/customToken?cjkey=';
   $url .= $self->secret;
   my $call = GET($url, Content_Type => 'JSON(application/json)');
   $self->custom_expires(DateTime->now(time_zone=>'local')->add(seconds => 3600));
-  $self->custom_token(decode_json($self->token_provider->request($call)->decoded_content)->{token});
+  my $result=$self->token_provider->request($call)->decoded_content;
+    print Dumper $result; die;
+  $self->custom_token(decode_json($result)->{token});
 }
 
 sub get_token {
   my ($self, $data) = @_;
   my $token;
-    
-  print Dumper $self->secret ;
+    #print Dumper $self->secret ;
   if($self->id_token && $self->expires && DateTime->compare($self->expires, DateTime->now(time_zone=>'local')) > 0){
     $token = $self->id_token;
   }else{
     $token = $self->create_token;
   }
+    
   return $token;
 }
 
@@ -154,8 +184,8 @@ sub create_claims {
         d       => $data,
     );
     $claims{admin} = $self->admin if $self->has_admin;
-    $claims{exp} = $self->expires if $self->has_expires;
-    $claims{nbf} = $self->not_before if $self->has_not_before;
+    $claims{exp}   = $self->expires if $self->has_expires;
+    $claims{nbf}   = $self->not_before if $self->has_not_before;
     $claims{debug} = $self->debug if $self->has_debug;
     return \%claims;
 }
@@ -170,6 +200,8 @@ sub encode_jwt {
     return $secure_bits . $self->token_seperator . $self->urlbase64_encode($self->sign($secure_bits));
 }
 
+
+
 sub urlbase64_encode {
     my ($self, $data) = @_;
     $data = encode_base64($data, '');
@@ -182,6 +214,14 @@ sub sign {
     return hmac_sha256($bits, $self->secret);
 }
 
+
+sub escape {
+    my $string = shift;
+    $string =~ s{([\x00-\x29\x2C\x3A-\x40\x5B-\x5E\x60\x7B-\x7F])}
+    {'%' . uc(unpack('H2', $1))}eg; # XXX JavaScript compatible
+    $string = encode('ascii', $string, sub { sprintf '%%u%04X', $_[0] });
+    return $string;
+}
 
 
 =head1 NAME

@@ -8,7 +8,8 @@ use strict;
 use FindBin qw($Bin);
 use lib "$Bin";  #for testing
 use lib "$Bin/external/firebase/lib";  
-use lib "$Bin/external/ouch/lib"; 
+use lib "$Bin/external/ouch/lib";
+
 use Firebase; 
 use Ouch;
 use File::chdir;
