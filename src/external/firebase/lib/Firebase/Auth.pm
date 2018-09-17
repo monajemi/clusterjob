@@ -104,9 +104,10 @@ sub create_token {
     ouch("Token is not expired yet. Method called by mistake.") if (! $self->has_expires);
     
     $self->get_custom_token(); # This sets the custom token attr
-    my $json=encode_json($self->get_id_token());
+    my $cred = $self->get_id_token();
+    my $json=encode_json($cred);
     writeFile($self->id_token_path,$json);
-    return 1;
+    return $cred->{'token'};
 }
     
     
