@@ -91,7 +91,6 @@ sub put {
 
 sub patch {
     my ($self, $path, $params) = @_;
-
     my $uri = $self->create_uri($path);
     my $request = POST($uri->as_string, Content_Type => 'form-data', Content => to_json($params));
     $request->method('PATCH'); # because HTTP::Request::Common treats PUT as GET rather than POST
@@ -107,11 +106,10 @@ sub post {
 
 sub create_uri {
   my ($self, $path,$param) = @_;
+    my $auth=$self->authobj;
+    my $token = $auth->get_token;
 
-    my $token=$self->authobj->get_token;
-    print $token ."\n";
-    die;
-  my $url = 'https://'.$self->firebase.'.firebaseio.com/'.$path.'.json';
+    my $url = 'https://'.$self->firebase.'.firebaseio.com/'.$path.'.json';
     $url .= '?auth='.$token;
 	my $uri = URI->new($url);
     return $uri;

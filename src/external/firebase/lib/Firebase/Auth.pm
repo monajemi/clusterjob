@@ -13,7 +13,8 @@ use JSON;
 use HTTP::Request::Common qw(POST GET);
 use DateTime;
 use Data::Dumper;
-use Crypt::JWT qw(decode_jwt);
+#use Crypt::JWT qw(decode_jwt);
+
 
 has token_version => (
     is      => 'rw',
@@ -84,40 +85,49 @@ has token_provider => (
 );
 
 has id_token => (
-    is          => 'rw'
+    is          => 'rw',
     required => 0,
     predicate => 'has_id_token'
+);
+
+has id_token_path => (
+    is => 'ro',
+    required => 1,
+    default=> sub{'./.id_token'}
 );
 
 # Check if the current authentication token is expired
 # if so create a new one and return it
 sub create_token {
-  my ($self, $data) = @_;
-
-    # set the expires if the token's are expired.
-    if(!$self->has_id_token){
-        $self->expires(DateTime->now(time_zone=>'local')));
-    }else{
-        # there exists an id_token, check to see whethere it expired.
-        my $expiration_epoch = decode_jwt(token => $id_token, ignore_signature=>1)->{exp};
-        # if the token has expired set the expires slot;
-        my $exp = DateTime->from_epoch( epoch => $expiration_epoch );
-        $self->expires( $exp ) if ( DateTime->compare( $exp, DateTime->now(time_zone=>'local')) < 0 );
-        
-    }
-
+  my ($self) = @_;
     # we are expired. get a new custom token and exchange for an id_token
-    if($self->has_expires)
-        $self->get_id_token($self->get_custom_token);
+    ouch("Token is not expired yet. Method called by mistake.") if (! $self->has_expires);
     
-    # save the id_token and its expiration as a json in a file.
+    $self->get_custom_token(); # This sets the custom token attr
+    my $json=encode_json($self->get_id_token());
+    writeFile($self->id_token_path,$json);
+    return 1;
+}
     
     
-       }
+sub read_id_token {
+    
+    my ($self) = @_;
+    
+    my $cred= eval{decode_json( readFile( $self->id_token_path ) ) };
+    if ($@) {
+        $cred = undef;
+    }
+    return $cred;
+}
+
 
 
 sub get_id_token{
-    my ($self,$token) = @_;
+    
+    my ($self) = @_;
+    
+    ouch("no custom token generated") if (!$self->has_custom_token);
     
     # make a call to google for an exchange
     my $url = 'https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=';
@@ -130,37 +140,52 @@ sub get_id_token{
     
     my $call = POST($url, Content => encode_json(\%payload), Content_Type => 'JSON(application/json)');
     
-    my $expires = DateTime->now(time_zone=>'local')->add(seconds => 3600)
-    my $id_token=decode_json($self->token_provider->request($call)->decoded_content)->{idToken}
+    my $expires = DateTime->now(time_zone=>'local')->add(seconds => 3600);
+    my $id_token=decode_json($self->token_provider->request($call)->decoded_content)->{idToken};
     
-    
-    return {'id_token'=>$id_token,'exp'=>$expires};
+    return {'token'=>$id_token,'exp'=>$expires->epoch()};
 }
 
+    
+    
 sub get_custom_token {
-  my ($self, $data) = @_;
+    
+  my ($self) = @_;
     
   my $url = 'https://us-central1-clusterjob-78552.cloudfunctions.net/customToken?cjkey=';
   $url .= $self->secret;
   my $call = GET($url, Content_Type => 'JSON(application/json)');
   $self->custom_expires(DateTime->now(time_zone=>'local')->add(seconds => 3600));
   my $result=$self->token_provider->request($call)->decoded_content;
-    print Dumper $result; die;
   $self->custom_token(decode_json($result)->{token});
 }
 
+
 sub get_token {
-  my ($self, $data) = @_;
-  my $token;
-    #print Dumper $self->secret ;
-  if($self->id_token && $self->expires && DateTime->compare($self->expires, DateTime->now(time_zone=>'local')) > 0){
-    $token = $self->id_token;
-  }else{
-    $token = $self->create_token;
-  }
+  my ($self) = @_;
     
-  return $token;
+    #read the id_token is it exists
+    my $cred = $self->read_id_token();
+    
+    # set the expires if the token's are expired.
+    if(!defined($cred)){
+        # no file detected
+        $self->expires( DateTime->now(time_zone=>'local') );
+    }else{
+        # there exists an id_token, check to see whethere it expired.
+        # my $id_token=$cred->{'token'};
+        # my $expiration_epoch = #decode_jwt(token => $id_token, ignore_signature=>1)->{exp}; # we can infer too if we want
+        # if the token has expired set the expires slot;
+        my $exp = DateTime->from_epoch( epoch => ($cred->{'exp'}-120)   );  # compare with two min before actual expiration
+        $self->expires( $exp ) if ( DateTime->compare( $exp, DateTime->now(time_zone=>'local')) < 0 );
+    }
+  
+    my $token = $self->expires ? $self->create_token : $cred->{'token'};
+    return $token;
 }
+
+
+
 
 sub create_jwt {
     my ($self, $data) = @_;
@@ -222,6 +247,68 @@ sub escape {
     $string = encode('ascii', $string, sub { sprintf '%%u%04X', $_[0] });
     return $string;
 }
+
+
+
+
+
+
+
+# helper functions
+sub writeFile
+{
+    # it should generate a bak up later!
+    my ($path, $contents, $flag) = @_;
+    
+    if( -e "$path" ){
+        #bak up
+        my $bak= "$path" . ".bak";
+        my $cmd="cp $path $bak";
+        system($cmd);
+    }
+    
+    my $fh;
+    open ( $fh , '>', "$path" ) or die "can't create file $path" if not defined($flag);
+    
+    if(defined($flag) && $flag eq '-a'){
+        open( $fh ,'>>',"$path") or die "can't create file $path";
+    }
+    
+    print $fh $contents;
+    close $fh ;
+}
+
+
+sub readFile
+{
+    my ($filepath)  = @_;
+    
+    my $content;
+    open(my $fh, '<', $filepath) or die "cannot open file $filepath";
+    {
+        local $/;
+        $content = <$fh>;
+    }
+    close($fh);
+    
+    
+    if(!defined($content) || $content eq ""){
+   	    return undef;
+    }else{
+        return $content;
+    }
+    
+    
+    
+}
+
+
+
+
+
+
+
+
 
 
 =head1 NAME
