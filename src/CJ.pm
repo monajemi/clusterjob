@@ -384,29 +384,7 @@ sub rerun
     my ($pid,$counter,$submit_defaults,$qSubmitDefault,$user_submit_defaults,$qsub_extra,$verbose) = @_;
    
    
-    my $info;
-    if( (!defined $pid) || ($pid eq "") ){
-        #read last_instance.info;
-        $info = &CJ::retrieve_package_info();
-        $pid = $info->{'pid'};
-        
-    }else{
-        if( &CJ::is_valid_pid($pid) ){
-            # read info from $run_history_file
-            $info = &CJ::retrieve_package_info($pid);
-            
-            if (!defined($info)){
-                CJ::err("No such job found in the database");
-            }
-            
-        }else{
-            &CJ::err("incorrect usage: nothing to show");
-        }
-        
-        
-        
-    }
-    
+    my $info = &CJ::get_info($pid);
     
     my $short_pid = substr($pid,0,8);
     if($info->{'clean'}){
@@ -458,7 +436,32 @@ sub rerun
 my $local_master_path="/tmp/rerun_master.sh";
 &CJ::writeFile($local_master_path, $master_script);
 
+  
     
+#==================================
+# Inform user of the res allocation
+#==================================
+    # whatever is in qsub_extra
+    &CJ::message("alloc: $qsub_extra",1);
+    # whatever user has asked to change in defaults
+    if(keys($user_submit_defaults) > 0){
+        my $str="";
+        while ( my ($key, $value) = each (%{$user_submit_defaults})){
+            $str = $str."$key=$value ";
+        }
+        &CJ::message("user : $str",1);
+    }
+    
+    # CJ will be active in determining:
+    if ( not (defined($ssh->{alloc}) and $ssh->{alloc} !~/^\s*$/) ) {
+        my $str="";
+        while ( my ($key, $value) = each (%{${submit_defaults}})){
+            $str = $str."$key=$value " if (!exists(${user_submit_defaults}->{$key}));
+        }
+        &CJ::message("cj   : $str",1) if ($str ne "");
+    }
+ 
+
 #==============================================
 # Send master script over to the server, run it
 #==============================================
