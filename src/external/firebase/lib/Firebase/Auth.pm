@@ -13,6 +13,8 @@ use JSON;
 use HTTP::Request::Common qw(POST GET);
 use DateTime;
 use Data::Dumper;
+use FindBin qw($Bin);
+
 #use Crypt::JWT qw(decode_jwt);
 
 
@@ -93,7 +95,7 @@ has id_token => (
 has id_token_path => (
     is => 'ro',
     required => 1,
-    default=> sub{'./.id_token'}
+    default=> sub{"$Bin/.id_token"}
 );
 
 # Check if the current authentication token is expired
