@@ -99,7 +99,8 @@ CJ::message("$self->{runflag}"."ing [$self->{program}] on [$self->{machine}] wit
 
     
 # whatever is in qsub_extra
-&CJ::message("alloc: $self->{qsub_extra}",1);
+
+&CJ::message("alloc: $self->{qsub_extra}",1) if ($self->{qsub_extra} !~ /^\s*/) ;
 # whatever user has asked to change in defaults
 if(keys($self->{user_submit_defaults}) > 0){
     my $str="";

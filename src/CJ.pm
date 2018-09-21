@@ -444,7 +444,7 @@ my $local_master_path="/tmp/rerun_master.sh";
     my $ssh = CJ::host($info->{machine});
 
     # whatever is in qsub_extra
-    &CJ::message("alloc: $qsub_extra",1);
+    &CJ::message("alloc: $qsub_extra",1) if ($qsub_extra !~ /^\s*/);
     # whatever user has asked to change in defaults
     if(keys($user_submit_defaults) > 0){
         my $str="";
