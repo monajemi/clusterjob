@@ -7,7 +7,13 @@ use JSON::XS;
 use POSIX;
 use MIME::Base64;
 use Moo;
+use HTTP::Thin;
 use Ouch;
+use JSON;
+use HTTP::Request::Common qw(POST GET);
+use DateTime;
+use Data::Dumper;
+#use Crypt::JWT qw(decode_jwt);
 
 
 has token_version => (
@@ -15,7 +21,23 @@ has token_version => (
     default => sub { 0 },
 );
 
+has firebase => (
+    is          => 'ro',
+    required    => 1,
+);
+
 has secret => (
+    is       => 'rw',
+    required => 1,
+);
+
+has custom_token => (
+    is       => 'rw',
+    required => 0,
+    predicate => 'has_custom_token'
+);
+
+has api_key => (
     is       => 'rw',
     required => 1,
 );
@@ -35,6 +57,11 @@ has expires => (
     predicate   => 'has_expires',
 );
 
+has custom_expires => (
+    is          => 'rw',
+    predicate   => 'has_custom_expires',
+);
+
 has not_before => (
     is          => 'rw',
     predicate   => 'has_not_before',
@@ -50,7 +77,118 @@ has debug => (
     predicate   => 'has_debug',
 );
 
+has token_provider => (
+    is          => 'ro',
+    required    => 0,
+    lazy        => 1,
+    default     => sub { HTTP::Thin->new() },
+);
+
+has id_token => (
+    is          => 'rw',
+    required => 0,
+    predicate => 'has_id_token'
+);
+
+has id_token_path => (
+    is => 'ro',
+    required => 1,
+    default=> sub{'./.id_token'}
+);
+
+# Check if the current authentication token is expired
+# if so create a new one and return it
 sub create_token {
+  my ($self) = @_;
+    # we are expired. get a new custom token and exchange for an id_token
+    ouch("Token is not expired yet. Method called by mistake.") if (! $self->has_expires);
+    
+    $self->get_custom_token(); # This sets the custom token attr
+    my $cred = $self->get_id_token();
+    my $json=encode_json($cred);
+    writeFile($self->id_token_path,$json);
+    return $cred->{'token'};
+}
+    
+    
+sub read_id_token {
+    
+    my ($self) = @_;
+    
+    my $cred= eval{decode_json( readFile( $self->id_token_path ) ) };
+    if ($@) {
+        $cred = undef;
+    }
+    return $cred;
+}
+
+
+
+sub get_id_token{
+    
+    my ($self) = @_;
+    
+    ouch("no custom token generated") if (!$self->has_custom_token);
+    
+    # make a call to google for an exchange
+    my $url = 'https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyCustomToken?key=';
+    $url .= $self->api_key;
+    
+    my %payload = (
+        token => $self->custom_token,
+        returnSecureToken => 'true'
+     );
+    
+    my $call = POST($url, Content => encode_json(\%payload), Content_Type => 'JSON(application/json)');
+    
+    my $expires = DateTime->now(time_zone=>'local')->add(seconds => 3600);
+    my $id_token=decode_json($self->token_provider->request($call)->decoded_content)->{idToken};
+    
+    return {'token'=>$id_token,'exp'=>$expires->epoch()};
+}
+
+    
+    
+sub get_custom_token {
+    
+  my ($self) = @_;
+    
+  my $url = 'https://us-central1-clusterjob-78552.cloudfunctions.net/customToken?cjkey=';
+  $url .= $self->secret;
+  my $call = GET($url, Content_Type => 'JSON(application/json)');
+  $self->custom_expires(DateTime->now(time_zone=>'local')->add(seconds => 3600));
+  my $result=$self->token_provider->request($call)->decoded_content;
+  $self->custom_token(decode_json($result)->{token});
+}
+
+
+sub get_token {
+  my ($self) = @_;
+    
+    #read the id_token is it exists
+    my $cred = $self->read_id_token();
+    
+    # set the expires if the token's are expired.
+    if(!defined($cred)){
+        # no file detected
+        $self->expires( DateTime->now(time_zone=>'local') );
+    }else{
+        # there exists an id_token, check to see whethere it expired.
+        # my $id_token=$cred->{'token'};
+        # my $expiration_epoch = #decode_jwt(token => $id_token, ignore_signature=>1)->{exp}; # we can infer too if we want
+        # if the token has expired set the expires slot;
+        my $exp = DateTime->from_epoch( epoch => ($cred->{'exp'}-120)   );  # compare with two min before actual expiration
+        $self->expires( $exp ) if ( DateTime->compare( $exp, DateTime->now(time_zone=>'local')) < 0 );
+    }
+  
+    my $token = $self->expires ? $self->create_token : $cred->{'token'};
+    return $token;
+}
+
+
+
+
+sub create_jwt {
     my ($self, $data) = @_;
     return $self->encode_token($self->create_claims($data || $self->data));
 }
@@ -60,7 +198,7 @@ sub create_claims {
     if (! exists $data->{uid}) {
         ouch('missing param', 'Data payload must contain a "uid" key that must be a string.', 'uid') unless $self->admin;
     }
-    elsif ($data->{uid} eq '') { 
+    elsif ($data->{uid} eq '') {
         ouch('param out of range', 'Data payload must contain a "uid" key that must not be empty or null.', 'uid');
     }
     elsif (length $data->{uid} > 256) {
@@ -72,13 +210,13 @@ sub create_claims {
         d       => $data,
     );
     $claims{admin} = $self->admin if $self->has_admin;
-    $claims{exp} = $self->expires if $self->has_expires;
-    $claims{nbf} = $self->not_before if $self->has_not_before;
+    $claims{exp}   = $self->expires if $self->has_expires;
+    $claims{nbf}   = $self->not_before if $self->has_not_before;
     $claims{debug} = $self->debug if $self->has_debug;
     return \%claims;
 }
 
-sub encode_token {
+sub encode_jwt {
     my ($self, $claims) = @_;
     my $ejsn = JSON::XS->new->utf8->space_after->encode ({'typ'=> 'JWT', 'alg'=> 'HS256'}) ;
     my $encoded_header = $self->urlbase64_encode( $ejsn);
@@ -87,6 +225,8 @@ sub encode_token {
     my $secure_bits = $encoded_header . $self->token_seperator . $encoded_claims;
     return $secure_bits . $self->token_seperator . $self->urlbase64_encode($self->sign($secure_bits));
 }
+
+
 
 sub urlbase64_encode {
     my ($self, $data) = @_;
@@ -97,8 +237,78 @@ sub urlbase64_encode {
 
 sub sign {
     my ($self, $bits) = @_;
-    return hmac_sha256($bits, $self->secret); 
+    return hmac_sha256($bits, $self->secret);
 }
+
+
+sub escape {
+    my $string = shift;
+    $string =~ s{([\x00-\x29\x2C\x3A-\x40\x5B-\x5E\x60\x7B-\x7F])}
+    {'%' . uc(unpack('H2', $1))}eg; # XXX JavaScript compatible
+    $string = encode('ascii', $string, sub { sprintf '%%u%04X', $_[0] });
+    return $string;
+}
+
+
+
+
+
+
+
+# helper functions
+sub writeFile
+{
+    # it should generate a bak up later!
+    my ($path, $contents, $flag) = @_;
+    
+    if( -e "$path" ){
+        #bak up
+        my $bak= "$path" . ".bak";
+        my $cmd="cp $path $bak";
+        system($cmd);
+    }
+    
+    my $fh;
+    open ( $fh , '>', "$path" ) or die "can't create file $path" if not defined($flag);
+    
+    if(defined($flag) && $flag eq '-a'){
+        open( $fh ,'>>',"$path") or die "can't create file $path";
+    }
+    
+    print $fh $contents;
+    close $fh ;
+}
+
+
+sub readFile
+{
+    my ($filepath)  = @_;
+    
+    my $content;
+    open(my $fh, '<', $filepath) or die "cannot open file $filepath";
+    {
+        local $/;
+        $content = <$fh>;
+    }
+    close($fh);
+    
+    
+    if(!defined($content) || $content eq ""){
+   	    return undef;
+    }else{
+        return $content;
+    }
+    
+    
+    
+}
+
+
+
+
+
+
+
 
 
 
@@ -109,15 +319,15 @@ Firebase::Auth - Auth token generation for firebase.com.
 =head1 SYNOPSIS
 
  use Firebase::Auth;
- 
+
  my $token = Firebase::Auth->new(token => 'xxxxxxxxx', admin => 'true', data => { uid => '1' } )->create_token();
 
 
 =head1 DESCRIPTION
 
 This module provides a Perl class to generate auth tokens for L<http://www.firebase.com>. See L<https://www.firebase.com/docs/security/custom-login.html> for details on the spec.
-    
-    
+
+
 =head1 METHODS
 
 
@@ -187,7 +397,7 @@ Generates a signed token. This is probably the only method you'll ever need to c
 
 =item data
 
-Required if not specified in constructor. Defaults to the C<data> element in the constructor. A hash reference of parameters you wish to pass to the service. If specified it must have a C<uid> key that contain's the users unique user id, which must be a non-null string that is no longer than 256 characters. 
+Required if not specified in constructor. Defaults to the C<data> element in the constructor. A hash reference of parameters you wish to pass to the service. If specified it must have a C<uid> key that contain's the users unique user id, which must be a non-null string that is no longer than 256 characters.
 
 =back
 
@@ -195,7 +405,7 @@ Required if not specified in constructor. Defaults to the C<data> element in the
 
 =head2 create_claims
 
-Generates a list of claims based upon the options provided to the constructor. 
+Generates a list of claims based upon the options provided to the constructor.
 
 =over
 

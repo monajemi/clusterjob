@@ -1,6 +1,6 @@
 package CJ::CJVars;
-# This is part of Clusterjob 
-# Copyright 2015 Hatef Monajemi (monajemi@stanford.edu) 
+# This is part of Clusterjob
+# Copyright 2015 Hatef Monajemi (monajemi@stanford.edu)
 
 use strict;
 use warnings;
@@ -22,7 +22,6 @@ if (defined($sock)){
     print "Warning: No internet connection. Limited features are available!\n";
     $localIP = undef;
 }	
-
 
 
 
@@ -60,15 +59,21 @@ our $save_info_file     = "$info_dir/save.info";
 our $ssh_config_file    = "$install_dir/ssh_config";
 our $remote_config_file = "$install_dir/cj_config";
 our $firebase_name		= "clusterjob-78552";
+
 our $app_list_file      = "$src_dir/.app_list";
 our $ssh_config_md5    = "$install_dir/.ssh_config.md5";
+
+
+# Database related. Hard-coded. User need not to worry about this. Not sensitive info.
+our $CJ_API_KEY="AIzaSyDWxanHy2j8rWjeXYjJF4tULX60d1Siq9A";
+
 
 # Read AgentID
 our $AgentID= undef;
 
 if(-f $AgentIDPATH){
 	my $line;
-	
+
 open(my $FILE,  $AgentIDPATH) or  die "could not open $AgentIDPATH: $!";
 local $/ = undef;
 $line = <$FILE>;
@@ -79,9 +84,11 @@ if($AgentID){$AgentID =~ s/^\s+|\s+$//g};
 }
 
 
-# Read CJID and CJKEY 
+# Read CJID and CJKEY
 our $CJID =undef;
 our $CJKEY=undef;
+
+
 my $lines;
 open(my $FILE, $remote_config_file) or  die "could not open $remote_config_file: $!";
 local $/ = undef;
@@ -103,11 +110,8 @@ if($KEY){
 
 
 
-
-
-
 # Export global variables
-our @EXPORT = qw( $lastSync_file $local_push_timestamp_file $pid_timestamp_file $firebase_name $AgentIDPATH $AgentID $CJID $CJKEY $info_dir $src_dir $install_dir $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $remote_config_file $CJerrorlog $CJlog_dir $CJlog_out $CJlog_error $localIP $localUserName $app_list_file $ssh_config_md5);
+our @EXPORT = qw( $lastSync_file $local_push_timestamp_file $pid_timestamp_file $firebase_name $AgentIDPATH $AgentID $CJID $CJKEY $CJ_API_KEY $info_dir $src_dir $install_dir $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $remote_config_file $CJerrorlog $CJlog_dir $CJlog_out $CJlog_error $localIP $localUserName $app_list_file $ssh_config_md5);
 
 
 
