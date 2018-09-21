@@ -441,7 +441,7 @@ my $local_master_path="/tmp/rerun_master.sh";
 #==================================
 # Inform user of the res allocation
 #==================================
-    my $ssh = CJ::host($info->{machine});
+    my $ssh = CJ::host($self->{machine});
 
     # whatever is in qsub_extra
     &CJ::message("alloc: $qsub_extra",1);
