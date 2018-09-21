@@ -202,7 +202,7 @@ my $spec = <<'EOSPEC';
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,"less") }}
      rerun          [<pid> [[/] [<counter>...]]]	          rerun certain (failed) job [nocase]
                                                                  {defer{&CJ::add_cmd($cmdline);
-								  &CJ::rerun($pid,\@counter,$submit_defaults,$qSubmitDefault,$qsub_extra,$verbose) }}
+								  &CJ::rerun($pid,\@counter,$submit_defaults,$qSubmitDefault,$user_submit_defaults,$qsub_extra,$verbose) }}
      run            <code> <cluster>	                  run code on the cluster [nocase] [requires: -m]
                                                                  {my $runflag = "run";
                                                                {defer{&CJ::add_cmd($cmdline); run($cluster,$code,$runflag,$qsub_extra)}}
