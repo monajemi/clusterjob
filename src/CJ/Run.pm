@@ -881,12 +881,12 @@ sub setup_R_env{
     }else{
     
         CJ::message("LMOD module found on $self->{'machine'}");
-        CJ::message("Testing if module $ssh->{r} is availbale via LMOD:");
+        CJ::message("Testing if module $ssh->{r} is available via LMOD:");
         my $response =`ssh $ssh->{account} 'source ~/.bashrc; source ~/.bash_profile; module load $ssh->{r}' 2>$CJlog_error`;
         if($response =~ /^$/ ){
-            CJ::message("$ssh->{r} avilable.",1);
+            CJ::message("$ssh->{r} available.",1);
         }else{
-            CJ::message("$ssh->{r} NOT avilable.",1);
+            CJ::message("$ssh->{r} NOT available.",1);
             
             
             my $app = 'R';
