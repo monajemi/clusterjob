@@ -57,12 +57,13 @@ sub _update_qsub_extra {
 
 
 
+
 ###########################################
 # This should be called at the beginning of
 # run for all run options. Common to all
 sub run_common{
 ###########################################
-    my ($self) = @_;
+my ($self) = @_;
 
 #  Check connection
 &CJ::CheckConnection($self->{machine});
@@ -81,7 +82,7 @@ CJ::message("initiating package \033[32m$short_pid\033[0m");
 #  Check to see if the file and dep folder exists
 &CJ::err("$self->{path}/$self->{program} not found") if(! -e "$self->{path}/$self->{program}" );
 if(defined($self->{dep_folder})){
-&CJ::err("Dependency folder $self->{path}/$self->{dep_folder} not found") if(! -d "$self->{path}/$self->{dep_folder}" );
+    &CJ::err("Dependency folder $self->{path}/$self->{dep_folder} not found") if(! -d "$self->{path}/$self->{dep_folder}" );
 }
 
 #=======================================
@@ -97,17 +98,16 @@ my $program_type = CJ::program_type($self->{program});
 
 CJ::message("$self->{runflag}"."ing [$self->{program}] on [$self->{machine}] with:");
 
-    
-# whatever is in qsub_extra
 
-&CJ::message("alloc: $self->{qsub_extra}",1) if ($self->{qsub_extra} !~ /^\s*/) ;
+# whatever is in qsub_extra
+&CJ::message("alloc: $self->{qsub_extra}",1);
 # whatever user has asked to change in defaults
 if(keys($self->{user_submit_defaults}) > 0){
     my $str="";
-        while ( my ($key, $value) = each (%{$self->{user_submit_defaults}})){
-            $str = $str."$key=$value ";
-        }
-        &CJ::message("user : $str",1);
+    while ( my ($key, $value) = each (%{$self->{user_submit_defaults}})){
+        $str = $str."$key=$value ";
+    }
+    &CJ::message("user : $str",1);
 }
 
 # CJ will be active in determining:
@@ -118,12 +118,12 @@ if ( not (defined($ssh->{alloc}) and $ssh->{alloc} !~/^\s*$/) ) {
     }
     &CJ::message("cj   : $str",1) if ($str ne "");
 }
-    
-    
-    
-    
-    
-    
+
+
+
+
+
+
 &CJ::message("sending from: $self->{path}");
 
 
@@ -138,15 +138,15 @@ my $saveDir        = "$savePrefix"."$program_name";
 #====================================
 # create local directories
 if(-d $localPrefix){
-
-mkdir "$localDir" unless (-d $localDir);
-mkdir "$local_sep_Dir" unless (-d $local_sep_Dir);
-
+    
+    mkdir "$localDir" unless (-d $localDir);
+    mkdir "$local_sep_Dir" unless (-d $local_sep_Dir);
+    
 }else{
-# create local Prefix
-mkdir "$localPrefix";
-mkdir "$localDir" unless (-d $localDir);
-mkdir "$local_sep_Dir" unless (-d $local_sep_Dir);
+    # create local Prefix
+    mkdir "$localPrefix";
+    mkdir "$localDir" unless (-d $localDir);
+    mkdir "$local_sep_Dir" unless (-d $local_sep_Dir);
 }
 
 
