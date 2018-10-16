@@ -1773,8 +1773,7 @@ sub update_cluster_config{
     #print Dumper @lines;
     my ($cluster_config,$config_keys) = &CJ::cluster_config_template();
 
-    #print Dumper $cluster_config->{'Alloc'};
-    
+    #print Dumper $cluster_config;
     #print Dumper $ssh_config;
     
     my $num_changes = 0;
@@ -1790,7 +1789,7 @@ sub update_cluster_config{
                     $old_key   =remove_white_space($old_key);
                     $old_value =remove_white_space($old_value);
                 
-                    $existing_config->{$old_key} = $old_value;
+                    $existing_config->{(lc $old_key)} = $old_value;
                 
                     my $yesno  = "no";
                     my $new_value = undef;
@@ -1807,16 +1806,20 @@ sub update_cluster_config{
             }
         }
       
+        
+       
         # see if you miss any keys
         foreach my $key (keys %$cluster_config){
-            if ( exists $existing_config->{$key} ){
-                delete $cluster_config->{$key};
+            if ( exists $existing_config->{(lc $key)} ){
+                delete $cluster_config->{ $key };
             }
         }
         
         # The remaining keys are new
         my $length = keys %$cluster_config;
 
+        
+        
         if ($length > 0 ){
             foreach my $key (keys %$cluster_config){
                     my $yesno  = "no";

@@ -9,6 +9,7 @@ Python		python/3.6
 Pythonlib	pytorch:pandas:cuda80:scipy:matplotlib:torchvision:-c soumith 
 R	        R/3.4.0 
 Rlib	        ggplot2  
+Alloc	        -p donoho --time 48:00:00 --mem 8G
 [sherlock2]
 
 
@@ -79,7 +80,7 @@ alloc	-n 1 -N 1 -p normal -t 48:00:00
 
 
 [gce]
-Host	5.203.181.25
+Host	35.227.167.130
 user	hatefmonajemi
 Bqs		SLURM
 Repo		/home/hatefmonajemi/CJRepo_Remote
@@ -87,6 +88,7 @@ MAT     	""
 matlib	CJinstlled/cvx
 Python		python3.4
 Pythonlib	pytorch:torchvision:cuda80:pandas:matplotlib:-c soumith
+Alloc	--gres=gpu:1
 [gce]
 
 [az]
