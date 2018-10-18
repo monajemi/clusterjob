@@ -446,7 +446,7 @@ my $local_master_path="/tmp/rerun_master.sh";
     # whatever is in qsub_extra
     &CJ::message("alloc: $qsub_extra",1) if ($qsub_extra !~ /^\s*/);
     # whatever user has asked to change in defaults
-    if(keys($user_submit_defaults) > 0){
+    if(keys(%{$user_submit_defaults}) > 0){
         my $str="";
         while ( my ($key, $value) = each (%{$user_submit_defaults})){
             $str = $str."$key=$value ";
