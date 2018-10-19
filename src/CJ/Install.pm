@@ -598,7 +598,7 @@ else
     if [ -f "$HOME/.bashrc" ]; then source $HOME/.bashrc; fi
     if [ -f "$HOME/.bash_profile" ] ; then source $HOME/.bash_profile; fi
     
-    conda update --yes conda
+    yes | conda update --all
 
     if [ $? -eq 0 ]; then
     END=`date +%s`;
@@ -684,7 +684,7 @@ else
     rm <ANACONDA>.sh
     echo 'export PATH="<INSTALLPATH>/bin:$PATH" ' >> $HOME/.bashrc
     source $HOME/.bashrc
-    yes | conda update conda
+    yes | conda update --all
 
     if [ $? -eq 0 ]; then
         END=`date +%s`;

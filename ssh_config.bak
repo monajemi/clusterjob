@@ -80,7 +80,7 @@ alloc	-n 1 -N 1 -p normal -t 48:00:00
 
 
 [gce]
-Host	35.227.167.130
+host	35.185.255.206
 user	hatefmonajemi
 Bqs		SLURM
 Repo		/home/hatefmonajemi/CJRepo_Remote
@@ -89,6 +89,8 @@ matlib	CJinstlled/cvx
 Python		python3.4
 Pythonlib	pytorch:torchvision:cuda80:pandas:matplotlib:-c soumith
 Alloc	--gres=gpu:1
+Rlib	ggplot2
+R	R
 [gce]
 
 [az]

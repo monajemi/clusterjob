@@ -564,21 +564,36 @@ BASH
 
 &CJ::message("finding range of indices...",1);
 
+  
+my $range={};
+eval{
 CJ::my_system("source ~/.bash_profile; source ~/.profile; source ~/.bashrc; printf '%s' $python_interpreter_bash",$verbose);
+   
+    # Read the files, and put it into $numbers
+    # open a hashref
+    foreach my $tag (@$tag_list){
+        my $tag_file = "/tmp/$tag\.tmp";
+        my $tmp_array = &CJ::readFile("$tag_file");
+        my @tmp_array  = split /\n/,$tmp_array;
+        $range->{$tag} = join(',', @tmp_array);
+        # print $range->{$tag} . "\n";
+        &CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp
+    }
+    
+};
+    
+if($@){
+    &CJ::message("*************CJ didn't succeed in running $name.**************");
+    system("cat $junk");
+    &CJ::err("Please fix the error above before submitting again. Terminating submission.")
+}
+    
+    
+    
+    
     
 &CJ::message("Closing Python session!",1);
 
-# Read the files, and put it into $numbers
-# open a hashref
-my $range={};
-foreach my $tag (@$tag_list){
-my $tag_file = "/tmp/$tag\.tmp";
-my $tmp_array = &CJ::readFile("$tag_file");
-my @tmp_array  = split /\n/,$tmp_array;
-$range->{$tag} = join(',', @tmp_array);
-# print $range->{$tag} . "\n";
-&CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp
-}
 
     
     
