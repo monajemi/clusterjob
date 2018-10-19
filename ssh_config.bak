@@ -87,7 +87,7 @@ Repo		/home/hatefmonajemi/CJRepo_Remote
 MAT     	""
 matlib	CJinstlled/cvx
 Python		python3.4
-Pythonlib	pytorch=0.3.1:torchvision:cuda80:pandas:-c pytorch
+Pythonlib	pytorch=0.3.1:torchvision=0.2.1:cuda80:pandas:-c pytorch
 Alloc	--gres=gpu:1
 Rlib	ggplot2
 R	R
