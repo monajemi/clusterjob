@@ -304,6 +304,17 @@ import ${PROGRAM};
 exit();
 HERE
 
+    
+    
+    
+# Freeze the environment after you installed all the modules
+# Reproduce with:
+#      conda create --yes -n python_venv_\$PID --file req.txt
+if [ ! -f "${DIR}/${PID}_py_conda_req.txt" ]; then
+    conda list -e > ${DIR}/${PID}_py_conda_req.txt
+fi
+
+    
 # Get out of virtual env and remove it
 source deactivate
     
