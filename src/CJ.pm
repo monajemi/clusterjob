@@ -386,7 +386,7 @@ sub rerun
    
     my $info = &CJ::get_info($pid);
     
-    my $short_pid = substr($pid,0,8);
+    my $short_pid = substr($info->{'pid'},0,8);
     if($info->{'clean'}){
         CJ::message("Can't rerun. Package $short_pid has been cleaned on $info->{'clean'}->{'date'}->{datestr}.");
         exit 0;
@@ -412,17 +412,17 @@ sub rerun
     my $master_script;
     if ($#job_ids eq 0) { # if there is only one job
         #run
-        $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$info,$submit_defaults,$qSubmitDefault,$user_submit_defaults,$remote_path,$qsub_extra);
+        $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$info->{'pid'},$info,$submit_defaults,$qSubmitDefault,$user_submit_defaults,$remote_path,$qsub_extra);
     }else{
         #parrun
         if(@$counter){
             foreach my $count (@$counter){
-                $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$info,$submit_defaults,$qSubmitDefault,$user_submit_defaults,$remote_path,$qsub_extra,$count);
+                $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$info->{'pid'},$info,$submit_defaults,$qSubmitDefault,$user_submit_defaults,$remote_path,$qsub_extra,$count);
             }
         }else{
             # Package is parrun, run the whole again!
             foreach my $i (0..$#job_ids){
-               $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$pid,$info,$submit_defaults,$qSubmitDefault,$user_submit_defaults,$remote_path,$qsub_extra,$i);
+               $master_script =  &CJ::Scripts::make_master_script($master_script,$runflag,$program,$date,$info->{'pid'},$info,$submit_defaults,$qSubmitDefault,$user_submit_defaults,$remote_path,$qsub_extra,$i);
             }
         }
     }
@@ -532,7 +532,7 @@ my $change = {new_job_id => $job_id,
               alloc           => $qsub_extra,
 		     };
 			  
-my $newinfo = &CJ::add_change_to_run_history($pid, $change, $type);
+my $newinfo = &CJ::add_change_to_run_history($info->{'pid'}, $change, $type);
 
 
 &CJ::add_to_history($newinfo,$date,$type);
