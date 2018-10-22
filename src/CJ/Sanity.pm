@@ -150,12 +150,18 @@ my $filename = $1;
 
 $existance_bash_script .= <<'EXISTS';
 declare -a FAILED_FOLDERS;
-count=0;
 
-ls -d [[:digit:]]* > /dev/null 2>&1 || \
+ls -d [[:digit:]]*/ > /dev/null 2>&1 || \
 { printf  "\tThis is not a parrun package. */<FILENAME> does not exist.\n"; exit 0; }
 
-for job in $( ls -d [[:digit:]]* ) ; do
+    
+    
+alljobs=($( ls -d [[:digit:]]*/ | sort -n ))
+total=${#alljobs[@]}
+        
+count=0
+for job in $( seq $total ) ; do
+
     if [ ! -f "$job/<FILENAME>" ];then
     FAILED_FOLDERS[$count]=$job;
     count=$(( $count + 1 ))
@@ -287,12 +293,12 @@ declare -a FAILED_FOLDERS;
 
     
 # Check that this is a parrun packages
-ls -d [[:digit:]]* > /dev/null 2>&1 || \
+ls -d [[:digit:]]*/ > /dev/null 2>&1 || \
     { printf  "\tThis is not a parrun package. */<FILENAME> does not exist.\n"; exit 0; }
     
     
     
-alljobs=($( ls -d [[:digit:]]* | sort -n ))
+alljobs=($( ls -d [[:digit:]]*/ | sort -n ))
     
 #echo ${alljobs[*]}
 total=${#alljobs[@]}
