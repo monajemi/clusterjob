@@ -15,8 +15,8 @@ You can find CJ book project at https://github.com/monajemi/CJ-book
 
 1. Hatef Monajemi
 2. Bekk Blando 
-3. Vardan Papyan
-4. David Donoho
+3. David Donoho
+4. Vardan Papyan
 
 
 
