@@ -102,7 +102,7 @@ CJ::message("$self->{runflag}"."ing [$self->{program}] on [$self->{machine}] wit
 # whatever is in qsub_extra
 &CJ::message("alloc: $self->{qsub_extra}",1);
 # whatever user has asked to change in defaults
-if(keys($self->{user_submit_defaults}) > 0){
+if(keys(%{$self->{user_submit_defaults}}) > 0){
     my $str="";
     while ( my ($key, $value) = each (%{$self->{user_submit_defaults}})){
         $str = $str."$key=$value ";
