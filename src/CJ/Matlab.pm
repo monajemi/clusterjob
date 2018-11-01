@@ -488,6 +488,13 @@ my $name = "CJ_matlab_interpreter_script.m";
     
 my $matlab_interpreter_bash = <<BASH;
 #!/bin/bash -l
+    
+    
+[[ -f "\$HOME/.bash_profile" ]] && source "\$HOME/.bash_profile"
+[[ -f "\$HOME/.bashrc" ]] && source "\$HOME/.bashrc"
+[[ -f "\$HOME/.profile" ]] && source "\$HOME/.profile"
+
+    
 # dump everything user-generated from top in /tmp
 cd $self->{'path'}
 matlab -nodisplay -nodesktop -nosplash  <<HERE &>$junk;
@@ -505,7 +512,7 @@ BASH
     
     
 &CJ::message("finding range of indices...",1);
-CJ::my_system("source ~/.bash_profile; source ~/.bashrc; printf '%s' $matlab_interpreter_bash",$verbose);
+CJ::my_system("printf '%s' $matlab_interpreter_bash",$verbose);
 &CJ::message("Closing Matlab session!",1);
     
     
