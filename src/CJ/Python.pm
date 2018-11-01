@@ -450,9 +450,9 @@ sub read_python_index_set{
         }
         
     }elsif($right =~ /^\s*(\w+)\s*:$/){
-        print "Its here $right\n";
+        #print "Its here $right\n";
         #CASE: for i in array;
-        print $1 . "\n";
+        #print $1 . "\n";
         my $this_line = &CJ::grep_var_line($1,$TOP);
         #extract the range
         my @this_array    = split(/\s*=\s*/,$this_line);
@@ -564,6 +564,11 @@ my $name = "CJ_python_interpreter_script";
     
 my $python_interpreter_bash = <<BASH;
 #!/bin/bash -l
+ 
+[[ -f "\$HOME/.bash_profile" ]] && source "\$HOME/.bash_profile"
+[[ -f "\$HOME/.bashrc" ]] && source "\$HOME/.bashrc"
+[[ -f "\$HOME/.profile" ]] && source "\$HOME/.profile"
+    
 # dump everything user-generated from top in /tmp
 cd $self->{'path'}
 python -B <<HERE &>$junk;
@@ -579,7 +584,7 @@ BASH
   
 my $range={};
 eval{
-CJ::my_system("source ~/.bash_profile; source ~/.profile; source ~/.bashrc; printf '%s' $python_interpreter_bash",$verbose);
+CJ::my_system("printf '%s' $python_interpreter_bash",$verbose);
    
     # Read the files, and put it into $numbers
     # open a hashref
