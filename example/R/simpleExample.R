@@ -1,8 +1,9 @@
 # This is a test R script for CJ
 # Author: Hatef Monajemi Jan 9 2017
 
-rm(list=ls()) 
+rm(list=ls())
 
+library(tidyverse)
 library(Matrix)
 
 myFile = "results.csv";

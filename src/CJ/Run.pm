@@ -216,7 +216,6 @@ return ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remot
 
 
 
-
 #########################################################
 #   clusterjob run myscript.m -dep DEP -m "message"
 #   Serial run
@@ -229,10 +228,9 @@ my $self = shift;
 my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
     
     
-&CJ::message("creating reproducible script(s) reproduce_$self->{program}");
+&CJ::message("Creating reproducible script(s) reproduce_$self->{program}");
 my $codeobj = &CJ::CodeObj($local_sep_Dir,$self->{program},$self->{dep_folder});
 $codeobj->build_reproducible_script($self->{runflag});
-
     
 #===========================================
 # BUILD A BASH WRAPPER
@@ -240,7 +238,8 @@ $codeobj->build_reproducible_script($self->{runflag});
 my $sh_script = &CJ::Scripts::make_shell_script($ssh,$self->{program},$pid,$ssh->{bqs}, $remote_sep_Dir);
 my $local_sh_path = "$local_sep_Dir/bashMain.sh";
 &CJ::writeFile($local_sh_path, $sh_script);
-
+    
+    
 # Build master-script for submission
 my $master_script;
     
@@ -885,6 +884,12 @@ sub setup_R_env{
         my $response =`ssh $ssh->{account} 'source ~/.bashrc; source ~/.bash_profile; module load $ssh->{r}' 2>$CJlog_error`;
         if($response =~ /^$/ ){
             CJ::message("$ssh->{r} available.",1);
+            CJ::message("Creating personal Rlib dir");
+            my $ssh = CJ::host($self->{'machine'});
+            my $libpath  = &CJ::r_lib_path($ssh);
+            my $outText="[[ ! -d  \"$libpath\"  ]] && mkdir -p $libpath";
+            my $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
+            &CJ::my_system($cmd,$self->{verbose});
         }else{
             CJ::message("$ssh->{r} NOT available.",1);
             
@@ -909,8 +914,8 @@ sub setup_R_env{
         
     
     }
-    
-    
+  
+return 1;
     
 }
 

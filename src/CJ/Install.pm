@@ -34,7 +34,6 @@ sub new {
 
 
 
-
 sub __apply_install{
     
     my $self=shift;
@@ -296,12 +295,6 @@ BASH
     
     return $installpath;
 }
-
-
-
-
-
-
 
 
 

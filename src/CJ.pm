@@ -1711,7 +1711,7 @@ sub cluster_config_template{
         'Alloc'  => {example=>'-n 1 -N 1 -p gpu', default=>undef},
         'Repo' => {example=>'/home/ubuntu/CJRepo_Remote',default=>undef},
         'MAT'  => {example=>undef,default=>'matlab/r2016b'},
-        'MATlib' => {example=>undef,default=>'CJinstalled/cvx:CJinstalled/mosek/7/toolbox/r2013a'},
+        'MATlib' => {example=>undef,default=>'$app_install_dir/cvx:$app_install_dir/mosek/7/toolbox/r2013a'},
         'Python' => {example=>undef,default=>'python3.4'},
         'Pythonlib'  => {example=>undef,default=>'pytorch:torchvision:cuda80:pandas:matplotlib:-c soumith'},
         'R'     => {example=>undef,default=>'R'},
@@ -1922,6 +1922,29 @@ sub host{
     return $ssh_config_hashref->{$machine_name};
 }
 
+
+
+sub r_lib_path{
+
+    my($ssh,$install_path)=shift;
+    $install_path //= $app_install_dir;  #default
+    
+    # Determine R version
+    my $r_version_tag = "R";
+    &CJ::err("R module not defined in ssh_config file.") if not defined $ssh->{'r'};
+    
+    if( $ssh->{'r'} =~ /R\D?((\d.\d).\d)/i ) {
+        $r_version_tag = $2;
+    }elsif( $ssh->{'r'} =~ /R\D?(\d.\d)/i ){
+        $r_version_tag = $1;
+    }else{
+        CJ::message("Cannot decipher R version from config. Setting default -> R");
+        
+    }
+    
+    my $libpath = "\$HOME/$install_path/R/$r_version_tag/lib";
+
+}
 
 
 

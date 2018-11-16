@@ -6,6 +6,7 @@ package CJ::R;
 use strict;
 use warnings;
 use CJ;
+use CJ::Install;
 use Data::Dumper;
 use feature 'say';
 
@@ -170,7 +171,11 @@ CJ::writeFile("$self->{path}/$rp_program", $rp_program_script);
 sub CJrun_body_script{
     #######################
     my $self = shift;
-    my ($ssh) = @_;
+    my ($ssh, $machine) = @_;
+    
+# Find R libpath
+my $libpath  = &CJ::r_lib_path($ssh);
+    
     
 my $script =<<'BASH';
 
@@ -182,6 +187,8 @@ fi
     
     
 R --no-save <<HERE
+    
+.libPaths("<RLIBPATH>")
 # ###########################################################################################
 # Change the behavior of library() and require() to install automatically if
 # Package needed.
@@ -191,10 +198,13 @@ cj_orig_require <- function(package,...) {require(package,...)}
 # Use function for auto installation
 # Courtesy of Narasimhan, Balasubramanian
 cj_installIfNeeded <- function(packages, ...) {
+        packages <- as.character(substitute(packages))
         toInstall <- setdiff(packages, utils::installed.packages()[, 1])
+    
         if (length(toInstall) > 0) {
             utils::install.packages(pkgs = toInstall,
             repos = "https://cloud.r-project.org",
+            lib = "<RLIBPATH>",
             ...)
         }
 }
@@ -233,7 +243,8 @@ HERE
 BASH
 
 
-$script =~ s|<R_MODULE>|$ssh->{'r'}|;
+$script =~ s|<R_MODULE>|$ssh->{'r'}|g;
+$script =~ s|<RLIBPATH>|$libpath|g;
 
 return $script;
     
