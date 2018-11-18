@@ -7,10 +7,10 @@ use strict;
 use warnings;
 
 sub orchastrate_upload{
-    my ($cj_id, $cj_passcode, $pid, $code) = @_;	
+    my ($cj_id, $pid, $code) = @_;	
     my $agent = LWP::UserAgent->new;
     my $zipedFile = compress($code);
-    my $upload_url = get_upload_url($zipedFile, $cj_id, $cj_passcode, $pid, $agent);
+    my $upload_url = get_upload_url($zipedFile, $cj_id, $pid, $agent);
     my $status = get_status($upload_url, $agent, $zipedFile);
     my $offset = 0;
 
@@ -80,7 +80,6 @@ sub get_upload_url{
         contentType => 'multipart/form-data',
         "Content-Length" => -s $zipedFile,
         cj_id => $cj_id,
-        cj_passcode => $cj_passcode
     );
     my $upload_url = $agent->request(
         POST(
@@ -133,5 +132,5 @@ sub upload_file {
 }
 
 
-my ($cj_id $cj_passcode $pid $code) = @ARGV 
-orchastrate_upload($cj_id, $cj_passcode, $pid, $code)
+my ($cj_id $pid $code) = @ARGV 
+orchastrate_upload($cj_id, $pid, $code)

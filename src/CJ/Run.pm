@@ -17,7 +17,7 @@ use Digest::SHA qw(sha1_hex); # generate hexa-decimal SHA1 PID
 sub new {
 ####################
  	my $class= shift;
- 	my ($path,$program,$machine, $runflag,$dep_folder,$message, $qsub_extra, $qSubmitDefault, $submit_defaults, $user_submit_defaults, $verbose) = @_;
+ 	my ($path,$program,$machine, $runflag,$dep_folder,$message, $qsub_extra, $qSubmitDefault, $submit_defaults, $user_submit_defaults, $verbose, $cj_id) = @_;
 	
 	my $self = bless {
 		path    => $path,
@@ -243,7 +243,7 @@ my $local_sh_path = "$local_sep_Dir/bashMain.sh";
 # Build master-script for submission
 my $master_script;
     
-$master_script = &CJ::Scripts::make_master_script($master_script,$self->{runflag},$self->{program},$date,$pid,$ssh,$self->{submit_defaults},$self->{qSubmitDefault},$self->{user_submit_defaults},$remote_sep_Dir,$self->{qsub_extra});
+$master_script = &CJ::Scripts::make_master_script($master_script,$self->{runflag},$self->{program},$date,$pid,$ssh,$self->{submit_defaults},$self->{qSubmitDefault},$self->{user_submit_defaults},$remote_sep_Dir,$self->{qsub_extra},$tarfile,$cj_id);
 
 
 my $local_master_path="$local_sep_Dir/master.sh";
@@ -275,6 +275,8 @@ $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
     
 # copy tar.gz file to remoteDir
 $cmd = "rsync -avz ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
+# Copy the upload script
+$cmd = "rsync -avz ${localDir}/server_script/upload_script.pm $ssh->{account}:$remoteDir/";
 &CJ::my_system($cmd,$self->{verbose});
     
 &CJ::message("extracting package...");
