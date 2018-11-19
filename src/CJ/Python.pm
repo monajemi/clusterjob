@@ -344,13 +344,16 @@ sub read_python_array_values{
     my $fractional_pattern = "(?:${floating_pattern}\/)?${floating_pattern}";
     my @vals = undef;
     
-    if($string =~ /(.*array\(\[)?\s*($fractional_pattern)+\s*(\]\))?/){
+    #print $string;
+    if($string =~ /(.*array\(\[)?[\s,]*(?<!\D)($fractional_pattern)+\s*(\]\))?/){
         my ($numbers) = $string =~ /(?:.*array\(\[)?\s*(.+)\s*(?:\]\))?/;
         @vals = $numbers =~ /[\;\,]?($fractional_pattern)[\;\,]?/g;
+        #print Dumper @vals;
         return \@vals;
     }else{
         return undef;
     }
+    
 }
 
 
@@ -450,13 +453,14 @@ sub read_python_index_set{
         }
         
     }elsif($right =~ /^\s*(\w+)\s*:$/){
-        #print "Its here $right\n";
+        #print "Its here $right\n";die;
         #CASE: for i in array;
         #print $1 . "\n";
         my $this_line = &CJ::grep_var_line($1,$TOP);
         #extract the range
         my @this_array    = split(/\s*=\s*/,$this_line);
         my $range = $self->read_python_array_values($this_array[1]);
+        
         my @range = @{$range};
         $range      = join(',',@range);
     }else{
@@ -508,7 +512,7 @@ CHECK_BASH
 
 &CJ::message("Checking command 'python' is available...",1);
     
-CJ::my_system("source ~/.bash_profile; source ~/.bashrc; printf '%s' $python_check_bash",$verbose);  # this will generate a file test_file
+CJ::my_system("[ -f \"~/.bash_profile\" ] && . \"~/.bash_profile\"; [ -f \"~/.bashrc\" ] && . ~/.bashrc ; printf '%s' $python_check_bash",$verbose);  # this will generate a file test_file
 
 eval{
 my $check = &CJ::readFile($test_name);     # this causes error if there is no file which indicates Python were not found.
@@ -565,9 +569,9 @@ my $name = "CJ_python_interpreter_script";
 my $python_interpreter_bash = <<BASH;
 #!/bin/bash -l
  
-[[ -f "\$HOME/.bash_profile" ]] && source "\$HOME/.bash_profile"
-[[ -f "\$HOME/.bashrc" ]] && source "\$HOME/.bashrc"
-[[ -f "\$HOME/.profile" ]] && source "\$HOME/.profile"
+[ -f "\$HOME/.bash_profile" ] && . "\$HOME/.bash_profile"
+[ -f "\$HOME/.bashrc" ] && . "\$HOME/.bashrc"
+[ -f "\$HOME/.profile" ] && . "\$HOME/.profile"
     
 # dump everything user-generated from top in /tmp
 cd $self->{'path'}
