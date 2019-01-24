@@ -17,9 +17,9 @@ sub orchastrate_upload{
     print($upload_url);
 
     while(!$status->is_success) {
-        upload_file($zipedFile, $agent, $upload_url, $offset);
+        upload_file($zipedFile, $agent, $upload_url, $offset, $cj_id, $pid);
         do {
-            $status = get_status($upload_url, $agent, $zipedFile);
+            $status = get_status($upload_url, $agent, $zipedFile, $cj_id);
             if($status->code == 308){
                 print "Range Header", $status->header("range");
                 if($status->header("range")){
@@ -35,15 +35,18 @@ sub orchastrate_upload{
 
 
 sub get_status{
-    my ($upload_url, $agent, $zipedFile) = @_;	
+    my ($upload_url, $agent, $zipedFile, $cj_id) = @_;	
     my $file_size = -s $zipedFile;
 
 
+    my $metadata = "{\"metadata\": { \"parent\": \"bekk\" } }";
     my $status = $agent->request(
         POST(
             $upload_url, 
-            "Content_Type" => 'text/plain',
-            "Content-Range" =>  "bytes */$file_size"
+            "Content-Length" => length("bekk"),
+            "Content_Type" => 'application/json',
+            "Content-Range" =>  "bytes */$file_size",
+            Content => $metadata
         )
     );
 
@@ -74,13 +77,15 @@ sub compress{
 
 
 sub get_upload_url{
-    my ($zipedFile, $cj_id, $cj_passcode, $pid, $agent) = @_;
+    my ($zipedFile, $cj_id, $pid, $agent) = @_;
     my %payload = (
         filename => $pid,
         contentType => 'multipart/form-data',
         "Content-Length" => -s $zipedFile,
-        cj_id => $cj_id,
+         cj_id => $cj_id,
     );
+
+
     my $upload_url = $agent->request(
         POST(
             "https://us-central1-united-pier-211422.cloudfunctions.net/getSignedResUrl", 
@@ -92,12 +97,16 @@ sub get_upload_url{
     if($upload_url->is_success){
         return $upload_url->decoded_content;
     }else{
-        die $upload_url->status_line;
+        die Dumper($upload_url);
     }
 }
 
+sub add_meta_data{
+
+}
+
 sub upload_file {
-    my ($zipedFile, $agent, $upload_url, $offset) = @_;
+    my ($zipedFile, $agent, $upload_url, $offset, $cj_id, $pid) = @_;
 
     my $size = -s $zipedFile;
     my $buffer;
@@ -105,6 +114,8 @@ sub upload_file {
 
     open $openZiped, $zipedFile;
     sysread($openZiped, $buffer, $size - $offset, $offset);
+
+
 
     my $put_request = 
         PUT(
@@ -132,5 +143,5 @@ sub upload_file {
 }
 
 
-my ($cj_id $pid $code) = @ARGV 
-orchastrate_upload($cj_id, $pid, $code)
+my ($cj_id, $pid, $code) = @ARGV;
+orchastrate_upload($cj_id, $pid, $code);

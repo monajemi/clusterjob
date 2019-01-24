@@ -410,8 +410,6 @@ $master_script.="$docstring";
             &CJ::err("counter is not defined");
     }
 
-    # Upload the file
-    $master_script .= "perl upload_script.pm $cj_id $pid $tar";
     
     return $master_script;
 }
