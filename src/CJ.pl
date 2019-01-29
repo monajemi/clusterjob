@@ -443,7 +443,7 @@ sub run{
     
     my ($machine,$program, $runflag,$qsub_extra) = @_;	
     my $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
-    my $run = CJ::Run->new($BASE,$program,$machine,$runflag,$dep_folder,$message,$qsub_extra,$qSubmitDefault,$submit_defaults,$user_submit_defaults,$verbose);
+    my $run = CJ::Run->new($BASE,$program,$machine,$runflag,$dep_folder,$message,$qsub_extra,$qSubmitDefault,$submit_defaults,$user_submit_defaults,$verbose,$CJID);
 
     if ($runflag eq "deploy" || $runflag eq "run"){
         $run->SERIAL_DEPLOY_RUN();
