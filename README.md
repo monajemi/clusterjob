@@ -43,7 +43,7 @@ month={February},
 @article{Monajemi19,
 title = {Ambitious data science can be painless},
 author = {H.~Monajemi and R.~Murri and E.~Yonas and P.~Liang and V.~Stodden and D.L.~Donoho},
-note={arXiv:1901.08705}
+note={arXiv:1901.08705},
 year={2019},
 }
 ```
