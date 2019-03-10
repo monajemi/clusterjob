@@ -202,6 +202,8 @@ if($bqs eq "SLURM"){
 
 
 
+
+
 sub check_hash {
    my( $hash, $keys ) = @_;
 
@@ -837,27 +839,18 @@ sub show_log{
 
 
 
+
+
+
+
+
+
+
+
 sub  print_detailed_log{
     my ($pid) = @_;
 
-my $info = undef;
-    if((!defined $pid)  || ($pid eq "") ){
-        #read the first lines of last_instance.info;
-        $info =  &CJ::retrieve_package_info();
-        $pid = $info->{'pid'};
-    }else{
-        
-        if(&CJ::is_valid_pid($pid)){
-            # read info from $run_history_file
-            $info =  &CJ::retrieve_package_info($pid);
-            if(!defined($info)){ &CJ::err("No such job found in CJ database.")};
-            
-        }else{
-            &CJ::err("incorrect usage: nothing to show");
-        }
-        
-        
-    }
+my $info = &CJ::get_info($pid);
 
 $Data::Dumper::Sortkeys = 1;
 $Data::Dumper::Terse = 1;
@@ -3061,6 +3054,29 @@ sub connect2cluster{
     system("$cmd");
     return 1;
 }
+
+sub connect_and_cd{
+    my ($pid, $verbose) = @_;
+    
+    my $info = &CJ::get_info($pid);
+    my $account = $info->{'account'};
+    my $remote_path  = $info->{'remote_path'};
+    
+    my $cmd= "ssh -t ${account} 'cd $remote_path; bash -l' ";
+    &CJ::message("system:$cmd",1) if $verbose;
+    system("$cmd");
+    return 1;
+}
+
+
+
+
+
+
+
+
+
+
 
 
 
