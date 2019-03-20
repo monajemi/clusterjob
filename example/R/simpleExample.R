@@ -9,7 +9,7 @@ library(Matrix)
 myFile = "results.csv";
 system(paste("rm ", myFile));
 
-for (i in 1:3){
+for (i in c(1,2,3)){
         for (j in 1:5){
                        # write to a csv file for testing reduce    
 					   data = sprintf("%i,%i,%i\n",i,j,i+j);          
