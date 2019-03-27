@@ -272,17 +272,33 @@ sub read_R_array_values{
     my $self = shift;
     my ($string) = @_;
     
+    
     my $floating_pattern = "[-+]?[0-9]*[\.]?[0-9]+(?:[eE][-+]?[0-9]+)?";
     my $fractional_pattern = "(?:${floating_pattern}\/)?${floating_pattern}";
     my @vals = undef;
     
-    #print $string;
-    if($string =~ /(.*c\()?[\s,]*(?<!\D)($fractional_pattern)+\s*(\))?/){
+    if( $string =~ /(.*c\()?[,\s]*(?<![\w|:])($fractional_pattern)+(?![\w|:])\s*(\))?/  ){
+        
         my ($numbers) = $string =~ /(?:.*c\()?\s*(.+)\s*(?:\))?/;
+        
         @vals = $numbers =~ /[\,]?($fractional_pattern)[\,]?/g;
         #print Dumper @vals;
         return \@vals;
+        
+        
+    }elsif($string =~ /^[^:]+:[^:]+$/){
+    
+        my @array = split( /\s*:\s*/, $string, 2 );
+        my $low  = &CJ::isnumeric($array[0]) ? $array[0]:undef ;
+        my $high = &CJ::isnumeric($array[1]) ? $array[1]:undef ;
+        @vals    = ($low..$high) if (defined($low) && defined($high));
+        
+        #print Dumper(@vals) ."\n";
+        
+        return \@vals;
+
     }else{
+        #print "its here\n";
         return undef;
     }
     
@@ -305,15 +321,17 @@ sub read_R_lohi{
     }elsif ($input =~ /\s*length\(\s*(.+)\s*\)/) {
         my $this_line = &CJ::grep_var_line($1,$TOP);
         
+        
         #extract the range
         my @this_array    = split(/\s*=\s*/,$this_line);
         my $vals = $self->read_R_array_values($this_array[1]);  # This reads the vals;
         $lohi = 1+$#{ $vals } unless not defined($vals);
         
-    }elsif($input =~ /\s*(\D+)\s*:/){
+    }elsif($input =~ /\s*(\D+)\s*/){
         # CASE var
+
         my $this_line = &CJ::grep_var_line($1,$TOP);
-        
+
         #extract the range
         my @this_array    = split(/\s*=\s*/,$this_line);
         my $vals = $self->read_R_array_values($this_array[1]);
@@ -356,12 +374,14 @@ sub read_R_index_set{
     #determine the range
     my $range;
     
-    if($right =~ /^\s*(c\(\s*.+\s*\)) )
+    if( $right =~ /^\s*(c\(\s*.+\s*\))/ ){
         #CASE: for (i in c(...) );
         
-        my $range = $self->read_R_array_values($1);
-        my @range = @{$range};
-        $range      = join(',',@range);
+        #print $1 . "\n";
+        my $vals = $self->read_R_array_values($1);
+        my @vals = @{$vals};
+        $range      = join(',',@vals);
+        
     }elsif($right =~ /^[^:]+:[^:]+$/){
         #CASE: for (i in 1:10 );
         my @rightarray = split( /\s*:\s*/, $right, 2 );
@@ -370,14 +390,18 @@ sub read_R_index_set{
         my $high = $self->read_R_lohi($rightarray[1],$TOP);
         $range      = join(',',($low..$high)) if defined($high);
         
-    }elsif($right =~ /^\s*(\w+)\s*:$/){
-            #print $1 . "\n";
+    }elsif($right =~ /^\s*(\w+)\s*$/){
+
+            #CASE: for (i in RANGE );
             my $this_line = &CJ::grep_var_line($1,$TOP);
             #extract the range
             my @this_array    = split(/\s*=\s*/,$this_line);
-            my $range = $self->read_R_array_values($this_array[1]);
-            my @range = @{$range};
-            $range      = join(',',@range);
+            my $arr = $this_array[1];
+            $arr =~  s/;$//g;
+            my $vals = $self->read_R_array_values($arr);
+            my @vals = @{$vals};
+        
+            $range      = join(',',@vals);
 
     }else{
         $range = undef;
@@ -423,16 +447,8 @@ sub findIdxTagRange{
         
         my ($idx_tag, $range) = $self->read_R_index_set($this_forline, $TOP,$verbose);
         
-        
-        print $idx_tag;
-        die;
-        #FIX
-        
         CJ::err("Index tag cannot be established for $this_forline") unless ($idx_tag);
         push @idx_tags, $idx_tag;   # This will keep order.
-        
-        
-        
         
         
         if(defined($range)){
@@ -445,10 +461,7 @@ sub findIdxTagRange{
     }
     
     
-    
-    
-    
-    
+    ########### EDITED TILL INTERPRET
     
     if ( @tags_to_R_interpret ) {
         
