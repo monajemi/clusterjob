@@ -533,13 +533,17 @@ if($@){
 my $python_interpreter_script=$TOP;
 
 
-# Add for lines
+my $tagfiles ={};
+    
+# Add forlines
 foreach my $i (0..$#{$for_lines}){
-my $tag = $tag_list->[$i];
-my $forline = $for_lines->[$i];
-chomp($forline);
+    my $tag = $tag_list->[$i];
+    my $hex = join('', map { sprintf "%X", rand(16) } 1..10);
 
-my ($level) = $forline =~ m/^(\s*).+/ ;  # determin our level of indentation
+    my $forline = $for_lines->[$i];
+    chomp($forline);
+
+    my ($level) = $forline =~ m/^(\s*).+/ ;  # determin our level of indentation
     
     
     
@@ -550,13 +554,14 @@ $forline = &CJ::remove_white_space($forline);
 my @top_lines = split /^/, $TOP;
     my $last_top_line = $top_lines[$#top_lines];
     
-my $tag_file = "\'/tmp/$tag\.tmp\'";
-  
+$tagfiles->{$tag} = "\'/tmp/$tag\_$hex\.tmp\'";
+    
+    
 $python_interpreter_script .= "${level}pass" if ( $i==0 && $last_top_line =~ /^[^:]*:\s*$/ );
     
 $python_interpreter_script .=<<PYTHON
     
-$tag\_fid = open($tag_file,'w')
+$tag\_fid = open("$tagfiles->{$tag}",'w')
 $forline$tag\_fid.write(\"%i\\n\" \% $tag);
 $tag\_fid.close()
 PYTHON
@@ -584,32 +589,33 @@ BASH
 
 
 &CJ::message("finding range of indices...",1);
+my $range=&CJ::read_idx_range_from_script($python_interpreter_bash, $tag_list, $tagfiles, $name, $junk, $verbose);
 
   
-my $range={};
-eval{
-CJ::my_system("printf '%s' $python_interpreter_bash",$verbose);
-   
-    # Read the files, and put it into $numbers
-    # open a hashref
-    foreach my $tag (@$tag_list){
-        my $tag_file = "/tmp/$tag\.tmp";
-        my $tmp_array = &CJ::readFile("$tag_file");
-        my @tmp_array  = split /\n/,$tmp_array;
-        $range->{$tag} = join(',', @tmp_array);
-        # print $range->{$tag} . "\n";
-        &CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp
-    }
-    
-};
-    
-if($@){
-    &CJ::message("*************CJ didn't succeed in running $name.**************");
-    system("cat $junk");
-    &CJ::err("Please fix the error above before submitting again. Terminating submission.")
-}
-    
-    
+#my $range={};
+#eval{
+#CJ::my_system("printf '%s' $python_interpreter_bash",$verbose);
+#   
+#    # Read the files, and put it into $numbers
+#    # open a hashref
+#    foreach my $tag (@$tag_list){
+#        my $tag_file = "/tmp/$tag\.tmp";
+#        my $tmp_array = &CJ::readFile("$tag_file");
+#        my @tmp_array  = split /\n/,$tmp_array;
+#        $range->{$tag} = join(',', @tmp_array);
+#        # print $range->{$tag} . "\n";
+#        &CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp
+#    }
+#    
+#};
+#    
+#if($@){
+#    &CJ::message("*************CJ didn't succeed in running $name.**************");
+#    system("cat $junk");
+#    &CJ::err("Please fix the error above before submitting again. Terminating submission.")
+#}
+#    
+#    
     
     
     

@@ -461,17 +461,20 @@ if($@){
 # Add top
 my $matlab_interpreter_script=$TOP;
 
-    
-# Add for lines
+my $tagfiles={};    
+# Add forlines
 foreach my $i (0..$#{$for_lines}){
     my $tag = $tag_list->[$i];
+    my $hex = join('', map { sprintf "%X", rand(16) } 1..10);
+
     my $forline = $for_lines->[$i];
     
         # print  "$tag: $forline\n";
     
-   	 my $tag_file = "\'/tmp/$tag\.tmp\'";
-$matlab_interpreter_script .=<<MATLAB
-$tag\_fid = fopen($tag_file,'w+');
+    my $tagsfiles->{$tag} = "\'/tmp/$tag\_$hex\.tmp\'";
+    
+$matlab_interpreter_script .=<<MATLAB;
+$tag\_fid = fopen($tagfiles->{$tag},'w+');
 $forline
 fprintf($tag\_fid,\'%i\\n\', $tag);
 end
@@ -484,11 +487,9 @@ my $name = "CJ_matlab_interpreter_script.m";
 &CJ::writeFile("$self->{path}/$name",$matlab_interpreter_script);
 
     
-#FIXME if this is not successful and doesnt give index.tmp, we need to issue error.
     
 my $matlab_interpreter_bash = <<BASH;
 #!/bin/bash -l
-    
     
 [[ -f "\$HOME/.bash_profile" ]] && source "\$HOME/.bash_profile"
 [[ -f "\$HOME/.bashrc" ]] && source "\$HOME/.bashrc"
@@ -509,26 +510,38 @@ BASH
     #&CJ::writeFile("$bash_path/$bash_name",$matlab_interpreter_bash);
     #&CJ::message("$bash_name is built in $bash_path");
 
-    
+ 
     
 &CJ::message("finding range of indices...",1);
-CJ::my_system("printf '%s' $matlab_interpreter_bash",$verbose);
+    
+    print $matlab_interpreter_bash . "\n"; die;
+my $range=&CJ::read_idx_range_from_script($matlab_interpreter_bash, $tag_list, $tagfiles,$name, $junk, $verbose);
+    
+#my $range={};
+#eval{
+#    CJ::my_system("printf '%s' $matlab_interpreter_bash",$verbose);
+#    # Read the files, and put it into $numbers
+#    # open a hashref
+#
+#    foreach my $tag (@$tag_list){
+#        my $tag_file = "/tmp/$tag\.tmp";
+#        my $tmp_array = &CJ::readFile("$tag_file");
+#        my @tmp_array  = split /\n/,$tmp_array;
+#        $range->{$tag} = join(',', @tmp_array);
+#        # print $range->{$tag} . "\n";
+#        &CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp  
+#    }
+#};
+#    
+#if($@){
+#        &CJ::message("*************CJ didn't succeed in running $name.**************");
+#        system("cat $junk");
+#        &CJ::err("Please fix the error above before submitting again. Terminating submission.")
+#}
+#    
+#    
+    
 &CJ::message("Closing Matlab session!",1);
-    
-    
-# Read the files, and put it into $numbers
-# open a hashref
-my $range={};
-foreach my $tag (@$tag_list){
-    my $tag_file = "/tmp/$tag\.tmp";
-    my $tmp_array = &CJ::readFile("$tag_file");
-    my @tmp_array  = split /\n/,$tmp_array;
-    $range->{$tag} = join(',', @tmp_array);
-    # print $range->{$tag} . "\n";
-	&CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp  
-}
-
-
 # remove the files you made in /tmp
 &CJ::my_system("rm -f $test_name $junk $check_path/$check_name $self->{path}/$name");
 

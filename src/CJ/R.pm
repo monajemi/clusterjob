@@ -54,8 +54,8 @@ sub parse {
 }
 close $fh;
 
-# this includes fors on one line
-my @lines = split('\n|[{]\s*(?=for)', $script_lines);
+# This includes fors on one line
+my @lines = split('\n|\{\K\s*(?=for)', $script_lines);
 
 
 my @forlines_idx_set;
@@ -337,6 +337,7 @@ sub read_R_lohi{
         my $vals = $self->read_R_array_values($this_array[1]);
         $lohi = $vals->[0];  # This reads a number;
         $lohi = undef if (!&CJ::isnumeric($lohi));
+
     }
     
     return $lohi;
@@ -386,10 +387,11 @@ sub read_R_index_set{
         #CASE: for (i in 1:10 );
         my @rightarray = split( /\s*:\s*/, $right, 2 );
         my $low  = $self->read_R_lohi($rightarray[0],$TOP);
+
         #CJ::remove_white_space($rightarray[1]);
         my $high = $self->read_R_lohi($rightarray[1],$TOP);
+
         $range      = join(',',($low..$high)) if defined($high);
-        
     }elsif($right =~ /^\s*(\w+)\s*$/){
 
             #CASE: for (i in RANGE );
@@ -415,8 +417,151 @@ return ($idx_tag, $range);
 
 
 ##################################
-sub run_python_index_interpreter{
-    ##################################
+sub run_R_index_interpreter{
+    ##############################
+        my $self = shift;
+        my ($TOP,$tag_list,$for_lines,$verbose) = @_;
+        
+        &CJ::message("Invoking R to find range of indices. Please be patient...");
+        
+        
+        # Check that the local machine has R (we currently build package locally!)
+        # Open R and eval
+        
+        my $test_name= "/tmp/CJ_R_test";
+        my $test_file = "\'$test_name\'";
+        
+my $R_check_script = <<R_CHECK;
+test_fid <-file($test_file)
+writeLines('test_passed', test_fid)
+close(test_fid)
+R_CHECK
+    
+my $check_path = "/tmp";
+my $check_name= "CJ_R_check_script.R";
+my $check_file="$check_path/$check_name";
+&CJ::writeFile($check_file,$R_check_script);
+        
+my $junk = "/tmp/CJ_R.output";
+        
+my $R_check_bash = <<CHECK_BASH;
+#!/bin/bash -l
+Rscript '$check_file'  &>$junk;
+CHECK_BASH
+        
+        
+        
+&CJ::message("Checking command 'R' is available...",1);
+    
+    
+# this will generate a file test_file
+CJ::my_system("[ -f \"~/.bash_profile\" ] && . \"~/.bash_profile\"; [ -f \"~/.bashrc\" ] && . ~/.bashrc ; printf '%s' $R_check_bash",$verbose);
+    
+eval{
+my $check = &CJ::readFile($test_name);     # this causes error if there is no file which indicates R were not found.
+#print $check . "\n";
+};
+        
+if($@){
+    #print $@ . "\n";
+    &CJ::err("CJ requires 'R' but it cannot access it on your local machine. Check 'R' command.");
+}else{
+    &CJ::message("R available.",1);
+};
+
+    
+# build a script from top to output the range of index
+    
+my $R_interpreter_script=<<LIB;
+    
+# ###########################################################################################
+# Change the behavior of library() and require() to install automatically if
+# Package needed.
+
+# Create CJ env
+.CJ <- new.env(parent=parent.env(.GlobalEnv))
+attr( .CJ , "name" ) <- "CJ_ENV"
+
+# Make .CJ the parent of the globalenv to avoid removal of
+# .CJ objects by user's rm(list=ls()) function
+parent.env(.GlobalEnv) <- .CJ
+
+# Courtesy of Narasimhan, Balasubramanian and Riccardo Murri
+# for help with this function
+.CJ\$installIfNeeded <- function(packages, ...) {
+    toInstall <- setdiff(packages, utils::installed.packages()[, 1])
+    if (length(toInstall) > 0) {
+        utils::install.packages(pkgs = toInstall,
+        repos = "https://cloud.r-project.org",
+        ...)
+    }
+}
+.CJ\$library <- function(package,...) {package<-as.character(substitute(package));.CJ\$installIfNeeded(package,...);base::library(package,...,character.only=TRUE)}
+.CJ\$require <- function(package,...) {package<-as.character(substitute(package));.CJ\$installIfNeeded(package,...);base::require(package,...,character.only=TRUE)}
+# ############################################################################################
+    
+    
+LIB
+    
+ 
+    
+# Add top
+$R_interpreter_script.=$TOP;
+
+# Add for lines
+my $tagfiles={};
+foreach my $i (0..$#{$for_lines}){
+    my $tag = $tag_list->[$i];
+    my $hex = join('', map { sprintf "%X", rand(16) } 1..10);
+
+    my $forline = $for_lines->[$i];
+    
+    # print  "$tag:$hex: $forline\n";
+    
+    $tagfiles->{$tag} = "/tmp/${tag}\_${hex}\.tmp";
+    
+$R_interpreter_script .=<<RSCRIPT
+$tag\_fid = file("$tagfiles->{$tag}");
+$forline
+write(sprintf(\'%i\', $tag),file="$tagfiles->{$tag}",append=TRUE)
+\}
+close($tag\_fid);
+RSCRIPT
+}
+
+
+my $name = "CJ_R_interpreter_script.R";
+&CJ::writeFile("$self->{path}/${name}",$R_interpreter_script);
+
+
+my $R_interpreter_bash = <<BASH;
+#!/bin/bash -l
+
+[[ -f "\$HOME/.bash_profile" ]] && source "\$HOME/.bash_profile"
+[[ -f "\$HOME/.bashrc" ]] && source "\$HOME/.bashrc"
+[[ -f "\$HOME/.profile" ]] && source "\$HOME/.profile"
+
+
+# dump everything user-generated from top in /tmp
+cd $self->{'path'}
+R --no-save <<HERE &>$junk;
+.libPaths('$self->{path}/$self->{dep_folder}');
+source('$name')
+HERE
+BASH
+
+
+&CJ::message("finding range of indices...",1);
+my $range=&CJ::read_idx_range_from_script($R_interpreter_bash, $tag_list, $tagfiles, $name, $junk, $verbose);
+
+&CJ::message("Closing R session!",1);
+
+# remove the files you made in /tmp
+&CJ::my_system("rm -f $test_name $junk $check_path/$check_name $self->{path}/$name $self->{path}/${name}.bak");
+
+print Dumper $range;
+return $range;
+
 }
 
 
@@ -433,6 +578,7 @@ sub findIdxTagRange{
     my $FOR = $parser->{FOR};
     my $TOP = $parser->{TOP};
     
+    
     # Determine the tags and ranges of the
     # indecies
     my @idx_tags;
@@ -444,9 +590,8 @@ sub findIdxTagRange{
     my @forline_list = split /^/, $FOR;
     
     for my $this_forline (@forline_list) {
-        
         my ($idx_tag, $range) = $self->read_R_index_set($this_forline, $TOP,$verbose);
-        
+
         CJ::err("Index tag cannot be established for $this_forline") unless ($idx_tag);
         push @idx_tags, $idx_tag;   # This will keep order.
         

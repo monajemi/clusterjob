@@ -2378,7 +2378,31 @@ if (&CJ::program_type($program) eq 'python') {
 
 
 
+sub read_idx_range_from_script{
+    
+    my ($script, $tag_list, $tagfile_list, $name, $junk, $verbose) = @_;
+    
+my $range={};
+eval{
+CJ::my_system("printf '%s' $script",$verbose);
+# Read the files, and put it into $numbers
+foreach my $tag (@$tag_list){
+        my $tag_file = $tagfile_list->{$tag};
+        my $tmp_array = &CJ::readFile("$tag_file");
+        my @tmp_array  = split /\n/,$tmp_array;
+        $range->{$tag} = join(',', @tmp_array);
+        # print $range->{$tag} . "\n";
+        &CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp
+    }
+};
 
+if($@){
+    &CJ::message("*************CJ didn't succeed in running $name.**************");
+    system("cat $junk");
+    &CJ::err("Please fix the error above before submitting again. Terminating submission.")
+}
+    return $range;
+}
 
 
 
@@ -2388,7 +2412,10 @@ if (&CJ::program_type($program) eq 'python') {
 sub isnumeric
 {
 my ($s) = @_;
-if($s =~ /^[0-9,.E]+$/){
+    
+if ( !defined($s) ){
+return 0;
+}elsif($s =~ /^[0-9,.E]+$/){
 return 1;
 }else{
 return 0;

@@ -884,7 +884,7 @@ sub setup_R_env{
         my $response =`ssh $ssh->{account} 'source ~/.bashrc; source ~/.bash_profile; module load $ssh->{r}' 2>$CJlog_error`;
         if($response =~ /^$/ ){
             CJ::message("$ssh->{r} available.",1);
-            CJ::message("Creating personal Rlib dir");
+            CJ::message("Creating personal Rlib dir on remote");
             my $ssh = CJ::host($self->{'machine'});
             my $libpath  = &CJ::r_lib_path($ssh);
             my $outText="[[ ! -d  \"$libpath\"  ]] && mkdir -p $libpath";

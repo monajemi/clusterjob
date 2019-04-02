@@ -9,11 +9,11 @@ library(Matrix)
 myFile = "results.csv";
 system(paste("rm ", myFile));
 
-B = c(1,3,4);
+B = c(1,9);
 L=length(B);
 
 for (i in 1:L){
-        for (j in 1:5){
+    for (j in sqrt(B)){
                        # write to a csv file for testing reduce    
 					   data = sprintf("%i,%i,%i\n",i,j,i+j);          
                        cat(data, file = myFile, append = TRUE); 
