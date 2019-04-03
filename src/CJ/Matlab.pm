@@ -469,12 +469,12 @@ foreach my $i (0..$#{$for_lines}){
 
     my $forline = $for_lines->[$i];
     
-        # print  "$tag: $forline\n";
+    #print  "$tag:$hex: $forline\n";
     
-    my $tagsfiles->{$tag} = "\'/tmp/$tag\_$hex\.tmp\'";
+    $tagfiles->{$tag} = "/tmp/$tag\_$hex\.tmp";
     
 $matlab_interpreter_script .=<<MATLAB;
-$tag\_fid = fopen($tagfiles->{$tag},'w+');
+$tag\_fid = fopen(\'$tagfiles->{$tag}\','w+');
 $forline
 fprintf($tag\_fid,\'%i\\n\', $tag);
 end
@@ -514,33 +514,8 @@ BASH
     
 &CJ::message("finding range of indices...",1);
     
-    print $matlab_interpreter_bash . "\n"; die;
 my $range=&CJ::read_idx_range_from_script($matlab_interpreter_bash, $tag_list, $tagfiles,$name, $junk, $verbose);
-    
-#my $range={};
-#eval{
-#    CJ::my_system("printf '%s' $matlab_interpreter_bash",$verbose);
-#    # Read the files, and put it into $numbers
-#    # open a hashref
-#
-#    foreach my $tag (@$tag_list){
-#        my $tag_file = "/tmp/$tag\.tmp";
-#        my $tmp_array = &CJ::readFile("$tag_file");
-#        my @tmp_array  = split /\n/,$tmp_array;
-#        $range->{$tag} = join(',', @tmp_array);
-#        # print $range->{$tag} . "\n";
-#        &CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp  
-#    }
-#};
-#    
-#if($@){
-#        &CJ::message("*************CJ didn't succeed in running $name.**************");
-#        system("cat $junk");
-#        &CJ::err("Please fix the error above before submitting again. Terminating submission.")
-#}
-#    
-#    
-    
+
 &CJ::message("Closing Matlab session!",1);
 # remove the files you made in /tmp
 &CJ::my_system("rm -f $test_name $junk $check_path/$check_name $self->{path}/$name");

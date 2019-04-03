@@ -2556,6 +2556,7 @@ sub readFile
 {
     my ($filepath)  = @_;
     
+    
     my $content;
     open(my $fh, '<', $filepath) or die "cannot open file $filepath";
     {

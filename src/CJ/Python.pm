@@ -554,14 +554,14 @@ $forline = &CJ::remove_white_space($forline);
 my @top_lines = split /^/, $TOP;
     my $last_top_line = $top_lines[$#top_lines];
     
-$tagfiles->{$tag} = "\'/tmp/$tag\_$hex\.tmp\'";
+    $tagfiles->{$tag} = "/tmp/$tag\_$hex\.tmp";
     
     
 $python_interpreter_script .= "${level}pass" if ( $i==0 && $last_top_line =~ /^[^:]*:\s*$/ );
     
 $python_interpreter_script .=<<PYTHON
     
-$tag\_fid = open("$tagfiles->{$tag}",'w')
+$tag\_fid = open(\'$tagfiles->{$tag}\','w')
 $forline$tag\_fid.write(\"%i\\n\" \% $tag);
 $tag\_fid.close()
 PYTHON
