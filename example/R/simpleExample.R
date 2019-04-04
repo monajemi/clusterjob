@@ -1,5 +1,7 @@
 # This is a test R script for CJ
 # Author: Hatef Monajemi Jan 9 2017
+ 
+#CJ -s results.csv data/results.csv
 
 rm(list=ls())
 
@@ -14,8 +16,9 @@ L=length(B);
 
 for (i in 1:L){
     for (j in sqrt(B)){
-                       # write to a csv file for testing reduce    
-					   data = sprintf("%i,%i,%i\n",i,j,i+j);          
-                       cat(data, file = myFile, append = TRUE); 
+        
+	# write to a csv file for testing reduce    
+	data = sprintf("%i,%i,%i\n",i,j,i+j);          
+        cat(data, file = myFile, append = TRUE); 
  }
 }

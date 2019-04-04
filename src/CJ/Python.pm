@@ -591,41 +591,10 @@ BASH
 &CJ::message("finding range of indices...",1);
 my $range=&CJ::read_idx_range_from_script($python_interpreter_bash, $tag_list, $tagfiles, $name, $junk, $verbose);
 
-  
-#my $range={};
-#eval{
-#CJ::my_system("printf '%s' $python_interpreter_bash",$verbose);
-#   
-#    # Read the files, and put it into $numbers
-#    # open a hashref
-#    foreach my $tag (@$tag_list){
-#        my $tag_file = "/tmp/$tag\.tmp";
-#        my $tmp_array = &CJ::readFile("$tag_file");
-#        my @tmp_array  = split /\n/,$tmp_array;
-#        $range->{$tag} = join(',', @tmp_array);
-#        # print $range->{$tag} . "\n";
-#        &CJ::my_system("rm -f $tag_file", $verbose) ; #clean /tmp
-#    }
-#    
-#};
-#    
-#if($@){
-#    &CJ::message("*************CJ didn't succeed in running $name.**************");
-#    system("cat $junk");
-#    &CJ::err("Please fix the error above before submitting again. Terminating submission.")
-#}
-#    
-#    
-    
-    
-    
     
 &CJ::message("Closing Python session!",1);
 
 
-    
-    
-    
     
 # remove the files you made in /tmp
 &CJ::my_system("rm -f $test_name $junk $check_path/$check_name $self->{path}/$name.py");
@@ -815,30 +784,6 @@ return @CJbang;
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-############################## UP TO HERE EDITED  FOR PY #####################
-
-
-
-
-
 ##########################
 sub check_initialization{
 ##########################
@@ -857,7 +802,7 @@ sub check_initialization{
     my @pattern;
     foreach my $tag (@$tag_list){
     # grep the line that has this tag as argument
-    push @pattern, "\\(.*\\b$tag\\b\.*\\)\|\\{.*\\b$tag\\b\.*\\}";
+    push @pattern, "\\(.*\\b$tag\\b\.*\\)\|\\{.*\\b$tag\\b\.*\\}\|\\[.*\\b$tag\\b\.*\\]";
     }
     my $pattern = join("\|", @pattern);
     

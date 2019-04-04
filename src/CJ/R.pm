@@ -266,6 +266,169 @@ return $script;
 
 
 
+
+
+
+
+####################### WRITE THIS FUNC
+
+##########################
+sub CJrun_par_body_script{
+    ##########################
+    
+    my $self = shift;
+    my ($ssh) = @_;
+    
+    #my $WordCountExpr = getPIDJobCountExpr($ssh);
+    
+    # Determine easy_install version
+    my $python_version_tag = "";
+    &CJ::err("python module not defined in ssh_config file.") if not defined $ssh->{'py'};
+    
+    if( $ssh->{'py'} =~ /python\D?((\d.\d).\d)/i ) {
+        $python_version_tag = "-".$2;
+    }elsif( $ssh->{'py'} =~ /python\D?(\d.\d)/i ){
+        $python_version_tag = "-".$1;
+    }else{
+        CJ::err("Cannot decipher pythonX.Y.Z version");
+    }
+    
+    my $user_required_pyLib = join (" ", split(":",$ssh->{'pylib'}) );
+    
+    my $script =<<'BASH';
+    
+    # activate python venv
+    source activate <PY_VENV>
+    
+    python <<HERE
+    
+    # make sure each run has different random number stream
+    import os,sys,pickle,numpy,random;
+    
+    # Add path for parrun
+    deli  = "/";
+    path  = os.getcwd();
+    path  = path.split(deli);
+    path.pop();
+    sys.path.append(deli.join(path));
+    
+    #GET A RANDOM SEED FOR THIS COUNTER
+    numpy.random.seed(${COUNTER});
+    seed_0 = numpy.random.randint(10**6);
+    mydate = numpy.datetime64('now');
+    #sum(100*clock)
+    seed_1 = numpy.sum(100*numpy.array([mydate.astype(object).year, mydate.astype(object).month, mydate.astype(object).day, mydate.astype(object).hour, mydate.astype(object).minute, mydate.astype(object).second]));
+    #seed = sum(100*clock) + randi(10^6);
+    seed = seed_0 + seed_1;
+    
+    
+    # Set the seed for python and numpy (for reproducibility purposes);
+    random.seed(seed);
+    numpy.random.seed(seed);
+    
+    CJsavedState = {'myversion': sys.version, 'mydate':mydate, 'numpy_CJsavedState': numpy.random.get_state(), 'CJsavedState': random.getstate()}
+    
+    fname = "$DIR/CJrandState.pickle";
+    with open(fname, 'wb') as RandStateFile:
+    pickle.dump(CJsavedState, RandStateFile);
+    
+    # del vars that we create tmp
+    del deli,path,seed_0,seed_1,seed,CJsavedState;
+    
+    # CJsavedState = pickle.load(open('CJrandState.pickle','rb'));
+    
+    os.chdir("$DIR")
+    import ${PROGRAM};
+    #exec(open('${PROGRAM}').read())
+    
+    exit();
+    HERE
+    
+    
+    
+    
+    # Freeze the environment after you installed all the modules
+    # Reproduce with:
+    #      conda create --yes -n python_venv_$PID --file req.txt
+    TOPDIR="$(dirname ${DIR})"
+    if [ ! -f "\${TOPDIR}/${PID}_py_conda_req.txt" ]; then
+    conda list -e > \${TOPDIR}/${PID}_py_conda_req.txt
+    fi
+    
+    
+    # Get out of virtual env and remove it
+    source deactivate
+    
+    
+    BASH
+    
+    
+    my $venv_name = "CJ_python_venv";
+    $script =~ s|<PY_VENV>|$venv_name|;
+    
+    
+    
+    
+    return $script;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ################################
 sub read_R_array_values{
     ################################
@@ -559,7 +722,6 @@ my $range=&CJ::read_idx_range_from_script($R_interpreter_bash, $tag_list, $tagfi
 # remove the files you made in /tmp
 &CJ::my_system("rm -f $test_name $junk $check_path/$check_name $self->{path}/$name $self->{path}/${name}.bak");
 
-print Dumper $range;
 return $range;
 
 }
@@ -639,6 +801,133 @@ sub uncomment_R_line{
     $line =~ s/^(?:(?![\"|\']).)*\K\#(.*)//;
     return $line;
 }
+
+
+#############################
+sub buildParallelizedScript{
+    #############################
+    my $self = shift;
+    my ($TOP,$FOR,$BOT,@tag_idx) = @_;
+    
+    my @str;
+    while(@tag_idx){
+        my $tag = shift @tag_idx;
+        my $idx = shift @tag_idx;
+        push @str , " $tag != $idx ";
+    }
+    
+    my $str = join('||',@str);
+    
+    my $INSERT = "if ($str){next}";
+    
+    my $new_script = "$TOP\n$FOR\n$INSERT\n$BOT";
+    
+    # if there is #CJ -s directive do the substitute
+    # This is good for including remote data for parrun
+    $new_script = $self->_CJbang_substitute($new_script);
+    
+    undef $INSERT;    
+    return $new_script;
+    
+}
+
+#######################
+sub _CJbang_substitute{
+    #######################
+    my $self = shift;
+    my ($script) = @_;
+    
+    my @CJbang=$self->get_CJbang();
+    
+    foreach my $bang (@CJbang){
+        # subs
+        if($bang =~ m/^-s\s*(.*)/){
+            my @tmp = split(/\s/, $1);
+            &CJ::err('I expected 2 inputs but got 1 in #CJ -s directive.') if ($#tmp < 1 );
+            my $first  = shift @tmp;
+            my $second = shift @tmp;
+            eval{$script =~ s/$first/$second/g;};
+            &CJ::err('$bang generated invalid regexp $sub') if $@;
+        }else{
+            CJ::err("I don't recognize option '#CJ $bang'.");
+        }
+        
+    }
+    
+    
+    return $script;
+    
+}
+
+
+
+#####################
+sub get_CJbang {
+    #####################
+    my $self = shift;
+    
+    my @CJbang;
+    open my $fh, "$self->{path}/$self->{program}" or CJ::err("Couldn't open file: $!");
+    while(<$fh>){
+        
+        #if line starts with CJbang, keep them in CJbang!
+        
+        if($_ =~ /^\#CJ\s*(.*)$/){
+            push @CJbang, $1;
+    }
+}
+close $fh;
+
+
+return @CJbang;
+
+}
+
+
+
+
+##########################
+sub check_initialization{
+    ##########################
+    my $self = shift;
+    
+    my ($parser,$tag_list,$verbose) = @_;
+    
+    my $BOT = $parser->{BOT};
+    my $TOP = $parser->{TOP};
+    
+    
+    
+    my @BOT_lines = split /\n/, $BOT;
+    
+    
+    my @pattern;
+    foreach my $tag (@$tag_list){
+        # grep the line that has this tag as argument
+        push @pattern, "\\(.*\\b$tag\\b\.*\\)\|\\{.*\\b$tag\\b\.*\\}\|\\[.*\\b$tag\\b\.*\\]";
+    }
+    my $pattern = join("\|", @pattern);
+    
+    my @vars;
+    foreach my $line (@BOT_lines) {
+        
+        if($line =~ /(.*)(${pattern})\s*\={1}/){
+            my @tmp  = split "\\(|\\{", $line;
+            my $var  = $tmp[0];
+            #print "$line\n${pattern}:  $var\n";
+            $var =~ s/^\s+|\s+$//g;
+            push @vars, $var;
+        }
+    }
+    
+    foreach(@vars)
+    {
+        my $line = &CJ::grep_var_line($_,$TOP);
+    }
+    
+}
+
+
 
 
 
