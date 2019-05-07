@@ -175,9 +175,10 @@ CJ::writeFile("$self->{path}/$rp_program", $rp_program_script);
 
 #######################
 sub CJrun_body_script{
-    #######################
+    ###################
+    
     my $self = shift;
-    my ($ssh, $machine) = @_;
+    my ($ssh) = @_;
     
 # Find R libpath
 my $libpath  = &CJ::r_lib_path($ssh);
@@ -263,109 +264,109 @@ return $script;
 
 
 
-
-
-
-
-
-
-
-####################### WRITE THIS FUNC
-
 ##########################
 sub CJrun_par_body_script{
-    ##########################
+##########################
     
     my $self = shift;
     my ($ssh) = @_;
+ 
     
-    #my $WordCountExpr = getPIDJobCountExpr($ssh);
     
-    # Determine easy_install version
-    my $python_version_tag = "";
-    &CJ::err("python module not defined in ssh_config file.") if not defined $ssh->{'py'};
     
-    if( $ssh->{'py'} =~ /python\D?((\d.\d).\d)/i ) {
-        $python_version_tag = "-".$2;
-    }elsif( $ssh->{'py'} =~ /python\D?(\d.\d)/i ){
-        $python_version_tag = "-".$1;
-    }else{
-        CJ::err("Cannot decipher pythonX.Y.Z version");
+    
+# Find R libpath
+my $libpath  = &CJ::r_lib_path($ssh);
+
+
+my $script =<<BASH;
+
+# load R if there is LMOD installed
+if [ \$(type -t module)=='function' ]; then
+module load <R_MODULE>
+echo "loaded module <R_MODULE> "
+fi
+
+
+R --no-save <<'HERE'
+
+.libPaths("<RLIBPATH>")
+# ###########################################################################################
+# Change the behavior of library() and require() to install automatically if
+# Package needed.
+
+# Create CJ env
+.CJ <- new.env(parent=parent.env(.GlobalEnv))
+attr( .CJ , "name" ) <- "CJ_ENV"
+attr( .CJ , "path" ) <- "<RLIBPATH>"
+
+# Make .CJ the parent of the globalenv to avoid removal of
+# .CJ objects by user's rm(list=ls()) function
+parent.env(.GlobalEnv) <- .CJ
+
+# Courtesy of Narasimhan, Balasubramanian and Riccardo Murri
+# for help with this function
+.CJ\\\$installIfNeeded <- function(packages, ...) {
+    toInstall <- setdiff(packages, utils::installed.packages()[, 1])
+    if (length(toInstall) > 0) {
+        utils::install.packages(pkgs = toInstall,
+        repos = "https://cloud.r-project.org",
+        lib = "<RLIBPATH>",
+        ...)
     }
+}
+.CJ\\\$library <- function(package,...) {package<-as.character(substitute(package));.CJ\\\$installIfNeeded(package,...);base::library(package,...,character.only=TRUE)}
+.CJ\\\$require <- function(package,...) {package<-as.character(substitute(package));.CJ\\\$installIfNeeded(package,...);base::require(package,...,character.only=TRUE)}
+#############################################################################################
+
+
+# make sure each run has different random number stream
+set.seed(${COUNTER});
+seed_0 = sample(10^6,1);
+mydate = Sys.time();
+#sum(100*clock)
+seed_1 <- sum(100*c(as.integer(format(mydate,"%Y")), as.integer(format(mydate,"%m")), as.integer(format(mydate,"%d")),
+as.integer(format(mydate,"%H")), as.integer(format(mydate,"%M")),  as.integer(format(mydate,"%S")) ))
+
+seed = seed_0 + seed_1;
     
-    my $user_required_pyLib = join (" ", split(":",$ssh->{'pylib'}) );
-    
-    my $script =<<'BASH';
-    
-    # activate python venv
-    source activate <PY_VENV>
-    
-    python <<HERE
-    
-    # make sure each run has different random number stream
-    import os,sys,pickle,numpy,random;
-    
-    # Add path for parrun
-    deli  = "/";
-    path  = os.getcwd();
-    path  = path.split(deli);
-    path.pop();
-    sys.path.append(deli.join(path));
-    
-    #GET A RANDOM SEED FOR THIS COUNTER
-    numpy.random.seed(${COUNTER});
-    seed_0 = numpy.random.randint(10**6);
-    mydate = numpy.datetime64('now');
-    #sum(100*clock)
-    seed_1 = numpy.sum(100*numpy.array([mydate.astype(object).year, mydate.astype(object).month, mydate.astype(object).day, mydate.astype(object).hour, mydate.astype(object).minute, mydate.astype(object).second]));
-    #seed = sum(100*clock) + randi(10^6);
-    seed = seed_0 + seed_1;
-    
-    
-    # Set the seed for python and numpy (for reproducibility purposes);
-    random.seed(seed);
-    numpy.random.seed(seed);
-    
-    CJsavedState = {'myversion': sys.version, 'mydate':mydate, 'numpy_CJsavedState': numpy.random.get_state(), 'CJsavedState': random.getstate()}
-    
-    fname = "$DIR/CJrandState.pickle";
-    with open(fname, 'wb') as RandStateFile:
-    pickle.dump(CJsavedState, RandStateFile);
-    
-    # del vars that we create tmp
-    del deli,path,seed_0,seed_1,seed,CJsavedState;
-    
-    # CJsavedState = pickle.load(open('CJrandState.pickle','rb'));
-    
-    os.chdir("$DIR")
-    import ${PROGRAM};
-    #exec(open('${PROGRAM}').read())
-    
-    exit();
-    HERE
+# Set the seed for R
+set.seed(seed);
+CJsavedState = list("myversion"=version, "mydate"=mydate, 'CJsavedState'=.Random.seed)
+fname = "\$DIR/CJrandState.Rd";
+save(CJsavedState,file=fname)
+
+# later use:
+# CJsavedState = load("CJrandState.Rd");
+
+setwd("\$DIR")
+
+source("\${PROGRAM}");
+
+# Save session info for loading packages later in Reproducible code
+r_session_info <- sessionInfo()
+save(r_session_info, file="sessionInfo.Rd")
+
+HERE
+
+
+BASH
+
+
+$script =~ s|<R_MODULE>|$ssh->{'r'}|g;
+$script =~ s|<RLIBPATH>|$libpath|g;
+
+
     
     
     
-    
-    # Freeze the environment after you installed all the modules
-    # Reproduce with:
-    #      conda create --yes -n python_venv_$PID --file req.txt
-    TOPDIR="$(dirname ${DIR})"
-    if [ ! -f "\${TOPDIR}/${PID}_py_conda_req.txt" ]; then
-    conda list -e > \${TOPDIR}/${PID}_py_conda_req.txt
-    fi
-    
-    
-    # Get out of virtual env and remove it
-    source deactivate
-    
-    
-    BASH
-    
-    
-    my $venv_name = "CJ_python_venv";
-    $script =~ s|<PY_VENV>|$venv_name|;
-    
+# Add path for parrun
+deli  = "/";
+path  = os.getcwd();
+path  = path.split(deli);
+path.pop();
+sys.path.append(deli.join(path));
+
     
     
     

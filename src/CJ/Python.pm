@@ -239,21 +239,19 @@ sub CJrun_par_body_script{
     my $self = shift;
     my ($ssh) = @_;
  
-    #my $WordCountExpr = getPIDJobCountExpr($ssh);
-    
-    # Determine easy_install version
-    my $python_version_tag = "";
-    &CJ::err("python module not defined in ssh_config file.") if not defined $ssh->{'py'};
-    
-    if( $ssh->{'py'} =~ /python\D?((\d.\d).\d)/i ) {
-        $python_version_tag = "-".$2;
-    }elsif( $ssh->{'py'} =~ /python\D?(\d.\d)/i ){
-        $python_version_tag = "-".$1;
-    }else{
-        CJ::err("Cannot decipher pythonX.Y.Z version");
-    }
-
-    my $user_required_pyLib = join (" ", split(":",$ssh->{'pylib'}) );
+#my $WordCountExpr = getPIDJobCountExpr($ssh);
+#        # Determine easy_install version
+#        my $python_version_tag = "";
+#        &CJ::err("python module not defined in ssh_config file.") if not defined $ssh->{'py'};
+#        
+#        if( $ssh->{'py'} =~ /python\D?((\d.\d).\d)/i ) {
+#            $python_version_tag = "-".$2;
+#        }elsif( $ssh->{'py'} =~ /python\D?(\d.\d)/i ){
+#            $python_version_tag = "-".$1;
+#        }else{
+#            CJ::err("Cannot decipher pythonX.Y.Z version");
+#        }
+# my $user_required_pyLib = join (" ", split(":",$ssh->{'pylib'}) );
     
 my $script =<<'BASH';
     
