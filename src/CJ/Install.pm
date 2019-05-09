@@ -18,7 +18,7 @@ sub new {
  	my $class= shift;
     my ($app,$machine,$path) = @_;
     
-    $path //= "CJinstalled";  #SOME_DEFAULT # This path relative to ~/
+    $path //= $app_install_dir; #"CJinstalled";  #SOME_DEFAULT # This path relative to ~/
     
     my $self = bless {
         app  => $app,

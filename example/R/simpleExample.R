@@ -8,8 +8,18 @@ rm(list=ls())
 library(ggplot2)
 library(Matrix)
 
+
+# only for testing purposes
+dir.create("data");
+
+# source for testing purposes
+source("sourceTest.R");
+
+
+
 myFile = "results.csv";
 system(paste("rm ", myFile));
+
 
 B = c(1,9);
 L=length(B);

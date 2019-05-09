@@ -273,8 +273,6 @@ sub CJrun_par_body_script{
  
     
     
-    
-    
 # Find R libpath
 my $libpath  = &CJ::r_lib_path($ssh);
 
@@ -321,7 +319,7 @@ parent.env(.GlobalEnv) <- .CJ
 
 
 # make sure each run has different random number stream
-set.seed(${COUNTER});
+set.seed(\${COUNTER});
 seed_0 = sample(10^6,1);
 mydate = Sys.time();
 #sum(100*clock)
@@ -356,18 +354,13 @@ BASH
 $script =~ s|<R_MODULE>|$ssh->{'r'}|g;
 $script =~ s|<RLIBPATH>|$libpath|g;
 
+    # Add path for parrun
+    #deli  = "/";
+    #path  = os.getcwd();
+    #path  = path.split(deli);
+    #path.pop();
+    #sys.path.append(deli.join(path));
 
-    
-    
-    
-# Add path for parrun
-deli  = "/";
-path  = os.getcwd();
-path  = path.split(deli);
-path.pop();
-sys.path.append(deli.join(path));
-
-    
     
     
     return $script;
