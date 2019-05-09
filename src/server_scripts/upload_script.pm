@@ -1,4 +1,4 @@
-use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
+use Archive::Tar;
 use LWP::UserAgent ();
 use HTTP::Request::Common qw(DELETE PUT GET POST);
 use JSON;
@@ -9,7 +9,7 @@ use warnings;
 sub orchastrate_upload{
     my ($cj_id, $pid, $code) = @_;	
     my $agent = LWP::UserAgent->new;
-    my $zipedFile = compress($code);
+    my $zipedFile = compress($code, $pid);
     my $upload_url = get_upload_url($zipedFile, $cj_id, $pid, $agent);
     my $status = get_status($upload_url, $agent, $zipedFile);
     my $offset = 0;
@@ -57,18 +57,16 @@ sub get_status{
 }
 
 sub compress{
-    my ($code) = @_;	
+    my ($code, $pid) = @_;	
     # Get and validate the file
-    my $zip;
+    my $tar;
     if(-e $code){
         print "Code File Valid - Compressing";
         # Compress the file
-        $zip = Archive::Zip->new();
-        my $dir_member = $zip->addTree( $code, 'experiment' );
-        unless ( $zip->writeToFileNamed('someZip.zip') == AZ_OK ) {
-            die 'Failed to Compress Directory - write error';
-        }
-        return 'someZip.zip';
+        $tar = Archive::Tar->new();
+        my $dir_member = $tar->add_files( $code );
+        $tar->write("$pid.tar");
+        return "$pid.tar";
     }else{
         print "File Path Invalid";
         return "";

@@ -1,0 +1,10 @@
+[Unit]
+Description=CJ Hub
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+User=ubuntu
+ExecStart=/tmp/$pid/cj_hub_service.pm

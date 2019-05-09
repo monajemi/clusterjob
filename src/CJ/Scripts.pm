@@ -10,6 +10,7 @@ use CJ::CJVars;
 use CJ::Matlab;
 use CJ::R;
 use CJ::Python;
+use CJ::Hub;
 use feature 'state';
 use feature 'say';
 

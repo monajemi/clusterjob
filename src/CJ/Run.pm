@@ -277,7 +277,7 @@ $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
 # copy tar.gz file to remoteDir
 $cmd = "rsync -avz ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
 # Copy the upload script
-$cmd = "rsync -avz $localDir/server_script/upload_script.pm $ssh->{account}:$remoteDir/";
+# $cmd = "rsync -avz $localDir/server_script/upload_script.pm $ssh->{account}:$remoteDir/";
 &CJ::my_system($cmd,$self->{verbose});
     
 &CJ::message("extracting package...");
