@@ -10,7 +10,7 @@ use warnings;
 sub orchastrate_upload{
     my ($cj_id, $pid, $code) = @_; # TODO code -> path
     my $agent = LWP::UserAgent->new;
-    my @files = ('EXPR');
+    my @files = ('EXPR', 'EXPCJ', 'RESULTS');
     compress_expr($code, $pid);
     compress_expcj($code, $pid);
     my @expcj_tree = Archive::Tar->new("EXPCJ.tar.gz")->list_files();
@@ -56,9 +56,81 @@ sub get_status{
             "Content-Range" =>  "bytes */$file_size",
         )
     );
+    
+    print "\nLocation Link info \n\n";
+    # print Dumper($status);
 
     return $status;
 }
+
+
+sub get_upload_url{
+    my ($zipedFile, $cj_id, $name, $pid, $agent) = @_;
+    my %payload = (
+        pid => $pid,
+        filename => $name,
+        contentType => 'multipart/form-data',
+        "Content-Length" => -s $zipedFile,
+         cj_id => $cj_id,
+    );
+
+    # print("This is the UPLOAD URL Data: \n");
+    # print(Dumper(encode_json(\%payload)));
+
+
+    my $upload_url = $agent->request(
+        POST(
+            "https://us-central1-united-pier-211422.cloudfunctions.net/getSignedResUrl", 
+            Content_Type => 'application/json', 
+            Content => encode_json(\%payload)
+        )
+    );
+
+    if($upload_url->is_success){
+        return $upload_url->decoded_content;
+    }else{
+        die Dumper($upload_url);
+    }
+}
+
+sub upload_file {
+    my ($zipedFile, $agent, $upload_url, $offset, $cj_id) = @_;
+    my $size = -s $zipedFile;
+    my $buffer;
+    my $openZiped;
+
+    open $openZiped, $zipedFile;
+    sysread($openZiped, $buffer, $size - $offset, $offset);
+
+
+    # FIXME: Make sure resumability works
+    my $put_request = 
+        PUT(
+            $upload_url, 
+            Content_Type => 'form-data', 
+            Content =>  $buffer,
+            Header => {
+                "Content-Length" => -s $buffer,
+                "Content-Range" =>  "bytes $offset-$size"
+            }
+        );
+
+    print "\nUploading\n";
+    my $file_upload = $agent->request($put_request);
+
+    if($file_upload->is_success){
+        print "File Uploaded Successfully";
+        return 200;
+    }
+
+    return $file_upload->status_line;
+
+    return 500;
+
+}
+
+
+# Compression and File Manipulation on the Cluster
 
 sub compress_expr{
     my ($code, $pid) = @_;	
@@ -115,70 +187,6 @@ sub compress_expcj{
     gzip_tar("EXPCJ.tar");
 }
 
-
-
-
-sub get_upload_url{
-    my ($zipedFile, $cj_id, $name, $pid, $agent) = @_;
-    my %payload = (
-        pid => $pid,
-        filename => $name,
-        contentType => 'multipart/form-data',
-        "Content-Length" => -s $zipedFile,
-         cj_id => $cj_id,
-    );
-
-
-    my $upload_url = $agent->request(
-        POST(
-            "https://us-central1-united-pier-211422.cloudfunctions.net/getSignedResUrl", 
-            Content_Type => 'application/json', 
-            Content => encode_json(\%payload)
-        )
-    );
-
-    if($upload_url->is_success){
-        return $upload_url->decoded_content;
-    }else{
-        die Dumper($upload_url);
-    }
-}
-
-sub upload_file {
-    my ($zipedFile, $agent, $upload_url, $offset, $cj_id) = @_;
-    my $size = -s $zipedFile;
-    my $buffer;
-    my $openZiped;
-
-    open $openZiped, $zipedFile;
-    sysread($openZiped, $buffer, $size - $offset, $offset);
-
-
-    my $put_request = 
-        PUT(
-            $upload_url, 
-            Content_Type => 'form-data', 
-            Content => [
-                file => $buffer,
-                "Content-Length" => $size,
-                "Content-Range" =>  "bytes $offset-$size"
-            ]
-        );
-
-    print "\nUploading\n";
-    my $file_upload = $agent->request($put_request);
-
-    if($file_upload->is_success){
-        print "File Uploaded Successfully";
-        return 200;
-    }
-
-    return $file_upload->status_line;
-
-    return 500;
-
-}
-
 sub get_cjdir_files{
     my ($directory_name) = @_;
     my @paths;
@@ -209,7 +217,7 @@ sub get_cjdir_files{
     find( \&wanted_cjrand, $directory_name);
 
 
-    print("EXPCJ: This is the directory paths for this directory $directory_name \n @paths \n\n");
+    # print("EXPCJ: This is the directory paths for this directory $directory_name \n @paths \n\n");
 
     return \@paths;
 }
@@ -232,7 +240,7 @@ sub directory_path_list{
     find( \&wanted_dir, $directory_name);
 
 
-    print("EXPR: This is the directory paths for this directory $directory_name \n @paths \n\n");
+    # print("EXPR: This is the directory paths for this directory $directory_name \n @paths \n\n");
 
     return \@paths;
 }
@@ -262,6 +270,9 @@ sub gzip_tar{
     my ($tar_file_name) = @_;
     system("gzip $tar_file_name");
 }
+
+
+# Start the Upload
 
 my ($cj_id, $pid, $code) = @ARGV;
 orchastrate_upload($cj_id, $pid, $code);

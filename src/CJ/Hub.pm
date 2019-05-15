@@ -19,34 +19,21 @@ sub new{
     return $self;
 }
 
-sub install_requirements {
-    my $self = shift;
-    my ($ssh, $verbose) = @_;
-    # Setup local::lib
-    # Install LWP::UserAgent, JSON
-    # my $install_local_lib = 
-    # &CJ::my_system($install_local_lib, $verbose);
-}
 
 sub create_and_upload {
     my $self = shift;
     my ($verbose) = @_;
 
-    my $pid = $self->{pid};
-
-    print("Testing");
-    my $info = &CJ::retrieve_package_info($pid);
+    my $info = &CJ::retrieve_package_info($self->{pid});
+    my $pid = $info->{pid};
     my $ssh = CJ::host($info->{machine});
-    my $cj_install = CJ::Install->new("perl_modules",$info->{machine},undef);
-    $cj_install->__local_lib();
-    $cj_install->__libssl();
-    $cj_install->__lwp_useragent();
-    $cj_install->__json();
 
-    # $self->install_requirements($ssh, $verbose);
+    my ($program_name, $extension) = &CJ::remove_extension($info->{program});
+
+    &CJ::message("$ssh->{remote_repo}");
 
     # Upload server_scripts/upload_script.pm to the server
-    my $cmd = "scp $hub_scripts_dir/upload_script.pm $ssh->{account}:/tmp";
+    my $cmd = "scp $hub_scripts_dir/upload_script.pm $ssh->{account}:$ssh->{remote_repo}/$program_name";
     &CJ::my_system($cmd, $verbose);
     my $ssh_upload = "ssh $ssh->{account} -t '";
     my $env_var = '
@@ -56,9 +43,9 @@ sub create_and_upload {
         PERL_MB_OPT="--install_base \"/home/ubuntu/perl5\""; export PERL_MB_OPT;
         PERL_MM_OPT="INSTALL_BASE=/home/ubuntu/perl5"; export PERL_MM_OPT;
     ';
-    my $run_upload = "perl /tmp/upload_script.pm $CJID $pid $ssh->{remote_repo} > uploadLog.txt'";
+    # TODO FIX THIS HARDCODING
+    my $run_upload = "cd $ssh->{remote_repo}/$program_name; perl $ssh->{remote_repo}/$program_name/upload_script.pm $CJID $pid $ssh->{remote_repo}/$program_name'";
     &CJ::my_system($ssh_upload.' '.$env_var.' '.$run_upload, $verbose);
-#     $self->{"master_script"} .= "perl /tmp/$pid/upload_script.pm $CJID $pid $info > uploadLog.txt";
 }
 
 sub send {
