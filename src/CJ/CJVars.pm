@@ -60,7 +60,7 @@ our $lastSync_file      = "$info_dir/last_sync";
 our $save_info_file     = "$info_dir/save.info";
 our $ssh_config_file    = "$install_dir/ssh_config";
 our $remote_config_file = "$install_dir/cj_config";
-our $firebase_name		= "united-pier-211422";
+our $firebase_name		= "clusterjob-78552";
 
 our $app_list_file      = "$src_dir/.app_list";
 our $ssh_config_md5     = "$install_dir/.ssh_config.md5";
@@ -68,7 +68,7 @@ our $app_install_dir    = "~/CJinstalled";
 
 
 # Database related. Hard-coded. User need not to worry about this. Not sensitive info.
-our $CJ_API_KEY="AIzaSyApmtDe5Ij_1OTinS1g48u-46P76-7eeTs";
+our $CJ_API_KEY="AIzaSyDWxanHy2j8rWjeXYjJF4tULX60d1Siq9A";
 
 
 # Read AgentID
@@ -112,7 +112,6 @@ if($KEY){
 }
 
 
-$CJ_API_KEY='AIzaSyApmtDe5Ij_1OTinS1g48u-46P76-7eeTs';
 
 # Export global variables
 our @EXPORT = qw( $lastSync_file $local_push_timestamp_file $pid_timestamp_file $firebase_name $AgentIDPATH $AgentID $CJID $CJKEY $CJ_API_KEY $info_dir $src_dir $install_dir $localPrefix $savePrefix $last_instance_file $get_tmp_dir $history_file $cmd_history_file $run_history_file $save_info_file $ssh_config_file $remote_config_file $CJerrorlog $CJlog_dir $CJlog_out $CJlog_error $localIP $localUserName $app_list_file $ssh_config_md5 $app_install_dir $hub_scripts_dir);
