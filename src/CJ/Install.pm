@@ -119,7 +119,7 @@ BASH
 sub __libssl{
     my $self=shift;
     my $ssh = CJ::host($self->{'machine'});
-    &CJ::message("Open SSL must be installed for CJ Hub to work",1);
+    &CJ::message("Open SSL must be installed for CJHub to work",1);
     my $cmd = "ssh $ssh->{account} 'sudo apt-get install libssl-dev'";
     &CJ::my_system($cmd,1);
 }

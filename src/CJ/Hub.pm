@@ -7,7 +7,10 @@ use CJ::CJVars;
 use CJ::Install;
 use Data::Dumper;
 use LWP::Simple;
+use HTTP::Request::Common qw(POST);
 use JSON;
+use HTTP::Thin;
+
 
 
 
@@ -56,21 +59,22 @@ sub send {
     $self->create_and_upload()
 }
 
-# sub share{
-#     my $self = shift;
-#     my ($shared_with) = @_;
-#     my $url = 'https://us-central1-united-pier-211422.cloudfunctions.net/share';
+sub share{
+    my $self = shift;
+    my ($shared_with) = @_;
+    my $url = 'https://us-central1-united-pier-211422.cloudfunctions.net/sharePID';
     
-#     my %payload = (
-#         "cjid" => CJID,
-#         "cjpass" => CJKEY,
-#         "pid" => $self->{pid},
-#         "permission" => 1111,
-#         "shared_with" => $shared_with
-#     );
+    my %payload = (
+        "cjid" => $CJID,
+        "cjpass" => $CJKEY,
+        "pid" => $self->{pid},
+        "permission_val" => 1111,
+        "shared_with" => $shared_with
+    );
     
-#     my $call = POST($url, Content => encode_json(\%payload), Content_Type => 'JSON(application/json)');
-# }
+    my $call = POST($url, Content => encode_json(\%payload), Content_Type => 'application/json');
+    print Dumper(HTTP::Thin->new()->request($call)->decoded_content);
+}
 
 sub receive{
     my $self = shift;

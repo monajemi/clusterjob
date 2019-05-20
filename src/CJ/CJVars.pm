@@ -64,7 +64,7 @@ our $firebase_name		= "united-pier-211422";
 
 our $app_list_file      = "$src_dir/.app_list";
 our $ssh_config_md5     = "$install_dir/.ssh_config.md5";
-our $app_install_dir    = "CJinstalled";
+our $app_install_dir    = "~/CJinstalled";
 
 
 # Database related. Hard-coded. User need not to worry about this. Not sensitive info.
