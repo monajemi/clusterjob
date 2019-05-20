@@ -90,12 +90,16 @@ BASH
 
 sub __setup_cj_hub{
     my $self = shift;
+    &CJ::message("Starting Parallel Process to Install CJ Hub Requirements on Cluster",1);
+
 my $install_bash_script  =<<'BASH';
-    wget http://search.cpan.org/CPAN/authors/id/A/AP/APEIRON/local-lib-1.005001.tar.gz
-    tar zxf local-lib-1.005001.tar.gz
-    cd ~/local-lib-1.005001
-    perl Makefile.PL --bootstrap
-    make test && make install
+    if ! test -f "~/local-lib-1.005001"; then
+        wget http://search.cpan.org/CPAN/authors/id/A/AP/APEIRON/local-lib-1.005001.tar.gz
+        tar zxf local-lib-1.005001.tar.gz
+        cd ~/local-lib-1.005001
+        perl Makefile.PL --bootstrap
+        make test && make install
+    fi
     echo 'eval $(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)' >>~/.bashrc
     PATH="/home/ubuntu/perl5/bin${PATH:+:${PATH}}"; export PATH;
     PERL5LIB="/home/ubuntu/perl5/lib/perl5${PERL5LIB:+:${PERL5LIB}}"; export PERL5LIB;

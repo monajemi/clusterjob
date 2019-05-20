@@ -1487,6 +1487,10 @@ sub get_print_state
 	
 	
     my $info = &CJ::get_info($pid);
+    my $info = &CJ::retrieve_package_info($pid);
+    my $cj_install = CJ::Install->new("perl_modules", $info->{machine}, undef);
+    $cj_install->__libssl();
+    $cj_install->__setup_cj_hub();
     
 	
     my $short_pid = substr($info->{pid},0,8);

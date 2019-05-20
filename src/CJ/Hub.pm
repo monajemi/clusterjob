@@ -56,6 +56,10 @@ sub create_and_upload {
 
 sub send {
     my $self = shift;
+    my $info = &CJ::retrieve_package_info($self->{pid});
+    my $cj_install = CJ::Install->new("perl_modules", $info->{machine}, undef);
+    $cj_install->__libssl();
+    $cj_install->__setup_cj_hub();
     $self->create_and_upload()
 }
 
