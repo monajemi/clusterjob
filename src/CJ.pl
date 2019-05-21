@@ -224,11 +224,11 @@ my $spec = <<'EOSPEC';
                                                                 {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","runlog") }}
      sanity        <type>  [<pid>]			          sanity checks:  exist | line [nocase]
      save          <pid> [<path>]	                  save a package in path [nocase]
-     send          [<pid>]	                  Send code and results from server to gcloud [nocase]
+     send          [<pid>]	                          Send code and results from server to gcloud [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);send_package($pid)}}
-     share          [<pid> <shared_with>]	                  Send code and results from server to gcloud [nocase]
+     share         <pid> <shared_with>		          Share package with another user [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);share_package($pid, $shared_with)}}
-     receive          [<pid>]	                  Send code and results from server to gcloud [nocase]
+     receive       [<pid>]	                          Receive code and results from CJHub [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);receive_package($pid)}}
      show          [<pid> [[/] [<counter>] [[/] <file>]] ]	  show program/error of certain package [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,$show_tag) }}
@@ -460,6 +460,7 @@ sub receive_package{
 sub run{
     
     my ($machine,$program, $runflag,$qsub_extra) = @_;	
+
     my $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
     my $run = CJ::Run->new($BASE,$program,$machine,$runflag,$dep_folder,$message,$qsub_extra,$qSubmitDefault,$submit_defaults,$user_submit_defaults,$verbose,$CJID);
 

@@ -19,7 +19,7 @@ sub orchastrate_upload{
     foreach (@files){
         my $name = $_;
         # Go through the names
-        my $zipedFile = "$name.tar.gz";
+        my $zipedFile = "$name\_$pid.tar.gz";
         my $upload_url = get_upload_url($zipedFile, $cj_id, $name.'.tar.gz', $pid, $agent);
         my $status = get_status($upload_url, $agent, $zipedFile);
         my $offset = 0;
@@ -150,8 +150,8 @@ sub compress_expr{
             print "$pid/$row - File Path Invalid\n";
         }
     }
-    $tar->write("EXPR.tar");
-    gzip_tar("EXPR.tar");
+    $tar->write("EXPR_$pid.tar");
+    gzip_tar("EXPR_$pid.tar");
 
 }
 
@@ -166,8 +166,8 @@ sub compress_results{
             $tar->add_files( $file );            
         }
     }
-    $tar->write("RESULTS.tar");  
-    gzip_tar("RESULTS.tar");
+    $tar->write("RESULTS_$pid.tar");  
+    gzip_tar("RESULTS_$pid.tar");
 }
 
 sub compress_expcj{
@@ -183,8 +183,8 @@ sub compress_expcj{
         $tar->add_files( $path );
     }
 
-    $tar->write("EXPCJ.tar");
-    gzip_tar("EXPCJ.tar");
+    $tar->write("EXPCJ_$pid.tar");
+    gzip_tar("EXPCJ_$pid.tar");
 }
 
 sub get_cjdir_files{
@@ -217,7 +217,7 @@ sub get_cjdir_files{
     find( \&wanted_cjrand, $directory_name);
 
 
-    # print("EXPCJ: This is the directory paths for this directory $directory_name \n @paths \n\n");
+    print("EXPCJ: This is the directory paths for this directory $directory_name \n @paths \n\n");
 
     return \@paths;
 }
@@ -240,7 +240,7 @@ sub directory_path_list{
     find( \&wanted_dir, $directory_name);
 
 
-    # print("EXPR: This is the directory paths for this directory $directory_name \n @paths \n\n");
+    print("EXPR: This is the directory paths for this directory $directory_name \n @paths \n\n");
 
     return \@paths;
 }

@@ -60,7 +60,7 @@ sub __apply_install{
     
     &CJ::message("----- START BASH ON $self->{'machine'}-----",1);
     if($background){
-        $cmd = "ssh $ssh->{account} 'cd \$HOME && nohup bash -l $filename &>/dev/null &' ";
+        $cmd = "nohup ssh $ssh->{account} 'cd \$HOME && nohup bash -l $filename &>/dev/null &' &>/dev/null &";
     }else{
         $cmd = "ssh $ssh->{account} 'cd \$HOME && bash -l $filename' ";
     }

@@ -55,12 +55,7 @@ sub _update_qsub_extra {
     }
 }
 
-sub setup_cj_hub{
-    my $info = &CJ::retrieve_package_info();
-    my $cj_install = CJ::Install->new("perl_modules", $info->{machine}, undef);
-    $cj_install->__libssl();
-    $cj_install->__setup_cj_hub();
-}
+
 
 
 
@@ -158,7 +153,7 @@ if(-d $localPrefix){
 }
 
 # Install stuff for CJ Hub in the background FIXME: Ask if this should go here
-setup_cj_hub();
+CJ::Hub->new()->setup($self->{machine});
 
 # cp code
 my $cmd = "cp $self->{path}/$self->{program} $local_sep_Dir/";
@@ -172,7 +167,7 @@ my $filename = 'report.txt';
 # FIXME: Implement using CJ writeFile
 open(my $fh, '>', "$local_sep_Dir/expr.txt") or die "Could not open file '$local_sep_Dir/expr.txt' $!";
     print $fh "$self->{program}\n";
-    print $fh "$self->{dep_folder}/*";
+    print $fh "$self->{dep_folder}/*" unless not defined($self->{dep_folder});
 close $fh;
 &CJ::my_system($cmd,$self->{verbose});
 
@@ -394,7 +389,6 @@ my $self = shift;
 
 # create directories etc.
 my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
-    
     
     
 # read the script, parse it out and
@@ -992,31 +986,6 @@ sub check_LMOD_avail{
     }
     
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
