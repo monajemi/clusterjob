@@ -38,7 +38,8 @@ sub __apply_install{
     
     my $self=shift;
     my ($force_tag, $installpath, $install_bash_script, $background) = @_;
-    $background ||= 0;
+    $background = 0 if not defined $background;
+
     
     my $ssh = CJ::host($self->{'machine'});
     
@@ -58,10 +59,11 @@ sub __apply_install{
     my $cmd = "scp $filepath $ssh->{account}:.";
     &CJ::my_system($cmd,1);
     
-    &CJ::message("----- START BASH ON $self->{'machine'}-----",1);
     if($background){
+        &CJ::message("----- START BASH ON $self->{'machine'} IN THE BACKGROUND-----",1);
         $cmd = "nohup ssh $ssh->{account} 'cd \$HOME && nohup bash -l $filename &>/dev/null &' &>/dev/null &";
     }else{
+        &CJ::message("----- START BASH ON $self->{'machine'}-----",1);
         $cmd = "ssh $ssh->{account} 'cd \$HOME && bash -l $filename' ";
     }
     system($cmd);
@@ -90,7 +92,10 @@ BASH
 
 sub __setup_cj_hub{
     my $self = shift;
-    &CJ::message("Starting Parallel Process to Install CJ Hub Requirements on Cluster",1);
+    my ($background) = @_;
+    $background = 1 if not defined $background;
+
+    &CJ::message("Starting Process to Install CJ Hub Requirements on Cluster",1);
 
 my $install_bash_script  =<<'BASH';
     if ! test -f "~/local-lib-1.005001"; then
@@ -114,7 +119,8 @@ my $install_bash_script  =<<'BASH';
     cpan install JSON;
 
 BASH
-    $self->__apply_install(0, "~", $install_bash_script, 1);
+
+    $self->__apply_install(0, "~", $install_bash_script, $background);
 
 
 }
