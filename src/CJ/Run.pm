@@ -876,7 +876,7 @@ sub setup_R_env{
     # check to see wether R exists
     
     # if successful, it will return 'function'
-    my $response =`ssh $ssh->{account} 'source ~/.bashrc; source ~/.bash_profile; type -t module' 2>$CJlog_error`;
+    my $response =`ssh $ssh->{account} "bash -l -c 'type -t module'" 2>$CJlog_error`;
     
     
     if (  $response !~ m/^function$/ ) {

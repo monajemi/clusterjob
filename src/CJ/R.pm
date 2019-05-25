@@ -177,30 +177,35 @@ sub CJrun_body_script{
 my $libpath  = &CJ::r_lib_path($ssh);
     
     
-my $script =<<'BASH';
+my $script =<<BASH;
 
 # load R if there is LMOD installed
-if [ $(type -t module)=='function' ]; then
+if [ \$(type -t module)=='function' ]; then
 module load <R_MODULE>
 echo "loaded module <R_MODULE> "
 fi
     
     
-R --no-save <<HERE
+R --no-save <<'HERE'
     
 .libPaths("<RLIBPATH>")
 # ###########################################################################################
 # Change the behavior of library() and require() to install automatically if
 # Package needed.
-cj_orig_library <- function(package,...) {library(package,...)}
-cj_orig_require <- function(package,...) {require(package,...)}
-    
-# Use function for auto installation
-# Courtesy of Narasimhan, Balasubramanian
-cj_installIfNeeded <- function(packages, ...) {
-        packages <- as.character(substitute(packages))
+
+# Create CJ env
+.CJ <- new.env(parent=parent.env(.GlobalEnv))
+attr( .CJ , "name" ) <- "CJ_ENV"
+attr( .CJ , "path" ) <- "<RLIBPATH>"
+
+# Make .CJ the parent of the globalenv to avoid removal of
+# .CJ objects by user's rm(list=ls()) function
+parent.env(.GlobalEnv) <- .CJ
+
+# Courtesy of Narasimhan, Balasubramanian and Riccardo Murri
+# for help with this function
+.CJ\\\$installIfNeeded <- function(packages, ...) {
         toInstall <- setdiff(packages, utils::installed.packages()[, 1])
-    
         if (length(toInstall) > 0) {
             utils::install.packages(pkgs = toInstall,
             repos = "https://cloud.r-project.org",
@@ -208,12 +213,11 @@ cj_installIfNeeded <- function(packages, ...) {
             ...)
         }
 }
-library <- function(package,...) {cj_installIfNeeded(package,...); cj_orig_library(package,...)}
-require <- function(package,...) {cj_installIfNeeded(package,...); cj_orig_require(package,...)}
+.CJ\\\$library <- function(package,...) {package<-as.character(substitute(package));.CJ\\\$installIfNeeded(package,...);base::library(package,...,character.only=TRUE)}
+.CJ\\\$require <- function(package,...) {package<-as.character(substitute(package));.CJ\\\$installIfNeeded(package,...);base::require(package,...,character.only=TRUE)}
 #############################################################################################
     
     
-
 # make sure each run has different random number stream
 mydate = Sys.time();
 #sum(100*clock)
@@ -224,14 +228,15 @@ seed <- sum(100*c(as.integer(format(mydate,"%Y")), as.integer(format(mydate,"%m"
 # Set the seed for R
 set.seed(seed);
 CJsavedState = list("myversion"=version, "mydate"=mydate, 'CJsavedState'= .Random.seed)
-fname = "$DIR/CJrandState.Rd";
+fname = "\$DIR/CJrandState.Rd";
 save(CJsavedState,file=fname)
 
 # later use:
 # CJsavedState = load("CJrandState.Rd");
 
-setwd("$DIR")
-source("${PROGRAM}");
+setwd("\$DIR")
+
+source("\${PROGRAM}");
 
 # Save session info for loading packages later in Reproducible code
 r_session_info <- sessionInfo()

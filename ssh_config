@@ -34,6 +34,7 @@ MAT     	matlab/r2016b
 MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 Python		python/3.4.3
 Pythonlib	scipy:matplotlib
+R               R/3.4.0
 [rice]
 
 

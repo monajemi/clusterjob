@@ -144,6 +144,7 @@ my $spec = <<'EOSPEC';
                                                                {$text_header_lines=$num_lines;}
      --update                                         	  updates accordingly [requires: config]
 
+
      -alloc[ate]   <resources>	                          machine specific allocation [nocase]
                                                                 {$qsub_extra=$resources}
      -dep          <dep_path>		                  dependency folder path [nocase]
@@ -154,8 +155,12 @@ my $spec = <<'EOSPEC';
                                                                 {$user_submit_defaults->{'mem'}=$memory}
      -runtime [=]     <r_time>	                          run time requested (default=48:00:00) [nocase]
   	                                                          {$user_submit_defaults->{'runtime'}=$r_time}
+
      avail         <tag> 		                  list available resources <tag> = cluster|app
 								  { defer{ &CJ::avail($tag) } }
+     access        [<pid>]	                          Go to the package on the remote cluster
+								{ defer{ &CJ::connect_and_cd($pid,$verbose) } }
+     goto          [<pid>]	[ditto] [undocumented]      
      sync 	                                          force sync [nocase]
 		                				{defer{&CJ::sync_forced($sync_status)}}								
      who 	                                          prints out user and agent info [nocase]
