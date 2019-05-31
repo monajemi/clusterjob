@@ -64,7 +64,7 @@ sub send {
 sub share{
     my $self = shift;
     my ($shared_with) = @_;
-    my $url = 'https://us-central1-united-pier-211422.cloudfunctions.net/sharePID';
+    my $url = "https://us-central1-$firebase_name.cloudfunctions.net/sharePID";
     
     if(!&CJ::is_valid_pid($self->{pid})){
         &CJ::err("$self->{pid} is not a valid PID");
@@ -86,7 +86,11 @@ sub share{
     );
     
     my $call = POST($url, Content => encode_json(\%payload), Content_Type => 'application/json');
-    print Dumper(HTTP::Thin->new()->request($call)->decoded_content);
+    if(HTTP::Thin->new()->request($call)->decoded_content =~ m/Successful/){
+        &CJ::message("$info->{pid} Shared Successfully");
+    }else{
+        &CJ::message("Something went wrong");
+    }
 }
 
 sub receive{
@@ -100,7 +104,7 @@ sub receive{
         pid => $self->{pid}
      );
     
-    my $call = POST("https://us-central1-united-pier-211422.cloudfunctions.net/receivePerms", Content => encode_json(\%payload), Content_Type => 'application/json');
+    my $call = POST("https://us-central1-$firebase_name.cloudfunctions.net/receivePerms", Content => encode_json(\%payload), Content_Type => 'application/json');
     
     my $response = HTTP::Thin->new()->request($call);
     if($response->{"_rc"} != 200){
@@ -113,15 +117,14 @@ sub receive{
     &CJ::message("Getting EXPCJ and RESULTS from CJHub", 1);
     system("mkdir $install_dir/receive &> /dev/null");
 
-    # FIXME: Shouldn't be hard coding united-pier-211422 should be using CJ Var
-    my $url = "https://firebasestorage.googleapis.com/v0/b/united-pier-211422.appspot.com/o/$self->{pid}%2FEXPCJ.tar.gz?alt=media&token=$token";
+    my $url = "https://firebasestorage.googleapis.com/v0/b/$firebase_name.appspot.com/o/$self->{pid}%2FEXPCJ.tar.gz?alt=media&token=$token";
     
     my $efile = "$install_dir/receive/EXPCJ.tar.gz";
 
     # FIXME: Pipe the output of this to /dev/null
     system("curl '$url' > $efile");
 
-    $url = "https://firebasestorage.googleapis.com/v0/b/united-pier-211422.appspot.com/o/$self->{pid}%2FRESULTS.tar.gz?alt=media&token=$token";
+    $url = "https://firebasestorage.googleapis.com/v0/b/$firebase_name.appspot.com/o/$self->{pid}%2FRESULTS.tar.gz?alt=media&token=$token";
 
     # ("curl '$url' > $efile &> /dev/null");
     my $rfile = "$install_dir/receive/RESULTS.tar.gz";
