@@ -229,7 +229,12 @@ my $spec = <<'EOSPEC';
                                                                 {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","runlog") }}
      sanity        <type>  [<pid>]			          sanity checks:  exist | line [nocase]
      save          <pid> [<path>]	                  save a package in path [nocase]
-                                                              {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
+     send          [<pid>]	                          Send code and results from server to gcloud [nocase]
+                                                              {defer{&CJ::add_cmd($cmdline);send_package($pid)}}
+     share         <pid> <shared_with>		          Share package with another user [nocase]
+                                                              {defer{&CJ::add_cmd($cmdline);share_package($pid, $shared_with)}}
+     receive       [<pid>]	                          Receive code and results from CJHub [nocase]
+                                                              {defer{&CJ::add_cmd($cmdline);receive_package($pid)}}
      show          [<pid> [[/] [<counter>] [[/] <file>]] ]	  show program/error of certain package [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,$show_tag) }}
      state         [<pid> [[/] [<counter>]]]	          state of package [nocase]
@@ -380,7 +385,6 @@ sub cj_heart{
 
 
 
-
 #==========================
 #   prompt
 #==========================
@@ -436,6 +440,20 @@ sub cj_prompt{
 }
 
 
+sub send_package{
+    my ($pid) = @_;
+    CJ::Hub->new($pid)->send();
+}
+
+sub share_package{
+    my ($pid, $shared_with) = @_;
+    CJ::Hub->new($pid)->share($shared_with);
+}
+
+sub receive_package{
+    my ($pid) = @_;
+    CJ::Hub->new($pid)->receive();
+}
 
 
 
@@ -447,8 +465,9 @@ sub cj_prompt{
 sub run{
     
     my ($machine,$program, $runflag,$qsub_extra) = @_;	
+
     my $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
-    my $run = CJ::Run->new($BASE,$program,$machine,$runflag,$dep_folder,$message,$qsub_extra,$qSubmitDefault,$submit_defaults,$user_submit_defaults,$verbose);
+    my $run = CJ::Run->new($BASE,$program,$machine,$runflag,$dep_folder,$message,$qsub_extra,$qSubmitDefault,$submit_defaults,$user_submit_defaults,$verbose,$CJID);
 
     if ($runflag eq "deploy" || $runflag eq "run"){
         $run->SERIAL_DEPLOY_RUN();

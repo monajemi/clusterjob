@@ -811,25 +811,31 @@ sub show_log{
         }
             
     
-       foreach my $i (reverse @to_show_idx){
-			  my $this_pid = $sorted_pids->[$maxIdx-$i];
-	    	  my $info =  $info_hash->{$this_pid};			
-        print "\n";
-        print "\033[32mpid $info->{pid}\033[0m\n";
-        print "date: $info->{date}->{datestr}\n";
-        print "user: $info->{user}\n";
-        print "agent: $info->{agent}\n";
-        print "account: $info->{account}\n";
-        print "script: $info->{program}\n";
-        #print "remote_path: $info->{remote_path}\n";
-        print "initial_flag: $info->{runflag}\n";
-           print "reruned: ", 0+keys(%{$info->{rerun}}) . " times \n" if($info->{rerun} && ref $info->{rerun} eq ref {}) ;
-        print "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
-        print "\n";
-        print ' ' x 10; print "$info->{message}\n";
-        print "\n";
-        
-		}
+    # FIXME: Implement using CJ writeFile
+        open(my $fh, '>', "/tmp/cj_log.txt") or die "Could not open file '/tmp/cj_log.txt' $!";
+        foreach my $i (reverse @to_show_idx){
+                my $this_pid = $sorted_pids->[$maxIdx-$i];
+                my $info =  $info_hash->{$this_pid};			
+                print $fh "\n";
+                print $fh "\033[32mpid $info->{pid}\033[0m\n";
+                print $fh "date: $info->{date}->{datestr}\n";
+                print $fh "user: $info->{user}\n";
+                print $fh "agent: $info->{agent}\n";
+                print $fh "account: $info->{account}\n";
+                print $fh "script: $info->{program}\n";
+                #print "remote_path: $info->{remote_path}\n";
+                print $fh "initial_flag: $info->{runflag}\n";
+                print $fh "reruned: ", 0+keys(%{$info->{rerun}}) . " times \n" if($info->{rerun} && ref $info->{rerun} eq ref {}) ;
+                print $fh "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
+                print $fh "\n";
+                print $fh ' ' x 10; print "$info->{message}\n";
+                print $fh "\n";
+            
+            }
+        close $fh;
+
+        system('less -R /tmp/cj_log.txt');
+
     
     exit 0;
 
@@ -1474,6 +1480,9 @@ sub get_print_state
 	
 	
     my $info = &CJ::get_info($pid);
+    my $cj_install = CJ::Install->new("perl_modules", $info->{machine}, undef);
+    $cj_install->__libssl();
+    $cj_install->__setup_cj_hub();
     
 	
     my $short_pid = substr($info->{pid},0,8);

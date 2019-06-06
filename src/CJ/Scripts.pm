@@ -10,6 +10,7 @@ use CJ::CJVars;
 use CJ::Matlab;
 use CJ::R;
 use CJ::Python;
+use CJ::Hub;
 use feature 'state';
 use feature 'say';
 
@@ -268,7 +269,7 @@ return $env;
 # Build master script
 sub make_master_script{
 #######################
-my($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$user_submit_defaults,$remote_sep_Dir,$qsub_extra,$counter) = @_;
+my($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$user_submit_defaults,$remote_sep_Dir,$qsub_extra,$counter,$tar,$cj_id) = @_;
     
     
     # if the CJ's default is imposed (i.e., no 'alloc' field in ssh),
@@ -409,7 +410,7 @@ $master_script.="$docstring";
     }else{
             &CJ::err("counter is not defined");
     }
-    
+
     
     return $master_script;
 }

@@ -37,7 +37,9 @@ sub new {
 sub __apply_install{
     
     my $self=shift;
-    my ($force_tag, $installpath, $install_bash_script) = @_;
+    my ($force_tag, $installpath, $install_bash_script, $background) = @_;
+    $background = 0 if not defined $background;
+
     
     my $ssh = CJ::host($self->{'machine'});
     
@@ -57,8 +59,13 @@ sub __apply_install{
     my $cmd = "scp $filepath $ssh->{account}:.";
     &CJ::my_system($cmd,1);
     
-    &CJ::message("----- START BASH ON $self->{'machine'}-----",1);
-    $cmd = "ssh $ssh->{account} 'cd \$HOME && bash -l $filename' ";
+    if($background){
+        &CJ::message("----- START BASH ON $self->{'machine'} IN THE BACKGROUND-----",1);
+        $cmd = "nohup ssh $ssh->{account} 'cd \$HOME && nohup bash -l $filename &>/dev/null &' &>/dev/null &";
+    }else{
+        &CJ::message("----- START BASH ON $self->{'machine'}-----",1);
+        $cmd = "ssh $ssh->{account} 'cd \$HOME && bash -l $filename' ";
+    }
     system($cmd);
     
     $cmd = "ssh $ssh->{account} 'if [ -d \$HOME/$self->{path} ] ; then mv \$HOME/$filename \$HOME/$self->{path}/; fi' ";
@@ -69,8 +76,63 @@ sub __apply_install{
 }
 
 
+sub __local_lib{
+        my $self = shift;
+my $install_bash_script  =<<'BASH';
+    wget http://search.cpan.org/CPAN/authors/id/A/AP/APEIRON/local-lib-1.005001.tar.gz
+    tar zxf local-lib-1.005001.tar.gz
+    cd ~/local-lib-1.005001
+    perl Makefile.PL --bootstrap
+    make test && make install
+    echo 'eval $(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)' >>~/.bashrc
+BASH
+
+    $self->__apply_install(0, "~", $install_bash_script, 1);
+}
+
+sub __setup_cj_hub{
+    my $self = shift;
+    my ($background) = @_;
+    $background = 1 if not defined $background;
+
+    &CJ::message("Starting Process to Install CJ Hub Requirements on Cluster",1);
+
+my $install_bash_script  =<<'BASH';
+    if ! test -f "~/local-lib-1.005001"; then
+        wget http://search.cpan.org/CPAN/authors/id/A/AP/APEIRON/local-lib-1.005001.tar.gz
+        tar zxf local-lib-1.005001.tar.gz
+        cd ~/local-lib-1.005001
+        perl Makefile.PL --bootstrap
+        make test && make install
+    fi
+    echo 'eval $(perl -I$HOME/perl5/lib/perl5 -Mlocal::lib)' >>~/.bashrc
+    PATH="/home/ubuntu/perl5/bin${PATH:+:${PATH}}"; export PATH;
+    PERL5LIB="/home/ubuntu/perl5/lib/perl5${PERL5LIB:+:${PERL5LIB}}"; export PERL5LIB;
+    PERL_LOCAL_LIB_ROOT="/home/ubuntu/perl5${PERL_LOCAL_LIB_ROOT:+:${PERL_LOCAL_LIB_ROOT}}"; export PERL_LOCAL_LIB_ROOT;
+    PERL_MB_OPT="--install_base \"/home/ubuntu/perl5\""; export PERL_MB_OPT;
+    PERL_MM_OPT="INSTALL_BASE=/home/ubuntu/perl5"; export PERL_MM_OPT;
+    cpan install LWP::UserAgent;
+    cpan install Net::SSLeay;
+    cpan install IO::Socket::SSL;
+    cpan install Net::SSL;
+    cpan install LWP::Protocol::https;
+    cpan install JSON;
+
+BASH
+
+    $self->__apply_install(0, "~", $install_bash_script, $background);
 
 
+}
+
+
+sub __libssl{
+    my $self=shift;
+    my $ssh = CJ::host($self->{'machine'});
+    &CJ::message("Open SSL must be installed for CJHub to work",1);
+    my $cmd = "ssh $ssh->{account} 'sudo apt-get install libssl-dev'";
+    &CJ::my_system($cmd,1);
+}
 
 
 

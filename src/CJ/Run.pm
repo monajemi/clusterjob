@@ -17,7 +17,7 @@ use Digest::SHA qw(sha1_hex); # generate hexa-decimal SHA1 PID
 sub new {
 ####################
  	my $class= shift;
- 	my ($path,$program,$machine, $runflag,$dep_folder,$message, $qsub_extra, $qSubmitDefault, $submit_defaults, $user_submit_defaults, $verbose) = @_;
+ 	my ($path,$program,$machine, $runflag,$dep_folder,$message, $qsub_extra, $qSubmitDefault, $submit_defaults, $user_submit_defaults, $verbose, $cj_id) = @_;
 	
 	my $self = bless {
 		path    => $path,
@@ -30,7 +30,8 @@ sub new {
         qSubmitDefault => $qSubmitDefault,
         submit_defaults => $submit_defaults,
         user_submit_defaults => $user_submit_defaults,
-        message => $message
+        message => $message,
+        cj_id => $cj_id
 	}, $class;
     
     $self->_update_qsub_extra();
@@ -53,6 +54,8 @@ sub _update_qsub_extra {
         }
     }
 }
+
+
 
 
 
@@ -149,13 +152,27 @@ if(-d $localPrefix){
     mkdir "$local_sep_Dir" unless (-d $local_sep_Dir);
 }
 
+# Install stuff for CJ Hub in the background FIXME: Ask if this should go here
+CJ::Hub->new()->setup($self->{machine});
 
 # cp code
 my $cmd = "cp $self->{path}/$self->{program} $local_sep_Dir/";
+# FIXME: Get metadata of ExpRaw
+&CJ::message("Meta Data For EXP RAW $local_sep_Dir\n\n\n");
 &CJ::my_system($cmd,$self->{verbose});
 # cp dependencies
 $cmd   = "cp -r $self->{dep_folder}/* $local_sep_Dir/" unless not defined($self->{dep_folder});
+my $filename = 'report.txt';
+&CJ::my_system("touch $local_sep_Dir/expr.txt", $self->{verbose});
+# FIXME: Implement using CJ writeFile
+open(my $fh, '>', "$local_sep_Dir/expr.txt") or die "Could not open file '$local_sep_Dir/expr.txt' $!";
+    print $fh "$self->{program}\n";
+    print $fh "$self->{dep_folder}/*" unless not defined($self->{dep_folder});
+close $fh;
 &CJ::my_system($cmd,$self->{verbose});
+
+
+
 
     
 
@@ -229,24 +246,25 @@ my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir
     
     
 &CJ::message("Creating reproducible script(s) reproduce_$self->{program}");
-my $codeobj = &CJ::CodeObj($local_sep_Dir,$self->{program},$self->{dep_folder});
+my $codeobj = &CJ::CodeObj($local_sep_Dir,$self->{program}, $self->{dep_folder});
 $codeobj->build_reproducible_script($self->{runflag});
     
 #===========================================
 # BUILD A BASH WRAPPER
 #===========================================
-my $sh_script = &CJ::Scripts::make_shell_script($ssh,$self->{program},$pid,$ssh->{bqs}, $remote_sep_Dir);
+my $sh_script = &CJ::Scripts::make_shell_script($ssh, $self->{program}, $pid, $ssh->{bqs}, $remote_sep_Dir);
 my $local_sh_path = "$local_sep_Dir/bashMain.sh";
 &CJ::writeFile($local_sh_path, $sh_script);
     
     
 # Build master-script for submission
+my $tarfile="$pid".".tar.gz";
 my $master_script;
     
-$master_script = &CJ::Scripts::make_master_script($master_script,$self->{runflag},$self->{program},$date,$pid,$ssh,$self->{submit_defaults},$self->{qSubmitDefault},$self->{user_submit_defaults},$remote_sep_Dir,$self->{qsub_extra});
+$master_script = &CJ::Scripts::make_master_script($master_script,$self->{runflag},$self->{program},$date,$pid,$ssh,$self->{submit_defaults},$self->{qSubmitDefault},$self->{user_submit_defaults},$remote_sep_Dir,$self->{qsub_extra},$tarfile,$self->{cj_id});
 
 
-my $local_master_path="$local_sep_Dir/master.sh";
+my $local_master_path = "$local_sep_Dir/master.sh";
 &CJ::writeFile($local_master_path, $master_script);
 
     
@@ -257,8 +275,7 @@ my $local_master_path="$local_sep_Dir/master.sh";
 #    PROPAGATE THE FILES AND RUN ON CLUSTER
 #==============================================
 &CJ::message("compressing files to propagate...");
-    
-my $tarfile="$pid".".tar.gz";
+
 my $cmd="cd $localDir; tar  --exclude '.git' --exclude '*~' --exclude '*.pdf'  -czf $tarfile $pid/  ; rm -rf $local_sep_Dir  ; cd $self->{path}";
 &CJ::my_system($cmd,$self->{verbose});
     
@@ -275,6 +292,8 @@ $cmd = "ssh $ssh->{account} 'echo `$outText` '  ";
     
 # copy tar.gz file to remoteDir
 $cmd = "rsync -avz ${localDir}/${tarfile} $ssh->{account}:$remoteDir/";
+# Copy the upload script
+# $cmd = "rsync -avz $localDir/server_script/upload_script.pm $ssh->{account}:$remoteDir/";
 &CJ::my_system($cmd,$self->{verbose});
     
 &CJ::message("extracting package...");
@@ -348,6 +367,7 @@ my $runinfo={
     alloc         => $self->{'qsub_extra'},
     total_jobs    => 1,
     pkgsize       => $pkgsize,
+    #exp_meta      => hash with program_name and dep
 };	
 
 # add_record locally
@@ -369,7 +389,6 @@ my $self = shift;
 
 # create directories etc.
 my ($date,$ssh,$pid,$short_pid,$program_type,$localDir,$local_sep_Dir,$remoteDir,$remote_sep_Dir,$saveDir,$outText)  = run_common($self);
-    
     
     
 # read the script, parse it out and
@@ -967,31 +986,6 @@ sub check_LMOD_avail{
     }
     
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
