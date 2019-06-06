@@ -269,7 +269,7 @@ return $env;
 # Build master script
 sub make_master_script{
 #######################
-my($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$user_submit_defaults,$remote_sep_Dir,$qsub_extra,$counter,$tar,$cj_id) = @_;
+my($master_script,$runflag,$program,$date,$pid,$ssh,$submit_defaults,$qSubmitDefault,$user_submit_defaults,$remote_sep_Dir,$qsub_extra,$counter) = @_;
     
     
     # if the CJ's default is imposed (i.e., no 'alloc' field in ssh),

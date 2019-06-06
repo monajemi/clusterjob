@@ -17,7 +17,7 @@ use Digest::SHA qw(sha1_hex); # generate hexa-decimal SHA1 PID
 sub new {
 ####################
  	my $class= shift;
- 	my ($path,$program,$machine, $runflag,$dep_folder,$message, $qsub_extra, $qSubmitDefault, $submit_defaults, $user_submit_defaults, $verbose, $cj_id) = @_;
+ 	my ($path,$program,$machine, $runflag,$dep_folder,$message, $qsub_extra, $qSubmitDefault, $submit_defaults, $user_submit_defaults, $verbose) = @_;
 	
 	my $self = bless {
 		path    => $path,
@@ -31,7 +31,6 @@ sub new {
         submit_defaults => $submit_defaults,
         user_submit_defaults => $user_submit_defaults,
         message => $message,
-        cj_id => $cj_id
 	}, $class;
     
     $self->_update_qsub_extra();
@@ -261,7 +260,7 @@ my $local_sh_path = "$local_sep_Dir/bashMain.sh";
 my $tarfile="$pid".".tar.gz";
 my $master_script;
     
-$master_script = &CJ::Scripts::make_master_script($master_script,$self->{runflag},$self->{program},$date,$pid,$ssh,$self->{submit_defaults},$self->{qSubmitDefault},$self->{user_submit_defaults},$remote_sep_Dir,$self->{qsub_extra},$tarfile,$self->{cj_id});
+$master_script = &CJ::Scripts::make_master_script($master_script,$self->{runflag},$self->{program},$date,$pid,$ssh,$self->{submit_defaults},$self->{qSubmitDefault},$self->{user_submit_defaults},$remote_sep_Dir,$self->{qsub_extra});
 
 
 my $local_master_path = "$local_sep_Dir/master.sh";
