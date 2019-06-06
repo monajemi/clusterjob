@@ -229,6 +229,7 @@ my $spec = <<'EOSPEC';
                                                                 {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","runlog") }}
      sanity        <type>  [<pid>]			          sanity checks:  exist | line [nocase]
      save          <pid> [<path>]	                  save a package in path [nocase]
+                                                                {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
      send          [<pid>]	                          Send code and results from server to gcloud [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);send_package($pid)}}
      share         <pid> <shared_with>		          Share package with another user [nocase]
