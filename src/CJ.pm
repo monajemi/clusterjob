@@ -810,31 +810,58 @@ sub show_log{
             }
         }
             
+  
     
-    # FIXME: Implement using CJ writeFile
-        open(my $fh, '>', "/tmp/cj_log.txt") or die "Could not open file '/tmp/cj_log.txt' $!";
-        foreach my $i (reverse @to_show_idx){
-                my $this_pid = $sorted_pids->[$maxIdx-$i];
-                my $info =  $info_hash->{$this_pid};			
-                print $fh "\n";
-                print $fh "\033[32mpid $info->{pid}\033[0m\n";
-                print $fh "date: $info->{date}->{datestr}\n";
-                print $fh "user: $info->{user}\n";
-                print $fh "agent: $info->{agent}\n";
-                print $fh "account: $info->{account}\n";
-                print $fh "script: $info->{program}\n";
+    foreach my $i (reverse @to_show_idx){
+                                my $this_pid = $sorted_pids->[$maxIdx-$i];
+                        my $info =  $info_hash->{$this_pid};
+                        print "\n";
+                print "\033[32mpid $info->{pid}\033[0m\n";
+                print "date: $info->{date}->{datestr}\n";
+                print "user: $info->{user}\n";
+                print "agent: $info->{agent}\n";
+                print "account: $info->{account}\n";
+                print "script: $info->{program}\n";
                 #print "remote_path: $info->{remote_path}\n";
-                print $fh "initial_flag: $info->{runflag}\n";
-                print $fh "reruned: ", 0+keys(%{$info->{rerun}}) . " times \n" if($info->{rerun} && ref $info->{rerun} eq ref {}) ;
-                print $fh "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
-                print $fh "\n";
-                print $fh ' ' x 10; print "$info->{message}\n";
-                print $fh "\n";
-            
-            }
-        close $fh;
+                print "initial_flag: $info->{runflag}\n";
+                   print "reruned: ", 0+keys(%{$info->{rerun}}) . " times \n" if($info->{rerun} && ref $info->{rerun} eq ref {}) ;
+                print "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
+                print "\n";
+                print ' ' x 10; print "$info->{message}\n";
+                print "\n";
+        
+        }
 
-        system('less -R /tmp/cj_log.txt');
+    
+    
+    
+    
+    
+    
+#    # FIXME: Implement using CJ writeFile and make sure the file is created and loaded properly
+#        open(my $fh, '>', "/tmp/cj_log.txt") or die "Could not open file '/tmp/cj_log.txt' $!";
+#        foreach my $i (reverse @to_show_idx){
+#                my $this_pid = $sorted_pids->[$maxIdx-$i];
+#                my $info =  $info_hash->{$this_pid};
+#                print $fh "\n";
+#                print $fh "\033[32mpid $info->{pid}\033[0m\n";
+#                print $fh "date: $info->{date}->{datestr}\n";
+#                print $fh "user: $info->{user}\n";
+#                print $fh "agent: $info->{agent}\n";
+#                print $fh "account: $info->{account}\n";
+#                print $fh "script: $info->{program}\n";
+#                #print "remote_path: $info->{remote_path}\n";
+#                print $fh "initial_flag: $info->{runflag}\n";
+#                print $fh "reruned: ", 0+keys(%{$info->{rerun}}) . " times \n" if($info->{rerun} && ref $info->{rerun} eq ref {}) ;
+#                print $fh "cleaned: $info->{clean}->{date}->{datestr}\n" if($info->{clean}) ;
+#                print $fh "\n";
+#                print $fh ' ' x 10; print "$info->{message}\n";
+#                print $fh "\n";
+#
+#            }
+#        close $fh;
+#
+#        system('less -R /tmp/cj_log.txt');
 
     
     exit 0;
@@ -1030,68 +1057,64 @@ sub show
     my $runflag     = $info->{'runflag'};
     
     
-    my $script;
+    my $cmd;
     if($show_tag eq "program" ){
     my $program     = $info->{'program'};
         if($num){
-          $script = (`ssh ${account} 'cat $remote_path/$num/$program'`) ;chomp($script);
+            $cmd = "ssh ${account} 'cat $remote_path/$num/$program'";
         }else{
-          $script = (`ssh ${account} 'cat $remote_path/$program'`) ;chomp($script);
+            $cmd  ="ssh ${account} 'cat $remote_path/$program'";
         }
     }elsif($show_tag eq "error" ){
          if($num){
-           $script = (`ssh ${account} 'cat $remote_path/$num/logs/*stderr'`) ;chomp($script);
+           $cmd = "ssh ${account} 'cat $remote_path/$num/logs/*stderr'";
          }else{
-           $script = (`ssh ${account} 'cat $remote_path/logs/*stderr'`) ;chomp($script);
+           $cmd = "ssh ${account} 'cat $remote_path/logs/*stderr'";
          }
     
     }elsif($show_tag eq "runlog" ){
         if($num){
-            $script = (`ssh ${account} 'less $remote_path/$num/logs/CJrun*.log'`) ;chomp($script);
+            $cmd = "ssh ${account} 'less $remote_path/$num/logs/CJrun*.log'";
         }else{
-            $script = (`ssh ${account} 'less $remote_path/logs/CJrun*.log'`) ;chomp($script);
-        }
+            $cmd = "ssh ${account} 'less $remote_path/logs/CJrun*.log'";        }
     }elsif($show_tag eq "ls" ){
         if($num){
-            $script = (`ssh ${account} 'ls -C1 $remote_path/$num/'`) ;chomp($script);
+            $cmd="ssh ${account} 'ls -C1 $remote_path/$num/'" ;
         }else{
-            $script = (`ssh ${account} 'ls -C1 $remote_path/'`) ;chomp($script);
+            $cmd = "ssh ${account} 'ls -C1 $remote_path/'" ;
         }
-    }elsif($show_tag eq "less" ){
+    }elsif($show_tag eq "less" || $show_tag eq "cat"){
 		
-	
 		if(!defined($file)){
 			$file=$num;
 			$num = "";
 		}
 		
         if($num){
-            $script = (`ssh ${account} 'less -C1 $remote_path/$num/$file'`) ;chomp($script);
+            $cmd= "ssh ${account} 'cat $remote_path/$num/$file'" ;
         }else{
-			
-            $script = (`ssh ${account} 'less -C1 $remote_path/$file'`) ;chomp($script);
+            $cmd = "ssh ${account} 'cat $remote_path/$file'";
         }
+        
+        $cmd .= '| less -C1' if $show_tag eq "less";
+
     }elsif($show_tag eq "json" ){
-        
-        
         if(!defined($file)){
             $file=$num;
             $num = "";
         }
         
         if($num){
-            $script = (`ssh ${account} 'python -m json.tool $remote_path/$num/$file'`) ;chomp($script);
+            $cmd = "ssh ${account} 'python -m json.tool $remote_path/$num/$file'";
         }else{
-            $script = (`ssh ${account} 'python -m json.tool $remote_path/$file'`) ;chomp($script);
+            $cmd = "ssh ${account} 'python -m json.tool $remote_path/$file'";
         }
     }
 
     
     
-
-    
-    print "$script \n";
-    
+    #print "$script \n";
+    system("$cmd");
     exit 0;
     
 }
@@ -2982,7 +3005,7 @@ sub create_ssh_config_md5{
 
     # Keep track of file changes for next time
     if( -f $ssh_config_file ){
-       ssh_config_md5('update')
+       ssh_config_md5('init')
     }
 }
 
@@ -3000,13 +3023,13 @@ sub ssh_config_md5{
         CJ::err('cannot find md5 on your machine. Please install md5 or md5sum.')
     }
     
-    
-    if ( $mode eq 'update' ){
-        &CJ::message("updating CJ_python_venv",1);
-        
+    if ( $mode eq 'init' ){
         my $cmd = `$md5 $ssh_config_file > $ssh_config_md5`;
         return 1;
-        
+    }elsif ( $mode eq 'update' ){
+        &CJ::message("Updating CJ_python_venv",1);
+        my $cmd = `$md5 $ssh_config_file > $ssh_config_md5`;
+        return 1;
     }elsif($mode eq 'check'){
         # check whether things are modified
         

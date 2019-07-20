@@ -155,8 +155,9 @@ sub get_custom_token {
     
   my ($self) = @_;
     
-  my $url = 'https://us-central1-clusterjob-78552.cloudfunctions.net/customToken?cjkey=';
-  $url .= $self->secret;
+    my $url = 'https://us-central1-'.$self->{firebase}.'.cloudfunctions.net/customToken?cjkey=';
+    $url .= $self->secret;
+    # print $url . "\n";
   my $call = GET($url, Content_Type => 'JSON(application/json)');
   $self->custom_expires(DateTime->now(time_zone=>'local')->add(seconds => 3600));
   my $result=$self->token_provider->request($call)->decoded_content;

@@ -132,6 +132,8 @@ my $spec = <<'EOSPEC';
                                                               {$qSubmitDefault=0}
      --json      	                                  json tag for show [nocase]  [requires: show]
                                                                     {$show_tag="json";}
+     --cat      	                                  cat tag for show [nocase]  [requires: show]
+                                                               {$show_tag="cat";}
      --less      	                                  less tag for show [nocase]  [requires: show]
                                                                {$show_tag="less";}
      --runlog      	                                  runlog tag for show [nocase]  [requires: show]
@@ -205,6 +207,8 @@ my $spec = <<'EOSPEC';
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,"","ls") }}
      less           [<pid> [[/] [<counter>] [[/] <file>]] ]	shortcut for '--less show' [nocase]
                                                                  {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,"less") }}
+     cat            [<pid> [[/] [<counter>] [[/] <file>]] ]	shortcut for '--less show' [nocase]
+                                                                 {defer{ &CJ::add_cmd($cmdline);&CJ::show($pid,$counter,$file,"cat") }}
      rerun          [<pid> [[/] [<counter>...]]]	          rerun certain (failed) job [nocase]
                                                                  {defer{&CJ::add_cmd($cmdline);
 								  &CJ::rerun($pid,\@counter,$submit_defaults,$qSubmitDefault,$user_submit_defaults,$qsub_extra,$verbose) }}
@@ -230,7 +234,7 @@ my $spec = <<'EOSPEC';
      sanity        <type>  [<pid>]			          sanity checks:  exist | line [nocase]
      save          <pid> [<path>]	                  save a package in path [nocase]
                                                                 {defer{&CJ::add_cmd($cmdline);  &CJ::save_results($pid,$path,$verbose)}}
-     send          [<pid>]	                          Send code and results from server to gcloud [nocase]
+     send          [<pid>]	                          Send code and results from server to CJHub [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);send_package($pid)}}
      share         <pid> <shared_with>		          Share package with another user [nocase]
                                                               {defer{&CJ::add_cmd($cmdline);share_package($pid, $shared_with)}}
@@ -468,7 +472,7 @@ sub run{
     my ($machine,$program, $runflag,$qsub_extra) = @_;	
 
     my $BASE = `pwd`;chomp($BASE);   # Base is where program lives!
-    my $run = CJ::Run->new($BASE,$program,$machine,$runflag,$dep_folder,$message,$qsub_extra,$qSubmitDefault,$submit_defaults,$user_submit_defaults,$verbose,$CJID);
+    my $run = CJ::Run->new($BASE,$program,$machine,$runflag,$dep_folder,$message,$qsub_extra,$qSubmitDefault,$submit_defaults,$user_submit_defaults,$verbose);
 
     if ($runflag eq "deploy" || $runflag eq "run"){
         $run->SERIAL_DEPLOY_RUN();

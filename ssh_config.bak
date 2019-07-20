@@ -1,3 +1,18 @@
+[sherlock]
+Host		login.sherlock.stanford.edu
+User		monajemi
+Bqs		SLURM
+Repo		/scratch/users/monajemi/CJRepo_Remote
+MAT     	matlab/R2017a
+MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
+Python		python/3.6
+Pythonlib	pytorch:pandas:cuda80:scipy:matplotlib:torchvision:-c soumith 
+R	        R/3.4.0 
+Rlib	        ggplot2  
+Alloc	        -p donoho --time 48:00:00 --mem 8G
+[sherlock]
+
+
 [sherlock2]
 Host		login.sherlock.stanford.edu
 User		monajemi
@@ -11,6 +26,8 @@ R	        R/3.4.0
 Rlib	        ggplot2  
 Alloc	        -p donoho --time 48:00:00 --mem 8G
 [sherlock2]
+
+
 
 
 [corn]
@@ -34,6 +51,7 @@ MAT     	matlab/r2016b
 MATlib		~/BPDN/CVX/cvx:~/mosek/7/toolbox/r2013a
 Python		python/3.4.3
 Pythonlib	scipy:matplotlib
+R               R/3.4.0
 [rice]
 
 
@@ -80,14 +98,14 @@ alloc	-n 1 -N 1 -p normal -t 48:00:00
 
 
 [gce]
-host	35.185.255.206
+host	34.83.247.78
 user	hatefmonajemi
 Bqs		SLURM
 Repo		/home/hatefmonajemi/CJRepo_Remote
 MAT     	""
 matlib	CJinstlled/cvx
 Python		python3.4
-Pythonlib	pytorch=0.3.1:torchvision=0.2.1:cuda80:pandas:-c pytorch
+Pythonlib	cuda80:pandas:torchvision:pytorch: -c pytorch
 Alloc	--gres=gpu:1
 Rlib	ggplot2
 R	R
