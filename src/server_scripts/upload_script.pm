@@ -13,7 +13,7 @@ sub orchastrate_upload{
     my @files = ('EXPR', 'EXPCJ', 'RESULTS');
     compress_expr($code, $pid);
     compress_expcj($code, $pid);
-    my @expcj_tree = Archive::Tar->new("EXPCJ.tar.gz")->list_files();
+    my @expcj_tree = Archive::Tar->new("EXPCJ_$pid.tar.gz")->list_files();
     compress_results($code, list_only_files(\@expcj_tree, $code) , $pid);
 
     foreach (@files){
