@@ -80,7 +80,7 @@ sub get_upload_url{
 
     my $upload_url = $agent->request(
         POST(
-            "https://us-central1-united-pier-211422.cloudfunctions.net/getSignedResUrl", 
+            "https://us-central1-testcj-12345.cloudfunctions.net/getSignedResUrl", 
             Content_Type => 'application/json', 
             Content => encode_json(\%payload)
         )

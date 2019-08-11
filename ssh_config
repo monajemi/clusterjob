@@ -98,7 +98,7 @@ alloc	-n 1 -N 1 -p normal -t 48:00:00
 
 
 [gce]
-host	34.83.247.78
+host	35.247.78.84
 user	hatefmonajemi
 Bqs		SLURM
 Repo		/home/hatefmonajemi/CJRepo_Remote

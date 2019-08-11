@@ -35,8 +35,16 @@ sub create_and_upload {
 
     my ($program_name, $extension) = &CJ::remove_extension($info->{program});
 
+    
+    
     &CJ::message("Uploading to CJHub");
-
+    
+    
+    # build an upload script
+    my $script=CJ::readFile("$hub_scripts_dir/upload_script_template.pm");
+    $script =~ s|<<FIREBASE_NAME>>|$firebase_name|;
+    &CJ::writeFile("$hub_scripts_dir/upload_script.pm", $script);
+   
     # Upload server_scripts/upload_script.pm to the server
     my $cmd = "scp $hub_scripts_dir/upload_script.pm $ssh->{account}:$ssh->{remote_repo}/$program_name";
     &CJ::my_system($cmd, $verbose);
