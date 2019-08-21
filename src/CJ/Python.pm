@@ -214,7 +214,7 @@ HERE
 conda list -e > ${DIR}/${PID}_py_conda_req.txt
     
 # Get out of virtual env and remove it
-source deactivate
+conda deactivate
     
 BASH
     
@@ -317,7 +317,7 @@ fi
 
     
 # Get out of virtual env and remove it
-source deactivate
+conda deactivate
     
     
 BASH
