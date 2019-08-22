@@ -1,0 +1,23 @@
+# get a signed URL
+#
+#
+
+PID=somedir
+FILENAME=test.tar
+
+LOCATION_URL=$(curl -X POST -H 'Content-Type: application/json' -d '{"pid":"'$PID'","cj_id":"moosh","filename":"'"$FILENAME"'"}' 'https://us-central1-testcj-12345.cloudfunctions.net/getSignedResUrl' )
+
+
+curl -v -X PUT --upload-file $PID/$FILENAME $LOCATION_URL
+
+# get status
+# upload file
+#BUFFER=$(dd if=$FILENAME of=$PID/$FILENAME skip=5 ibs=1)
+
+# resume
+
+FILESIZE=$(wc -c "$PID/$FILENAME" | awk '{print $1}')
+echo $FILESIZE
+#
+
+
