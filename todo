@@ -1,3 +1,4 @@
 
 * CJHub
     * implement resumable upload with cURL
+      ** The first step is done. Now we must impemenent the chunks to be uploaded over time using our resumable URI
