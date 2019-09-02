@@ -1,0 +1,153 @@
+*   Trying 172.217.6.42...
+* TCP_NODELAY set
+* Connected to www.googleapis.com (172.217.6.42) port 443 (#0)
+* ALPN, offering http/1.1
+* Cipher selection: ALL:!EXPORT:!EXPORT40:!EXPORT56:!aNULL:!LOW:!RC4:@STRENGTH
+* successfully set certificate verify locations:
+*   CAfile: /Users/hatef/anaconda/ssl/cacert.pem
+  CApath: none
+* TLSv1.2 (OUT), TLS header, Certificate Status (22):
+} [5 bytes data]
+* TLSv1.2 (OUT), TLS handshake, Client hello (1):
+} [512 bytes data]
+* TLSv1.2 (IN), TLS handshake, Server hello (2):
+{ [102 bytes data]
+* TLSv1.2 (IN), TLS handshake, Certificate (11):
+{ [3627 bytes data]
+* TLSv1.2 (IN), TLS handshake, Server key exchange (12):
+{ [147 bytes data]
+* TLSv1.2 (IN), TLS handshake, Server finished (14):
+{ [4 bytes data]
+* TLSv1.2 (OUT), TLS handshake, Client key exchange (16):
+} [70 bytes data]
+* TLSv1.2 (OUT), TLS change cipher, Client hello (1):
+} [1 bytes data]
+* TLSv1.2 (OUT), TLS handshake, Finished (20):
+} [16 bytes data]
+* TLSv1.2 (IN), TLS change cipher, Client hello (1):
+{ [1 bytes data]
+* TLSv1.2 (IN), TLS handshake, Finished (20):
+{ [16 bytes data]
+* SSL connection using TLSv1.2 / ECDHE-ECDSA-AES128-GCM-SHA256
+* ALPN, server accepted to use http/1.1
+* Server certificate:
+*  subject: C=US; ST=California; L=Mountain View; O=Google LLC; CN=*.googleapis.com
+*  start date: Aug 13 16:10:07 2019 GMT
+*  expire date: Nov 11 16:10:07 2019 GMT
+*  subjectAltName: host "www.googleapis.com" matched cert's "*.googleapis.com"
+*  issuer: C=US; O=Google Trust Services; CN=GTS CA 1O1
+*  SSL certificate verify ok.
+} [5 bytes data]
+> PUT /upload/storage/v1/b/testcj-12345.appspot.com/o?name=moosh%2Fsomedir%2F92c755b9acf1898faf941f560e2d4d28184fe5b1.tar&uploadType=resumable&upload_id=AEnB2Up7CXhAXxOQEdMoBZGJghEtG4qbilyKuvpTNtvQjxq3vkIg_TUWEkAo6XajnjuwYEkD3bMf4wtgZeomwzC82zaykDrBIA HTTP/1.1
+> Host: www.googleapis.com
+> User-Agent: curl/7.52.1
+> Accept: */*
+> Content-Length: 155648
+> Expect: 100-continue
+> 
+{ [5 bytes data]
+< HTTP/1.1 100 Continue
+} [5 bytes data]
+* We are completely uploaded and fine
+{ [5 bytes data]
+< HTTP/1.1 200 OK
+< X-GUploader-UploadID: AEnB2Up7CXhAXxOQEdMoBZGJghEtG4qbilyKuvpTNtvQjxq3vkIg_TUWEkAo6XajnjuwYEkD3bMf4wtgZeomwzC82zaykDrBIA
+< ETag: CIKHvcb0sOQCEAE=
+< Vary: Origin
+< Vary: X-Origin
+< Content-Type: application/json; charset=UTF-8
+< Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+< Pragma: no-cache
+< Expires: Mon, 01 Jan 1990 00:00:00 GMT
+< Date: Mon, 02 Sep 2019 00:45:11 GMT
+< Content-Length: 930
+< Server: UploadServer
+< Alt-Svc: quic=":443"; ma=2592000; v="46,43,39"
+< 
+{ [898 bytes data]
+* Curl_http_done: called premature == 0
+* Connection #0 to host www.googleapis.com left intact
+{
+ "kind": "storage#object",
+ "id": "testcj-12345.appspot.com/moosh/somedir/92c755b9acf1898faf941f560e2d4d28184fe5b1.tar/1567385111708546",
+ "selfLink": "https://www.googleapis.com/storage/v1/b/testcj-12345.appspot.com/o/moosh%2Fsomedir%2F92c755b9acf1898faf941f560e2d4d28184fe5b1.tar",
+ "name": "moosh/somedir/92c755b9acf1898faf941f560e2d4d28184fe5b1.tar",
+ "bucket": "testcj-12345.appspot.com",
+ "generation": "1567385111708546",
+ "metageneration": "1",
+ "timeCreated": "2019-09-02T00:45:11.708Z",
+ "updated": "2019-09-02T00:45:11.708Z",
+ "storageClass": "STANDARD",
+ "timeStorageClassUpdated": "2019-09-02T00:45:11.708Z",
+ "size": "155648",
+ "md5Hash": "5rfZArIXyPxxJ2LH8QxuyA==",
+ "mediaLink": "https://www.googleapis.com/download/storage/v1/b/testcj-12345.appspot.com/o/moosh%2Fsomedir%2F92c755b9acf1898faf941f560e2d4d28184fe5b1.tar?generation=1567385111708546&alt=media",
+ "crc32c": "ZsxAag==",
+ "etag": "CIKHvcb0sOQCEAE="
+}
+*   Trying 172.217.6.42...
+* TCP_NODELAY set
+* Connected to www.googleapis.com (172.217.6.42) port 443 (#0)
+* ALPN, offering http/1.1
+* Cipher selection: ALL:!EXPORT:!EXPORT40:!EXPORT56:!aNULL:!LOW:!RC4:@STRENGTH
+* successfully set certificate verify locations:
+*   CAfile: /Users/hatef/anaconda/ssl/cacert.pem
+  CApath: none
+* TLSv1.2 (OUT), TLS header, Certificate Status (22):
+} [5 bytes data]
+* TLSv1.2 (OUT), TLS handshake, Client hello (1):
+} [512 bytes data]
+* TLSv1.2 (IN), TLS handshake, Server hello (2):
+{ [102 bytes data]
+* TLSv1.2 (IN), TLS handshake, Certificate (11):
+{ [3627 bytes data]
+* TLSv1.2 (IN), TLS handshake, Server key exchange (12):
+{ [147 bytes data]
+* TLSv1.2 (IN), TLS handshake, Server finished (14):
+{ [4 bytes data]
+* TLSv1.2 (OUT), TLS handshake, Client key exchange (16):
+} [70 bytes data]
+* TLSv1.2 (OUT), TLS change cipher, Client hello (1):
+} [1 bytes data]
+* TLSv1.2 (OUT), TLS handshake, Finished (20):
+} [16 bytes data]
+* TLSv1.2 (IN), TLS change cipher, Client hello (1):
+{ [1 bytes data]
+* TLSv1.2 (IN), TLS handshake, Finished (20):
+{ [16 bytes data]
+* SSL connection using TLSv1.2 / ECDHE-ECDSA-AES128-GCM-SHA256
+* ALPN, server accepted to use http/1.1
+* Server certificate:
+*  subject: C=US; ST=California; L=Mountain View; O=Google LLC; CN=*.googleapis.com
+*  start date: Aug 13 16:10:07 2019 GMT
+*  expire date: Nov 11 16:10:07 2019 GMT
+*  subjectAltName: host "www.googleapis.com" matched cert's "*.googleapis.com"
+*  issuer: C=US; O=Google Trust Services; CN=GTS CA 1O1
+*  SSL certificate verify ok.
+} [5 bytes data]
+> PUT /upload/storage/v1/b/testcj-12345.appspot.com/o?name=moosh%2Fsomedir%2F92c755b9acf1898faf941f560e2d4d28184fe5b1.tar&uploadType=resumable&upload_id=AEnB2Up7CXhAXxOQEdMoBZGJghEtG4qbilyKuvpTNtvQjxq3vkIg_TUWEkAo6XajnjuwYEkD3bMf4wtgZeomwzC82zaykDrBIA HTTP/1.1
+> Host: www.googleapis.com
+> User-Agent: curl/7.52.1
+> Accept: */*
+> Content-Length:0
+> Content-Type: application/json
+> Content-Range: bytes */155648
+> 
+{ [5 bytes data]
+< HTTP/1.1 200 OK
+< X-GUploader-UploadID: AEnB2Up7CXhAXxOQEdMoBZGJghEtG4qbilyKuvpTNtvQjxq3vkIg_TUWEkAo6XajnjuwYEkD3bMf4wtgZeomwzC82zaykDrBIA
+< ETag: CIKHvcb0sOQCEAE=
+< Vary: Origin
+< Vary: X-Origin
+< Content-Type: application/json; charset=UTF-8
+< Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+< Pragma: no-cache
+< Expires: Mon, 01 Jan 1990 00:00:00 GMT
+< Date: Mon, 02 Sep 2019 00:45:11 GMT
+< Content-Length: 930
+< Server: UploadServer
+< Alt-Svc: quic=":443"; ma=2592000; v="46,43,39"
+< 
+{ [898 bytes data]
+* Curl_http_done: called premature == 0
+* Connection #0 to host www.googleapis.com left intact
