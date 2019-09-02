@@ -9,14 +9,14 @@
 # get status that location url exists
 get_status(){
 
-
 local LOCATION_URL=$1
 local FILENAME=$2
 
-#local FILESIZE=`wc -c $FILENAME | awk '{print $1}'`
-        
+local FILESIZE=$(wc -c $FILENAME | awk '{print $1}')
+
+
 # make an empty query
-local code=$(curl -sv -w "%{http_code}" -X PUT -H 'Content-Length:0' -H 'Content-Type: application/json' -H 'Content-Range: bytes */*' -d '' -o /dev/null $LOCATION_URL 2>>upload_log.txt )
+local code=$(curl -v -w "%{http_code}" -X PUT -H 'Content-Length: 0' -H 'Content-Type: application/json' -H 'Content-Range: bytes */'$FILESIZE'' -d '' -o /dev/null $LOCATION_URL)
 
 # you can give an input for range as well
 if [ $# -eq 3 ] ; then
@@ -34,9 +34,6 @@ echo $code
 
 upload_file(){
 #upload a given file and echo status
-
-
-
 
 local LOCATION_URL=$1
 local FILE=$2
@@ -65,16 +62,12 @@ if [[ $http_code -eq "308" ]] ; then
   fi
 
 elif [[ $http_code -eq 200 ]]; then
-  echo "     CJHub: $FILE : COMPLETE!"
+
+    echo "     CJHub: $FILE : COMPLETE!"
 
 else
-  echo "     CJHub: HTTP code $http_code not recognized."
+    echo "     CJHub: HTTP code $http_code not recognized."
 fi
-
-
-
-
-
 }
 
 
@@ -95,7 +88,7 @@ local LOCATION_URL=$(curl -X POST -H 'Content-Type: application/json' -d '{"pid"
 
 # if error exit
 if [ $? -eq 0 ]; then
-    echo $LOCATION_URL
+    echo $LOCATION_URL > .cjhubloc
 else
     echo $LOCATION_URL
     exit 1;
@@ -104,19 +97,25 @@ fi
 
 
 
+
+
+
+
+
+
 #filename="test.tar"
-filename="92c755b9acf1898faf941f560e2d4d28184fe5b1.tar"
+filename="0854a767f859fda5b879edc8f49634f1cf58bfba.tar"
 # exec upload
-location_url=$(get_location_url moosh somedir $filename)
-#echo $location_url
+[[ ! -f '.cjhubloc' ]] && location_url=$(get_location_url moosh somedir $filename)
 
+location_url="`cat .cjhubloc`"
+upload_file $location_url "somedir/$filename" code
 
-
-code=308
-while [[ $code -eq 308 ]];do
-  upload_file $location_url "somedir/"$filename code
-  echo $code
-done
+#code=308
+#while [[ $code -eq 308 ]];do
+#  upload_file $location_url "somedir/"$filename code
+#  echo $code
+#done
 
 
 
