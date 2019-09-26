@@ -19,9 +19,8 @@ local FILENAME=$2
 
 local FILESIZE=$(wc -c $FILENAME | awk '{print $1}')
 
-
 # make an empty query
-local code=$(curl -v -w "%{http_code}" -X PUT -H 'Content-Length: 0' -H 'Content-Type: application/json' -H 'Content-Range: bytes */'$FILESIZE'' -d '' -o /dev/null $LOCATION_URL)
+local code=$(curl -v -w "%{http_code}" -X PUT -H 'Content-Length: 0' -H 'Content-Type: application/json' -H 'Content-Range: bytes */*' -d '' -o /dev/null $LOCATION_URL)
 
 # you can give an input for range of upload as well
 if [ $# -eq 3 ] ; then
@@ -39,7 +38,6 @@ echo $code
 
 upload_file(){
 #upload a given file and echo status
-
 
 local LOCATION_URL=$1
 local FILE=$2
@@ -102,24 +100,31 @@ fi
 rm_extension(){
 local fullfile=$1
 local filename=$(basename -- "$fullfile")
+local dirname=$(dirname "$fullfile")
 #local extension="${filename##*.}"
 filename="${filename%.*}"
 echo $filename
 }
+
+
+
 
 get_cjhubloc_name(){
 
 local CJID=$1
 local pid=$2
 local filename=$3
+filename=${filename//\//\_} # replace / with _
 echo ".cjhubloc_"$CJID"_"$pid"_"$(rm_extension "$filename")
 }
 
 get_upload_log_filename() {
- echo ".upload_log_"$CJID"_"$pid"_"$(rm_extension "$filename")".txt"
+local CJID=$1
+local pid=$2
+local filename=$3 
+filename=${filename//\//\_} # replace / with _
+  echo ".upload_log_"$CJID"_"$pid"_"$(rm_extension "$filename")".txt"
 }
-
-
 
 
 cjhub_message(){
@@ -128,8 +133,9 @@ echo "          CJhub: $@"
 
 #filename="test.tar"
 
-pid="somedir"
-filename="0854a767f859fda5b879edc8f49634f1cf58bfba.tar"
+pid="0854a767f859fda5b879edc8f49634f1cf58bfba"
+filename="1/results.csv"
+
 # exec upload
 CJHUBLOC_FILE=$(get_cjhubloc_name "$CJID" "$pid" "$filename")
 UPLOAD_LOG_FILE=$(get_upload_log_filename "$CJID" "$pid" "$filename")
