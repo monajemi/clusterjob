@@ -20,19 +20,42 @@ local FILENAME=$2
 local FILESIZE=$(wc -c $FILENAME | awk '{print $1}')
 
 # make an empty query
-local code=$(curl -v -w "%{http_code}" -X PUT -H 'Content-Length: 0' -H 'Content-Type: application/json' -H 'Content-Range: bytes */*' -d '' -o /dev/null $LOCATION_URL)
+local code=$(curl -v -w "%{http_code}" -X PUT -H 'content-length: 0' -H 'content-type: application/json' -H 'content-range: bytes */*' -d '' -o /dev/null $LOCATION_URL)
 
 # you can give an input for range of upload as well
 if [ $# -eq 3 ] ; then
   # calculate range
-  myrange=0
+  local uploaded_range=$(get_upload_range_header $LOCATION_URL)
+  # no Range param is returned. Either small file/200 OK or else something bad happened
+  if [[ $? ]] ; then
+    [[ ! $code -eq 200 ]] && uploaded_range="bytes=0-0";
+  fi
+
   local __range=$3
-  eval $__range=$myrange
+  eval $__range=$uploaded_range
 fi
 
 echo $code 
 }
 
+
+get_upload_range_header(){
+local LOCATION_URL=$1
+
+local HEADERS=$(curl -v -X PUT -H 'content-length: 0' -H 'content-type: application/json' -H 'content-range: bytes */*' -d '' $LOCATION_URL 2>&1 | grep '<' | sed 's/< //')
+local IFS=$'\n'      # Change IFS to new line
+local HEADERS=($HEADERS) # split to array $names
+
+for (( i=0; i<${#HEADERS[@]}; i++ ))
+do
+    local THIS_HEADER=${HEADERS[$i]}
+    local KEY=$( echo ${THIS_HEADER%%[[:space:]]*} | sed 's/://') 
+    local VALUE=$( echo ${THIS_HEADER##$KEY}  | sed 's/://;s/^[[:space:]]//')
+    if [[ "$KEY" == 'Range' ]]; then echo "$VALUE" ; exit 0; fi
+done
+
+exit 1;
+}
 
 
 
@@ -41,19 +64,19 @@ upload_file(){
 
 local LOCATION_URL=$1
 local FILE=$2
-local __httpcode=$3 
+local RANGE=$3
+#local __httpcode=$3 
+
+# get_status will give out RANGE parameter as well if asked
+#local http_code=$(get_status $LOCATION_URL $FILE range)
+#eval $__httpcode=$http_code
 
 
-local http_code=$(get_status $LOCATION_URL $FILE)
-eval $__httpcode=$http_code
-
-
-if [[ $http_code -eq "308" ]] ; then 
-# resume upload
-
-  cjhub_message "$FILE : RESUMING!"
-  
- curl -sv -X PUT --upload-file $FILE $LOCATION_URL >$UPLOAD_LOG_FILE 2>&1
+## We expect to get 308, and 200 in this function. Any other code 
+## is error and is handled in the outer functions.
+#if [[ $http_code -eq "308" ]] ; then 
+ # upload
+  curl -sv -X PUT --upload-file $FILE $LOCATION_URL >$UPLOAD_LOG_FILE 2>&1
   
   if [[ $? -ne 0 ]] ; then
     # detected error
@@ -62,11 +85,11 @@ if [[ $http_code -eq "308" ]] ; then
     exit 1;
   fi
 
-elif [[ $http_code -eq 200 ]]; then
-    echo "     CJHub: $FILE : COMPLETE!"
-else
-    echo "     CJHub: HTTP code $http_code not recognized."
-fi
+#elif [[ $http_code -eq 200 ]]; then
+#    echo "     CJHub: $FILE : COMPLETE!"
+#else
+#    echo "     CJHub: HTTP code $http_code not recognized."
+#fi
 }
 
 
@@ -134,7 +157,8 @@ echo "          CJhub: $@"
 #filename="test.tar"
 
 pid="0854a767f859fda5b879edc8f49634f1cf58bfba"
-filename="1/results.csv"
+#filename="1/logs/CJ_0854a767f859fda5b879edc8f49634f1cf58bfba_1_rethink_generalization_monajemi.stderr"
+filename="1/checkpoint.pth.tar"
 
 # exec upload
 CJHUBLOC_FILE=$(get_cjhubloc_name "$CJID" "$pid" "$filename")
@@ -148,11 +172,39 @@ else
 fi
 
 location_url="`cat $CJHUBLOC_FILE`"
-upload_file "$location_url" "$pid/"$filename "code"
 
-#code=308
-#while [[ $code -eq 308 ]];do
-#  upload_file $location_url "somedir/"$filename code
-#  echo $code
-#done
+cjhub_message "$pid/$filename : UPLOADING!"
+upload_file "$location_url" "$pid/"$filename "$range"
+http_code=$(get_status $location_url "$pid/"$filename "range")
+
+if [[ $http_code -eq 200  ]]; then
+  cjhub_message "$pid/$filename: UPLOAD COMPLETED." 
+else
+  while [[ ! $http_code -eq 200  ]]; do 
+      
+    if [[ $http_code -eq 308 ]] ; then 
+      #resume/upload
+      cjhub_message "$FILE: UPLOAD RESUMING" 
+      upload_file "$location_url" "$pid/"$filename "$range"
+    else
+      # Other cases of failure must be treated
+    fi
+
+  done
+fi
+
+
+#if [[ $http_code -eq 308 ]] ; then 
+ # resume/upload
+#  upload_file "$location_url" "$pid/"$filename "$range"
+#elif [[ $http_code -eq 200 ]]; then
+#    echo "     CJHub: $FILE : COMPLETE!"
+#else
+#    echo "     CJHub: HTTP code $http_code not recognized."
+#fi
+
+
+
+
+
 
