@@ -20,22 +20,24 @@ local FILENAME=$2
 local FILESIZE=$(wc -c $FILENAME | awk '{print $1}')
 
 # make an empty query
-local code=$(curl -v -w "%{http_code}" -X PUT -H 'content-length: 0' -H 'content-type: application/json' -H 'content-range: bytes */*' -d '' -o /dev/null $LOCATION_URL)
-
+local code=$(curl -v -w "%{http_code}" -X PUT -H 'content-length: 0' -H 'content-type: application/json' -H 'content-range: bytes */*' -d '' -o /dev/null $LOCATION_URL) 
+local __code=$3
+eval $__code=$code
 # you can give an input for range of upload as well
-if [ $# -eq 3 ] ; then
+if [ $# -eq 4 ] ; then
   # calculate range
   local uploaded_range=$(get_upload_range_header $LOCATION_URL)
   # no Range param is returned. Either small file/200 OK or else something bad happened
-  if [[ $? ]] ; then
+  if [[ ! $? -eq 0 ]] ; then
     [[ ! $code -eq 200 ]] && uploaded_range="bytes=0-0";
   fi
 
-  local __range=$3
+  local __range=$4
   eval $__range=$uploaded_range
 fi
 
-echo $code 
+
+
 }
 
 
@@ -65,16 +67,9 @@ upload_file(){
 local LOCATION_URL=$1
 local FILE=$2
 local RANGE=$3
-#local __httpcode=$3 
 
-# get_status will give out RANGE parameter as well if asked
-#local http_code=$(get_status $LOCATION_URL $FILE range)
-#eval $__httpcode=$http_code
-
-
-## We expect to get 308, and 200 in this function. Any other code 
-## is error and is handled in the outer functions.
-#if [[ $http_code -eq "308" ]] ; then 
+ # build the file
+echo "range: $RANGE"
  # upload
   curl -sv -X PUT --upload-file $FILE $LOCATION_URL >$UPLOAD_LOG_FILE 2>&1
   
@@ -85,11 +80,6 @@ local RANGE=$3
     exit 1;
   fi
 
-#elif [[ $http_code -eq 200 ]]; then
-#    echo "     CJHub: $FILE : COMPLETE!"
-#else
-#    echo "     CJHub: HTTP code $http_code not recognized."
-#fi
 }
 
 
@@ -173,25 +163,32 @@ fi
 
 location_url="`cat $CJHUBLOC_FILE`"
 
-cjhub_message "$pid/$filename : UPLOADING!"
-upload_file "$location_url" "$pid/"$filename "$range"
-http_code=$(get_status $location_url "$pid/"$filename "range")
 
-if [[ $http_code -eq 200  ]]; then
-  cjhub_message "$pid/$filename: UPLOAD COMPLETED." 
-else
-  while [[ ! $http_code -eq 200  ]]; do 
-      
-    if [[ $http_code -eq 308 ]] ; then 
-      #resume/upload
-      cjhub_message "$FILE: UPLOAD RESUMING" 
-      upload_file "$location_url" "$pid/"$filename "$range"
+# if the location url exists this  gives 308
+FILE="$pid/"$filename
+get_status $location_url $FILE "http_code" "range" > $UPLOAD_LOG_FILE 2>&1
+
+#echo RANGE:$range
+#echo CODE: $http_code
+
+while [[ ! $http_code -eq 200  ]]; do 
+  cjhub_message "$FILE: UPLOADING"   
+  upload_file "$location_url" $FILE "$range" > $UPLOAD_LOG_FILE 2>&1
+  
+  # exponential delay
+  for (( i=0 ; i < 8 ; i++ )); do
+    get_status $location_url $FILE "http_code" "range" > $UPLOAD_LOG_FILE 2>&1
+    if [[ $http_code -eq 308 ]] || [[ $http_code -eq 200 ]] ; then
+      break
     else
-      # Other cases of failure must be treated
+      sleep "$((2**$i))"   
     fi
-
   done
-fi
+
+ 
+  [[ $http_code -eq 200 ]] && cjhub_message "UPLOAD COMPLETED" && break;
+
+done
 
 
 #if [[ $http_code -eq 308 ]] ; then 
