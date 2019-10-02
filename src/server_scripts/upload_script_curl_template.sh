@@ -2,7 +2,6 @@
 # upload script for uploading CJ packages to
 # CJHub
 
-CJID="moosh"
 
 
 
@@ -10,9 +9,10 @@ CJID="moosh"
 
 
 
-
+#####################################
 # get status that location url exists
 get_status(){
+  ###########
 
 local LOCATION_URL=$1
 local FILENAME=$2
@@ -35,13 +35,11 @@ if [ $# -eq 4 ] ; then
   local __range=$4
   eval $__range=$uploaded_range
 fi
-
-
-
 }
 
-
+##########################
 get_upload_range_header(){
+  ########################
 local LOCATION_URL=$1
 
 local HEADERS=$(curl -v -X PUT -H 'content-length: 0' -H 'content-type: application/json' -H 'content-range: bytes */*' -d '' $LOCATION_URL 2>&1 | grep '<' | sed 's/< //')
@@ -60,9 +58,11 @@ exit 1;
 }
 
 
-
+##############
 upload_file(){
-#upload a given file and echo status
+  ############
+
+#upload a given file
 
 local LOCATION_URL=$1
 local FILE=$2
@@ -83,8 +83,11 @@ echo "range: $RANGE"
 }
 
 
-
+#######################
 create_location_url() {
+  #####################
+
+  
 # variables that go into the cloud function
 # getSignedResUrl to get a location url
 # ex. 
@@ -110,7 +113,9 @@ fi
 
 }
 
+###############
 rm_extension(){
+  #############
 local fullfile=$1
 local filename=$(basename -- "$fullfile")
 local dirname=$(dirname "$fullfile")
@@ -121,8 +126,9 @@ echo $filename
 
 
 
-
+####################
 get_cjhubloc_name(){
+  ##################
 
 local CJID=$1
 local pid=$2
@@ -131,7 +137,10 @@ filename=${filename//\//\_} # replace / with _
 echo ".cjhubloc_"$CJID"_"$pid"_"$(rm_extension "$filename")
 }
 
+
+###########################
 get_upload_log_filename() {
+  #########################
 local CJID=$1
 local pid=$2
 local filename=$3 
@@ -139,20 +148,36 @@ filename=${filename//\//\_} # replace / with _
   echo ".upload_log_"$CJID"_"$pid"_"$(rm_extension "$filename")".txt"
 }
 
-
+################
 cjhub_message(){
+  ##############
 echo "          CJhub: $@"
 }
 
-#filename="test.tar"
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+#####################################################
+CJID="moosh"
 pid="0854a767f859fda5b879edc8f49634f1cf58bfba"
-#filename="1/logs/CJ_0854a767f859fda5b879edc8f49634f1cf58bfba_1_rethink_generalization_monajemi.stderr"
-filename="1/checkpoint.pth.tar"
+filename="1/logs/CJ_0854a767f859fda5b879edc8f49634f1cf58bfba_1_rethink_generalization_monajemi.stderr"
+#filename="1/checkpoint.pth.tar"
 
 # exec upload
 CJHUBLOC_FILE=$(get_cjhubloc_name "$CJID" "$pid" "$filename")
 UPLOAD_LOG_FILE=$(get_upload_log_filename "$CJID" "$pid" "$filename")
+
 
 if [[ ! -f $CJHUBLOC_FILE ]] ; then 
   cjhub_message "Creating loc url for $pid/$filename"
@@ -163,13 +188,9 @@ fi
 
 location_url="`cat $CJHUBLOC_FILE`"
 
-
 # if the location url exists this  gives 308
 FILE="$pid/"$filename
 get_status $location_url $FILE "http_code" "range" > $UPLOAD_LOG_FILE 2>&1
-
-#echo RANGE:$range
-#echo CODE: $http_code
 
 while [[ ! $http_code -eq 200  ]]; do 
   cjhub_message "$FILE: UPLOADING"   
@@ -184,24 +205,6 @@ while [[ ! $http_code -eq 200  ]]; do
       sleep "$((2**$i))"   
     fi
   done
-
- 
   [[ $http_code -eq 200 ]] && cjhub_message "UPLOAD COMPLETED" && break;
-
 done
-
-
-#if [[ $http_code -eq 308 ]] ; then 
- # resume/upload
-#  upload_file "$location_url" "$pid/"$filename "$range"
-#elif [[ $http_code -eq 200 ]]; then
-#    echo "     CJHub: $FILE : COMPLETE!"
-#else
-#    echo "     CJHub: HTTP code $http_code not recognized."
-#fi
-
-
-
-
-
 
