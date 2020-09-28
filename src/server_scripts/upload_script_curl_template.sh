@@ -196,13 +196,15 @@ while [[ ! $http_code -eq 200  ]]; do
   cjhub_message "$FILE: UPLOADING"   
   upload_file "$location_url" $FILE "$range" > $UPLOAD_LOG_FILE 2>&1
   
-  # exponential delay
+  # exponential delay if it cant get status due to network error
   for (( i=0 ; i < 8 ; i++ )); do
     get_status $location_url $FILE "http_code" "range" > $UPLOAD_LOG_FILE 2>&1
     if [[ $http_code -eq 308 ]] || [[ $http_code -eq 200 ]] ; then
       break
     else
-      sleep "$((2**$i))"   
+      wait=$((2**i))
+      cjhub_message "Cannot get status. Next try after "$wait" sec..."
+      sleep "$wait"   
     fi
   done
   [[ $http_code -eq 200 ]] && cjhub_message "UPLOAD COMPLETED" && break;
