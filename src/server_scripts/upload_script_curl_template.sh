@@ -197,7 +197,7 @@ while [[ ! $http_code -eq 200  ]]; do
   upload_file "$location_url" $FILE "$range" > $UPLOAD_LOG_FILE 2>&1
   
   # exponential delay if it cant get status due to network error
-  for (( i=0 ; i < 4 ; i++ )); do
+  for (( i=0 ; i < 8 ; i++ )); do
     get_status $location_url $FILE "http_code" "range" > $UPLOAD_LOG_FILE 2>&1
     if [[ $http_code -eq 308 ]] || [[ $http_code -eq 200 ]] ; then
       break
