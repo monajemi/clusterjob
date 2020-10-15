@@ -2,13 +2,36 @@
 #
 #
 
-PID=somedir
-FILENAME=test.tar
+#PID=somedir
+#FILENAME=test.tar
 
-LOCATION_URL=$(curl -X POST -H 'Content-Type: application/json' -d '{"pid":"'$PID'","cj_id":"moosh","filename":"'"$FILENAME"'"}' 'https://us-central1-testcj-12345.cloudfunctions.net/getSignedResUrl' )
+CJID="moosh"
+PID="0854a767f859fda5b879edc8f49634f1cf58bfba"
+#FILENAME="1/logs/CJ_0854a767f859fda5b879edc8f49634f1cf58bfba_1_rethink_generalization_monajemi.stderr"
+FILENAME="1/checkpoint.pth.tar"
+
+#LOCATION_URL=$(curl -X POST -H 'Content-Type: application/json' -d '{"pid":"'$PID'","cj_id":"moosh","filename":"'"$FILENAME"'"}' 'https://us-central1-testcj-12345.cloudfunctions.net/getSignedResUrl' )
 
 
-curl -v -X PUT --upload-file $PID/$FILENAME $LOCATION_URL
+#curl -v -X PUT --upload-file $PID/$FILENAME $LOCATION_URL
+
+# 
+# Testing the signed url for read exercise
+READ_SIGNED_URI=$(curl -X POST -H 'Content-Type: application/json' -d '{"pid":"'$PID'","cj_id":"'$CJID'","filename":"'"$FILENAME"'"}'  'https://us-central1-testcj-12345.cloudfunctions.net/getSignedReadUrl' 2>/dev/null) 
+#echo $READ_SIGNED_URI
+
+# For later use send it to a LOG file
+CODE=$(curl -w "%{http_code}" -X GET -d '' -o /dev/null  "$READ_SIGNED_URI")
+
+
+
+if [[ $CODE -lt 400 ]]; then
+    printf "Object exists:\\n\\t$FILENAME\\n"
+else
+    printf "Object does not exist $CODE:\\n\\t$FILENAME\\n"
+fi
+
+
 
 # get status
 # upload file
@@ -16,8 +39,8 @@ curl -v -X PUT --upload-file $PID/$FILENAME $LOCATION_URL
 
 # resume
 
-FILESIZE=$(wc -c "$PID/$FILENAME" | awk '{print $1}')
-echo $FILESIZE
+#FILESIZE=$(wc -c "$PID/$FILENAME" | awk '{print $1}')
+#echo $FILESIZE
 #
 
 
