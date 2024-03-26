@@ -181,6 +181,7 @@ source activate <PY_VENV>
     
 python <<HERE
 # make sure each run has different random number stream
+import runpy
 import os,sys,pickle,numpy,random;
 
 mydate = numpy.datetime64('now');
@@ -189,8 +190,8 @@ seed = numpy.sum(100*numpy.array([mydate.astype(object).year, mydate.astype(obje
 
     
 # Set the seed for numpy and python
-random.seed(seed);
-numpy.random.seed(seed);
+random.seed(int(seed));
+numpy.random.seed(int(seed));
     
 # may be add torch random torch.manual_seed(args.seed) if torch is imported
 CJsavedState = {'myversion': sys.version, 'mydate':mydate, 'numpy_CJsavedState': numpy.random.get_state(), 'CJsavedState': random.getstate()}
@@ -202,7 +203,8 @@ with open(fname, 'wb') as RandStateFile:
 # CJsavedState = pickle.load(open('CJrandState.pickle','rb'));
     
 os.chdir("$DIR")
-import ${PROGRAM};
+runpy.run_path('${PROGRAM}.py')
+#import ${PROGRAM};
 #exec(open('${PROGRAM}').read())
 exit();
 HERE
@@ -283,8 +285,8 @@ seed = seed_0 + seed_1;
 
     
 # Set the seed for python and numpy (for reproducibility purposes);
-random.seed(seed);
-numpy.random.seed(seed);
+random.seed(int(seed));
+numpy.random.seed(int(seed));
 
 CJsavedState = {'myversion': sys.version, 'mydate':mydate, 'numpy_CJsavedState': numpy.random.get_state(), 'CJsavedState': random.getstate()}
 
