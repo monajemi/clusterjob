@@ -283,8 +283,8 @@ seed = seed_0 + seed_1;
 
     
 # Set the seed for python and numpy (for reproducibility purposes);
-random.seed(seed);
-numpy.random.seed(seed);
+random.seed(int(seed));
+numpy.random.seed(int(seed));
 
 CJsavedState = {'myversion': sys.version, 'mydate':mydate, 'numpy_CJsavedState': numpy.random.get_state(), 'CJsavedState': random.getstate()}
 
