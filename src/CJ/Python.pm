@@ -181,6 +181,7 @@ source activate <PY_VENV>
     
 python <<HERE
 # make sure each run has different random number stream
+import runpy
 import os,sys,pickle,numpy,random;
 
 mydate = numpy.datetime64('now');
@@ -202,7 +203,8 @@ with open(fname, 'wb') as RandStateFile:
 # CJsavedState = pickle.load(open('CJrandState.pickle','rb'));
     
 os.chdir("$DIR")
-import ${PROGRAM};
+runpy.run_path('${PROGRAM}.py')
+#import ${PROGRAM};
 #exec(open('${PROGRAM}').read())
 exit();
 HERE
